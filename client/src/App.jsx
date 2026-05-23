@@ -10,8 +10,11 @@ import {
 	ReferenceLine,
 	CartesianGrid,
 	ComposedChart,
+	BarChart,
+	Bar,
 	Area,
 } from "recharts";
+import { AgeRangeSlider } from "./AgeRangeSlider";
 import {
 	usePersistedState,
 	useStoreStatus,
@@ -562,6 +565,8 @@ export default function App() {
 	const byersNet = Math.round(byersValue * (1 - sellingCosts));
 	const totalRENet = houseNet + byersNet;
 	const endAge = 95;
+	const [viewFrom, setViewFrom] = useState(age);
+	const [viewTo, setViewTo] = useState(endAge);
 	const realRet = (1 + nomReturn) / (1 + inflation) - 1;
 
 	// Spending at key ages for the active scenario (inflation-aware)
@@ -684,20 +689,25 @@ export default function App() {
 
 	const chartData = useMemo(
 		() =>
-			projections.primary.map((d, i) => ({
-				age: d.age,
-				primary: d.balance,
-				alt: projections.alt[i]?.balance || 0,
-				spending: d.annualSpend,
-				income: d.income,
-			})),
-		[projections],
+			projections.primary
+				.filter((d) => d.age >= viewFrom && d.age <= viewTo)
+				.map((d) => {
+					const idx = projections.primary.findIndex((p) => p.age === d.age);
+					return {
+						age: d.age,
+						primary: d.balance,
+						alt: projections.alt[idx]?.balance || 0,
+						spending: d.annualSpend,
+						income: d.income,
+					};
+				}),
+		[projections, viewFrom, viewTo],
 	);
 
 	// Spending timeline data
 	const spendTimeline = useMemo(() => {
 		const pts = [];
-		for (let a = age; a <= endAge; a += 1) {
+		for (let a = viewFrom; a <= viewTo; a += 1) {
 			const scen =
 				housingPlan !== "stay" && a >= age + transitionYears
 					? housingPlan
@@ -706,7 +716,19 @@ export default function App() {
 			pts.push({ age: a, monthly: m, annual: m * 12 });
 		}
 		return pts;
-	}, [expenses, age, housingPlan, transitionYears]);
+	}, [expenses, age, housingPlan, transitionYears, viewFrom, viewTo]);
+
+	// Market returns timeline - maps LOST_DECADE to actual ages
+	const returnsTimeline = useMemo(() => {
+		const pts = [];
+		for (let a = viewFrom; a <= viewTo; a += 1) {
+			const yearIdx = a - age; // 0-based year index
+			const lost = yearIdx < LOST_DECADE.length ? LOST_DECADE[yearIdx] : nomReturn;
+			const hist = nomReturn;
+			pts.push({ age: a, lost, hist });
+		}
+		return pts;
+	}, [age, nomReturn, viewFrom, viewTo]);
 
 	const status =
 		effWR <= 3.5
@@ -1084,6 +1106,48 @@ export default function App() {
 							/>
 						</div>
 
+						{/* Zoom control */}
+						<div
+							style={{
+								display: "flex",
+								alignItems: "center",
+								gap: 8,
+								marginBottom: 12,
+								padding: "6px 12px",
+								background: S.bg,
+								borderRadius: 8,
+							}}
+						>
+							<span style={{ fontSize: 11, color: S.textMuted, whiteSpace: "nowrap" }}>🔍</span>
+							<AgeRangeSlider
+								from={viewFrom}
+								to={viewTo}
+								min={age}
+								max={endAge}
+								onChangeFrom={setViewFrom}
+								onChangeTo={setViewTo}
+								bg={S.border}
+								active={S.accent}
+							/>
+							{viewFrom !== age || viewTo !== endAge ? (
+								<button
+									onClick={() => { setViewFrom(age); setViewTo(endAge); }}
+									style={{
+										...btnBase,
+										padding: "2px 8px",
+										borderRadius: 4,
+										background: "transparent",
+										border: `1px solid ${S.border}`,
+										color: S.textMuted,
+										fontSize: 10,
+										whiteSpace: "nowrap",
+									}}
+								>
+									Reset
+								</button>
+							) : null}
+						</div>
+
 						{/* Portfolio chart */}
 						<div
 							style={{
@@ -1105,6 +1169,8 @@ export default function App() {
 									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
 									<XAxis
 										dataKey="age"
+										domain={[viewFrom, viewTo]}
+										type="number"
 										tick={{ fontSize: 10, fill: S.textMuted }}
 										tickLine={false}
 										axisLine={{ stroke: S.border }}
@@ -1199,6 +1265,8 @@ export default function App() {
 									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
 									<XAxis
 										dataKey="age"
+										domain={[viewFrom, viewTo]}
+										type="number"
 										tick={{ fontSize: 10, fill: S.textMuted }}
 										tickLine={false}
 										axisLine={{ stroke: S.border }}
@@ -1228,50 +1296,73 @@ export default function App() {
 							</ResponsiveContainer>
 						</div>
 
-						{/* Lost Decade Returns Reference — always shown */}
+						{/* Market Returns - bar chart aligned with age axis */}
 						<div
 							style={{
 								background: S.card,
 								borderRadius: 12,
 								border: `1px solid ${S.border}`,
-								padding: 14,
+								padding: "14px 14px 6px",
 								marginBottom: 16,
 							}}
 						>
 							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
 								Market Returns (Nominal)
 							</div>
-							<div style={{ fontSize: 10, fontFamily: S.mono }}>
-								<div
-									style={{
-										display: "grid",
-										gridTemplateColumns: "auto repeat(11, 1fr)",
-										gap: "2px 4px",
-										marginBottom: 4,
-									}}
+							<ResponsiveContainer width="100%" height={180}>
+								<BarChart
+									data={returnsTimeline}
+									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
 								>
-									<div style={{ color: S.textMuted }}>Year:</div>
-									{["1","2","3","4","5","6","7","8","9","10","11+"].map((y, i) => (
-										<div key={i} style={{ textAlign: "right", color: S.textMuted }}>{y}</div>
-									))}
-									<div style={{ color: S.danger, fontWeight: 600 }}>Lost:</div>
-									{[...LOST_DECADE, nomReturn].map((r, i) => (
-										<div key={i} style={{
-											textAlign: "right",
-											color: r < 0 ? S.danger : S.accent,
-											fontWeight: r < 0 ? 700 : 500,
-										}}>
-											{(r * 100).toFixed(0)}%
-										</div>
-									))}
-									<div style={{ color: S.accent, fontWeight: 600 }}>Hist:</div>
-									{Array(11).fill(nomReturn).map((r, i) => (
-										<div key={i} style={{ textAlign: "right", color: S.accent }}>
-											{(r * 100).toFixed(0)}%
-										</div>
-									))}
-								</div>
-							</div>
+									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
+									<XAxis
+										dataKey="age"
+										domain={[viewFrom, viewTo]}
+										type="number"
+										tick={{ fontSize: 10, fill: S.textMuted }}
+										tickLine={false}
+										axisLine={{ stroke: S.border }}
+									/>
+									<YAxis
+										tickFormatter={(v) => `${Math.round(v * 100)}%`}
+										tick={{ fontSize: 10, fill: S.textMuted }}
+										tickLine={false}
+										axisLine={false}
+										width={40}
+										allowDataOverflow={false}
+									/>
+									<ReferenceLine y={0} stroke={S.border} />
+									<Tooltip
+										formatter={(v) => `${(v * 100).toFixed(1)}%`}
+										contentStyle={{
+											background: S.card,
+											border: `1px solid ${S.border}`,
+											borderRadius: 8,
+											fontSize: 12,
+											color: S.text,
+										}}
+									/>
+									<Legend
+										formatter={(v) => (
+											<span style={{ fontSize: 11, color: S.textMuted }}>{v}</span>
+										)}
+									/>
+									<Bar
+										dataKey="lost"
+										name="Lost Decade"
+										fill="#ef4444"
+										radius={[3, 3, 0, 0]}
+										fillOpacity={marketMode === "lost_decade" ? 0.9 : 0.3}
+									/>
+									<Bar
+										dataKey="hist"
+										name="Hist Avg"
+										fill="#22c55e"
+										radius={[3, 3, 0, 0]}
+										fillOpacity={marketMode === "historical" ? 0.9 : 0.3}
+									/>
+								</BarChart>
+							</ResponsiveContainer>
 						</div>
 
 												{/* Milestones */}
