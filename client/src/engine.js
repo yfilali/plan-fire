@@ -43,7 +43,7 @@ export function shouldApplyCut(yearIdx, returnsArr, cutMode) {
  * Calculate active monthly expenses for a given age + housing scenario.
  * Each expense can specify which scenarios it applies to, an age range,
  * and an optional inflation override (null = use global inflation, 0 = fixed).
- * Optionally apply downturn spending cuts when marketMode is 'lost_decade'.
+ * Optionally apply spending cuts based on cutMode ('all' or 'down_recovery').
  */
 export function monthlySpendAtAge(
 	expenses,
@@ -51,7 +51,7 @@ export function monthlySpendAtAge(
 	scenario,
 	startAge = null,
 	globalInflation = null,
-	marketMode = null,
+
 	returnsArr = null,
 	discretionaryCut = 0,
 	luxuryCut = 0,
@@ -80,14 +80,14 @@ export function monthlySpendAtAge(
 				amount = e.amount;
 			}
 
-			// Apply downturn spending cuts if in bear market mode
+			// Apply spending cuts — cutMode is the sole decision gate
 			if (
-				marketMode === "lost_decade" &&
-				returnsArr !== null &&
-				typeof amount === "number"
+				cutMode === "all" ||
+				(returnsArr !== null && typeof amount === "number")
 			) {
 				const yearIdx = age - startAge;
-				if (shouldApplyCut(yearIdx, returnsArr, cutMode)) {
+				// For "all" mode or when we have a returns array, use shouldApplyCut
+				if (cutMode === "all" || (returnsArr !== null && shouldApplyCut(yearIdx, returnsArr, cutMode))) {
 					if (e.tier === "discretionary") amount *= 1 - discretionaryCut;
 					else if (e.tier === "luxury") amount *= 1 - luxuryCut;
 				}
@@ -176,12 +176,12 @@ export function project({
 				(e.ageMax == null || a <= e.ageMax);
 			if (scenarioMatch && ageMatch) {
 				let amount = e.amount * inflAccum[i];
-				// Apply downturn spending cuts — when an array of returns is
-				// supplied (lost_decade mode or programmatic tests), use shouldApplyCut
-				// so cutMode controls which years get trimmed.
-				if (Array.isArray(nomReturn)) {
+				// Apply spending cuts — cutMode controls whether cuts apply.
+				// "all" mode applies cuts every year regardless of returns array.
+				// "down_recovery" requires a returns array to determine downtime/recovery.
+				if (cutMode === "all" || Array.isArray(nomReturn)) {
 					const yearIdx = yi;
-					if (shouldApplyCut(yearIdx, nomReturn, cutMode)) {
+					if (cutMode === "all" || shouldApplyCut(yearIdx, nomReturn, cutMode)) {
 						if (e.tier === "discretionary") amount *= 1 - discretionaryCut;
 						else if (e.tier === "luxury") amount *= 1 - luxuryCut;
 					}
