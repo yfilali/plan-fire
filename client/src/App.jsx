@@ -9,7 +9,6 @@ import {
 	ResponsiveContainer,
 	ReferenceLine,
 	CartesianGrid,
-
 	ComposedChart,
 	Area,
 } from "recharts";
@@ -554,7 +553,6 @@ export default function App() {
 
 	// ── Computed ──
 
-
 	const grossRent = monthlyRent * 12;
 	const landlordExp =
 		monthlyMortgage * 12 + annualPropTax + annualLandlordCosts;
@@ -881,6 +879,22 @@ export default function App() {
 					>
 						{status.label} — {effWR.toFixed(1)}% WR
 					</div>
+					<select
+						value={housingPlan}
+						onChange={(e) => setHousingPlan(e.target.value)}
+						style={{
+							...inputBase,
+							padding: "5px 10px",
+							borderRadius: 20,
+							fontSize: 12,
+							fontWeight: 600,
+							background: S.card,
+						}}
+					>
+						<option value="stay">🏙️ Stay BA</option>
+						<option value="sell_move">🌲 Sell + CC</option>
+						<option value="rent_out">🏠 Rent SJ + CC</option>
+					</select>
 					<button
 						onClick={handleExport}
 						title="Export"
@@ -1668,25 +1682,134 @@ export default function App() {
 																	fontSize: 11,
 																}}
 															/>
-															<select
-				value={
-					(exp.scenarios && exp.scenarios.length === 1 && exp.scenarios[0]) ||
-					"all"
-				}
-				onChange={(e) => {
-					const v = e.target.value;
-					updateExpense(exp.id, "scenarios", v === "all" ? ["all"] : [v]);
-				}}
-				style={{ ...inputBase, fontSize: 10, width: 82, padding: "3px 4px" }}
-			>
-				<option value="all">All</option>
-				<option value="stay">BA Only</option>
-				<option value="sell_move">Sell+CC</option>
-				<option value="rent_out">Rent+CC</option>
-			</select>
-			<input placeholder="age-" type="number" value={exp.ageMin ?? ""} onChange={(e) => updateExpense(exp.id, "ageMin", e.target.value)} style={{ ...inputBase, width: 40, padding: "3px 4px", fontFamily: S.mono, fontSize: 10 }} />
-			<input placeholder="-" type="number" value={exp.ageMax ?? ""} onChange={(e) => updateExpense(exp.id, "ageMax", e.target.value)} style={{ ...inputBase, width: 40, padding: "3px 4px", fontFamily: S.mono, fontSize: 10 }} />
-												<button
+															<div
+																style={{
+																	display: "flex",
+																	gap: 2,
+																	alignItems: "center",
+																}}
+															>
+																{["all", "stay", "sell_move", "rent_out"].map(
+																	(s) => {
+																		const label =
+																			s === "all"
+																				? "All"
+																				: s === "stay"
+																					? "BA"
+																					: s === "sell_move"
+																						? "CC"
+																						: "Rent";
+																		const color =
+																			s === "all"
+																				? "#3b82f6"
+																				: s === "stay"
+																					? "#ef4444"
+																					: s === "sell_move"
+																						? "#22c55e"
+																						: "#8b5cf6";
+																		return (
+																			<button
+																				key={s}
+																				type="button"
+																				onClick={() => {
+																					const curr = exp.scenarios || ["all"];
+																					if (s === "all") {
+																						updateExpense(exp.id, "scenarios", [
+																							"all",
+																						]);
+																					} else {
+																						const hasAll = curr.includes("all");
+																						const hasS = curr.includes(s);
+																						let next;
+																						if (hasS) {
+																							next = curr.filter(
+																								(x) => x !== s,
+																							);
+																							if (next.length === 0 && !hasAll)
+																								next = ["all"];
+																						} else {
+																							next = hasAll
+																								? [s]
+																								: [
+																										...curr.filter(
+																											(x) => x !== "all",
+																										),
+																										s,
+																									];
+																						}
+																						updateExpense(
+																							exp.id,
+																							"scenarios",
+																							next,
+																						);
+																					}
+																				}}
+																				style={{
+																					...btnBase,
+																					padding: "1px 6px",
+																					borderRadius: 10,
+																					fontSize: 9,
+																					fontWeight: 500,
+																					cursor: "pointer",
+																					border: `1.5px solid ${(exp.scenarios || ["all"]).includes(s) ? color : "#2a2d3a"}`,
+																					background: (
+																						exp.scenarios || ["all"]
+																					).includes(s)
+																						? color + "22"
+																						: "transparent",
+																					color: (
+																						exp.scenarios || ["all"]
+																					).includes(s)
+																						? color
+																						: "#71717a",
+																					transition: "all .15s",
+																				}}
+																			>
+																				{label}
+																			</button>
+																		);
+																	},
+																)}
+															</div>
+															<input
+																placeholder="age-"
+																type="number"
+																value={exp.ageMin ?? ""}
+																onChange={(e) =>
+																	updateExpense(
+																		exp.id,
+																		"ageMin",
+																		e.target.value,
+																	)
+																}
+																style={{
+																	...inputBase,
+																	width: 40,
+																	padding: "3px 4px",
+																	fontFamily: S.mono,
+																	fontSize: 10,
+																}}
+															/>
+															<input
+																placeholder="-"
+																type="number"
+																value={exp.ageMax ?? ""}
+																onChange={(e) =>
+																	updateExpense(
+																		exp.id,
+																		"ageMax",
+																		e.target.value,
+																	)
+																}
+																style={{
+																	...inputBase,
+																	width: 40,
+																	padding: "3px 4px",
+																	fontFamily: S.mono,
+																	fontSize: 10,
+																}}
+															/>
+															<button
 																onClick={() => setEditingId(null)}
 																style={{
 																	...btnBase,
@@ -1846,235 +1969,74 @@ export default function App() {
 							))}
 						</div>
 
-						<div
-							style={{
-								background: S.card,
-								borderRadius: 12,
-								border: `1px solid ${S.border}`,
-								padding: 18,
-								marginBottom: 16,
-							}}
-						>
-							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
-								🏘️ Property Values
-							</div>
-							<div
+						<div style={{ padding: 14, background: S.bg, borderRadius: 8 }}>
+							<p
 								style={{
-									display: "grid",
-									gridTemplateColumns: "1fr 1fr 1fr",
-									gap: 14,
+									fontSize: 12,
+									color: S.textMuted,
+									lineHeight: 1.6,
+									marginBottom: 10,
 								}}
 							>
-								<SliderRow
-									label="SJ House Value"
-									value={houseValue}
-									onChange={setHouseValue}
-									min={1e6}
-									max={3e6}
-									step={50000}
-									format={fmt}
-								/>
-								<SliderRow
-									label="Mortgage Owed"
-									value={mortgageOwed}
-									onChange={setMortgageOwed}
-									min={0}
-									max={1e6}
-									step={25000}
-									format={fmt}
-								/>
-								<SliderRow
-									label="Byers Value"
-									value={byersValue}
-									onChange={setByersValue}
-									min={200000}
-									max={1e6}
-									step={25000}
-									format={fmt}
-								/>
+								<strong>Housing Plan</strong> — select your path in the dropdown
+								above. Each scenario changes costs and projections differently.
+							</p>
+							<div style={{ display: "grid", gap: 8 }}>
+								<div>
+									<span
+										style={{ fontSize: 12, fontWeight: 600, color: "#ef4444" }}
+									>
+										🏙️ Stay in Bay Area
+									</span>
+									<p
+										style={{
+											fontSize: 11,
+											color: S.textMuted,
+											margin: "3px 0 0",
+										}}
+									>
+										Keep your house and mortgage. Higher monthly costs but no
+										transition. Property taxes at current assessed value.
+									</p>
+								</div>
+								<div>
+									<span
+										style={{ fontSize: 12, fontWeight: 600, color: "#22c55e" }}
+									>
+										🌲 Sell + Move to CC
+									</span>
+									<p
+										style={{
+											fontSize: 11,
+											color: S.textMuted,
+											margin: "3px 0 0",
+										}}
+									>
+										Sell SJ house + Byers property, buy in Crescent City. Lower
+										ongoing costs but transition gap (you'll need temporary
+										housing). Net proceeds shown in the calculator below.
+									</p>
+								</div>
+								<div>
+									<span
+										style={{ fontSize: 12, fontWeight: 600, color: "#3b82f6" }}
+									>
+										🏠 Rent SJ + Move CC
+									</span>
+									<p
+										style={{
+											fontSize: 11,
+											color: S.textMuted,
+											margin: "3px 0 0",
+										}}
+									>
+										Keep SJ house as rental property, sell Byers, buy in CC.
+										Rental income offsets costs but adds landlord
+										responsibilities and vacancy risk.
+									</p>
+								</div>
 							</div>
 						</div>
-
-						{housingPlan !== "stay" && (
-							<div
-								style={{
-									background: S.card,
-									borderRadius: 12,
-									border: `1px solid ${S.border}`,
-									padding: 18,
-									marginBottom: 16,
-								}}
-							>
-								<div
-									style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}
-								>
-									🌲 Crescent City
-								</div>
-								<div
-									style={{
-										display: "grid",
-										gridTemplateColumns: "1fr 1fr",
-										gap: 14,
-									}}
-								>
-									<SliderRow
-										label="CC Home Price"
-										value={ccHomeCost}
-										onChange={setCcHomeCost}
-										min={200000}
-										max={1500000}
-										step={25000}
-										format={fmt}
-									/>
-									{housingPlan === "sell_move" && (
-										<SliderRow
-											label="Transition Years"
-											value={transitionYears}
-											onChange={setTransitionYears}
-											min={0}
-											max={3}
-											step={1}
-											format={(v) => `${v} yr`}
-										/>
-									)}
-								</div>
-								<div
-									style={{
-										display: "grid",
-										gridTemplateColumns: "repeat(4, 1fr)",
-										gap: 8,
-										marginTop: 12,
-										padding: 12,
-										background: S.bg,
-										borderRadius: 8,
-									}}
-								>
-									{[
-										{ l: "House Net", v: fmt(houseNet), c: S.accent },
-										{ l: "Byers Net", v: fmt(byersNet), c: S.accent },
-										{ l: "CC Home", v: `-${fmt(ccHomeCost)}`, c: S.danger },
-										{
-											l: "Net Portfolio",
-											v: fmt(
-												housingPlan === "sell_move"
-													? totalRENet - ccHomeCost
-													: byersNet - ccHomeCost,
-											),
-											c:
-												(housingPlan === "sell_move"
-													? totalRENet - ccHomeCost
-													: byersNet - ccHomeCost) >= 0
-													? S.accent
-													: S.danger,
-										},
-									].map((x, i) => (
-										<div key={i} style={{ textAlign: "center" }}>
-											<div style={{ fontSize: 10, color: S.textMuted }}>
-												{x.l}
-											</div>
-											<div
-												style={{ fontSize: 15, fontWeight: 700, color: x.c }}
-											>
-												{x.v}
-											</div>
-										</div>
-									))}
-								</div>
-							</div>
-						)}
-
-						{housingPlan === "rent_out" && (
-							<div
-								style={{
-									background: S.card,
-									borderRadius: 12,
-									border: `1px solid ${S.border}`,
-									padding: 18,
-								}}
-							>
-								<div
-									style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}
-								>
-									🏠 SJ Rental P&L
-								</div>
-								<div
-									style={{
-										display: "grid",
-										gridTemplateColumns: "1fr 1fr",
-										gap: 14,
-									}}
-								>
-									<SliderRow
-										label="Monthly Rent"
-										value={monthlyRent}
-										onChange={setMonthlyRent}
-										min={3000}
-										max={7000}
-										step={100}
-										format={(v) => `$${v.toLocaleString()}/mo`}
-									/>
-									<SliderRow
-										label="Monthly Mortgage"
-										value={monthlyMortgage}
-										onChange={setMonthlyMortgage}
-										min={1500}
-										max={4000}
-										step={100}
-										format={(v) => `$${v.toLocaleString()}/mo`}
-									/>
-									<SliderRow
-										label="Annual Property Tax"
-										value={annualPropTax}
-										onChange={setAnnualPropTax}
-										min={5000}
-										max={25000}
-										step={500}
-										format={(v) => `${fmt(v)}/yr`}
-									/>
-									<SliderRow
-										label="Ins+Maint+Mgmt"
-										value={annualLandlordCosts}
-										onChange={setAnnualLandlordCosts}
-										min={5000}
-										max={25000}
-										step={500}
-										format={(v) => `${fmt(v)}/yr`}
-									/>
-								</div>
-								<div
-									style={{
-										display: "grid",
-										gridTemplateColumns: "repeat(3, 1fr)",
-										gap: 8,
-										marginTop: 12,
-										padding: 12,
-										background: S.bg,
-										borderRadius: 8,
-									}}
-								>
-									{[
-										{ l: "Gross Rent", v: fmt(grossRent), c: S.accent },
-										{ l: "Expenses", v: fmt(landlordExp), c: S.danger },
-										{
-											l: "Net Flow",
-											v: `${netRental >= 0 ? "+" : ""}${fmt(netRental)}/yr`,
-											c: netRental >= 0 ? S.accent : S.danger,
-										},
-									].map((x, i) => (
-										<div key={i} style={{ textAlign: "center" }}>
-											<div style={{ fontSize: 10, color: S.textMuted }}>
-												{x.l}
-											</div>
-											<div
-												style={{ fontSize: 16, fontWeight: 700, color: x.c }}
-											>
-												{x.v}
-											</div>
-										</div>
-									))}
-								</div>
-							</div>
-						)}
 					</>
 				)}
 
@@ -2252,7 +2214,69 @@ export default function App() {
 								</div>
 							</div>
 						</div>
-					</>
+					
+						<div
+							style={{
+								background: S.card,
+								borderRadius: 12,
+								border: `1px solid ${S.border}`,
+								padding: 18,
+								marginTop: 16,
+							}}
+						>
+							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>🏘️ Property Values</div>
+							<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
+								<SliderRow label="SJ House Value" value={houseValue} onChange={setHouseValue} min={1e6} max={3e6} step={50000} format={fmt} />
+								<SliderRow label="Mortgage Owed" value={mortgageOwed} onChange={setMortgageOwed} min={0} max={1e6} step={25000} format={fmt} />
+								<SliderRow label="Byers Value" value={byersValue} onChange={setByersValue} min={200000} max={1e6} step={25000} format={fmt} />
+							</div>
+							{housingPlan !== "stay" && (
+								<div style={{ background: S.bg, borderRadius: 8, padding: 14, marginBottom: 16 }}>
+									<div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}>🌲 Crescent City</div>
+									<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+										<SliderRow label="CC Home Price" value={ccHomeCost} onChange={setCcHomeCost} min={200000} max={1500000} step={25000} format={fmt} />
+										{housingPlan === "sell_move" && <SliderRow label="Transition Years" value={transitionYears} onChange={setTransitionYears} min={0} max={3} step={1} format={(v) => `${v} yr`} />}
+									</div>
+									<div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 10, padding: 10, background: S.card, borderRadius: 6 }}>
+										{[
+											{ l: "House Net", v: fmt(houseNet), c: S.accent },
+											{ l: "Byers Net", v: fmt(byersNet), c: S.accent },
+											{ l: "CC Home", v: `-${fmt(ccHomeCost)}`, c: S.danger },
+											{ l: "Net Portfolio", v: fmt(housingPlan === "sell_move" ? totalRENet - ccHomeCost : byersNet - ccHomeCost), c: (housingPlan === "sell_move" ? totalRENet - ccHomeCost : byersNet - ccHomeCost) >= 0 ? S.accent : S.danger },
+										].map((x, i) => (
+											<div key={i} style={{ textAlign: "center" }}>
+												<div style={{ fontSize: 10, color: S.textMuted }}>{x.l}</div>
+												<div style={{ fontSize: 15, fontWeight: 700, color: x.c }}>{x.v}</div>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+							{housingPlan === "rent_out" && (
+								<div style={{ background: S.bg, borderRadius: 8, padding: 14 }}>
+									<div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}>🏠 SJ Rental P&L</div>
+									<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+										<SliderRow label="Monthly Rent" value={monthlyRent} onChange={setMonthlyRent} min={3000} max={7000} step={100} format={(v) => `$${v.toLocaleString()}/mo`} />
+										<SliderRow label="Monthly Mortgage" value={monthlyMortgage} onChange={setMonthlyMortgage} min={1500} max={4000} step={100} format={(v) => `$${v.toLocaleString()}/mo`} />
+										<SliderRow label="Annual Property Tax" value={annualPropTax} onChange={setAnnualPropTax} min={5000} max={25000} step={500} format={(v) => `${fmt(v)}/yr`} />
+										<SliderRow label="Ins+Maint+Mgmt" value={annualLandlordCosts} onChange={setAnnualLandlordCosts} min={5000} max={25000} step={500} format={(v) => `${fmt(v)}/yr`} />
+									</div>
+									<div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 10, padding: 10, background: S.card, borderRadius: 6 }}>
+										{[
+											{ l: "Gross Rent", v: fmt(grossRent), c: S.accent },
+											{ l: "Expenses", v: fmt(landlordExp), c: S.danger },
+											{ l: "Net Flow", v: `${netRental >= 0 ? "+" : ""}${fmt(netRental)}/yr`, c: netRental >= 0 ? S.accent : S.danger },
+										].map((x, i) => (
+											<div key={i} style={{ textAlign: "center" }}>
+												<div style={{ fontSize: 10, color: S.textMuted }}>{x.l}</div>
+												<div style={{ fontSize: 16, fontWeight: 700, color: x.c }}>{x.v}</div>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+						</div>
+</>
 				)}
 			</div>
 			<div
