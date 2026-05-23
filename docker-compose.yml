@@ -1,0 +1,16 @@
+services:
+  retirement-planner:
+    build: .
+    container_name: retirement-planner
+    ports:
+      - "8089:3000"
+    volumes:
+      - planner-data:/data
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATA_PATH=/data/state.json
+
+volumes:
+  planner-data:
+    driver: local
