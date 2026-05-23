@@ -209,4 +209,43 @@ describe("project — inflation-aware with nominal returns", () => {
 		const postRet = result.find((d) => d.age === 57);
 		expect(postRet.balance).toBeLessThan(preRet.balance);
 	});
+
+	it("should account for negative rental cash flow (loss)", () => {
+		const expenses = [
+			{
+				id: "a",
+				cat: "food",
+				name: "Groceries",
+				amount: 8000,
+				scenarios: ["all"],
+				inflOverride: null,
+			},
+		];
+		const lossResult = project({
+			startAge: 49,
+			endAge: 60,
+			retireAge: 49,
+			portfolio: 1000000,
+			expenses,
+			scenario: "rent_out",
+			nomReturn: 0.1,
+			inflation: 0.03,
+			rentalNet: -5000, // net loss of $5K/yr
+		});
+		const zeroResult = project({
+			startAge: 49,
+			endAge: 60,
+			retireAge: 49,
+			portfolio: 1000000,
+			expenses,
+			scenario: "rent_out",
+			nomReturn: 0.1,
+			inflation: 0.03,
+			rentalNet: 0, // zero rental flow
+		});
+		// Negative rental should drain portfolio faster than zero
+		const at60Loss = lossResult.find((d) => d.age === 60);
+		const at60Zero = zeroResult.find((d) => d.age === 60);
+		expect(at60Loss.balance).toBeLessThan(at60Zero.balance);
+	});
 });
