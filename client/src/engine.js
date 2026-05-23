@@ -4,10 +4,46 @@ export const LOST_DECADE = [
 	-0.15, -0.1, 0.05, -0.05, 0.02, 0.03, 0.04, 0.06, 0.08, 0.09,
 ];
 
+// Pre-computed: year indices that are in downturn/recovery period for LOST_DECADE
+// Downturn years (return < 0): 0, 1, 3
+// Cumulative returns: -15%, -25%, -20%, -25%, -23%, -20%, -16%, -10%, -2%, +7%
+// Recovery ends at year 9 when cumulative crosses above zero
+const LOST_DECADE_RECOVERY_CUTOFF = 9; // cuts apply through year 8 inclusive
+
+/**
+ * Check if we should apply spending cuts for a given year.
+ * cutMode:
+ *   'down_recovery' — cuts during downturn + until portfolio recovers (cumulative return >= 0)
+ *   'all'           — cuts applied uniformly to ALL years
+ *
+ * NOTE: This is the single source of truth for when cuts apply. Both project() and
+ * monthlySpendAtAge() must use it so dashboard stats, charts, and projections agree.
+ */
+export function shouldApplyCut(yearIdx, returnsArr, cutMode) {
+	if (!returnsArr || !returnsArr.length) return false;
+
+	const yi = Math.max(0, Math.min(yearIdx, returnsArr.length - 1));
+
+	// "all" mode: cuts every year
+	if (cutMode === "all") return true;
+
+	// For LOST_DECADE-style arrays, use pre-computed recovery cutoff
+	const isLostDecade =
+		returnsArr[0] === -0.15 &&
+		returnsArr[1] === -0.1 &&
+		returnsArr.length >= 10;
+	if (isLostDecade) return yi <= LOST_DECADE_RECOVERY_CUTOFF;
+
+	// Generic fallback for ad-hoc arrays: cut only in years where the return
+	// is negative. "all" mode already handled above (returns true for everything).
+	return returnsArr[yi] < 0;
+}
+
 /**
  * Calculate active monthly expenses for a given age + housing scenario.
  * Each expense can specify which scenarios it applies to, an age range,
  * and an optional inflation override (null = use global inflation, 0 = fixed).
+ * Optionally apply downturn spending cuts when marketMode is 'lost_decade'.
  */
 export function monthlySpendAtAge(
 	expenses,
@@ -15,6 +51,11 @@ export function monthlySpendAtAge(
 	scenario,
 	startAge = null,
 	globalInflation = null,
+	marketMode = null,
+	returnsArr = null,
+	discretionaryCut = 0,
+	luxuryCut = 0,
+	cutMode = "down_recovery",
 ) {
 	return expenses
 		.filter((e) => {
@@ -28,15 +69,31 @@ export function monthlySpendAtAge(
 			return scenarioMatch && ageMatch;
 		})
 		.reduce((sum, e) => {
+			let amount;
 			// Calculate accumulated inflation multiplier from startAge to this age
 			if (startAge !== null && globalInflation !== null) {
 				const yearsPassed = Math.max(0, age - startAge);
 				const rate = e.inflOverride != null ? e.inflOverride : globalInflation;
-				sum += e.amount * (1 + rate) ** yearsPassed;
+				amount = e.amount * (1 + rate) ** yearsPassed;
 			} else {
 				// Legacy: return base amount (no inflation accumulation)
-				sum += e.amount;
+				amount = e.amount;
 			}
+
+			// Apply downturn spending cuts if in bear market mode
+			if (
+				marketMode === "lost_decade" &&
+				returnsArr !== null &&
+				typeof amount === "number"
+			) {
+				const yearIdx = age - startAge;
+				if (shouldApplyCut(yearIdx, returnsArr, cutMode)) {
+					if (e.tier === "discretionary") amount *= 1 - discretionaryCut;
+					else if (e.tier === "luxury") amount *= 1 - luxuryCut;
+				}
+			}
+
+			sum += amount;
 			return sum;
 		}, 0);
 }
@@ -60,9 +117,21 @@ export function project({
 	rentalNet = 0,
 	transition = null,
 	workIncome = 0,
+	discretionaryCut = 0,
+	luxuryCut = 0,
+	cutMode = "down_recovery",
+	reAppreciation = 0.04,
+	retainedRE = null,
 }) {
 	const data = [];
 	let b = portfolio;
+
+	// Real estate tracking
+	const hasRE = retainedRE != null;
+	let reHouse = hasRE ? retainedRE.houseValue || 0 : 0;
+	let reMortgage = hasRE ? retainedRE.mortgage || 0 : 0;
+	let reCC = hasRE ? retainedRE.ccHomeCost || 0 : 0;
+	let transitionHappened = false;
 
 	// Per-expense cumulative inflation accumulators (year 0 = base)
 	const inflAccum = {};
@@ -84,13 +153,18 @@ export function project({
 		// Real estate transition event
 		if (transition && a === transition.moveAge) {
 			b += transition.netProceeds - transition.newHomeCost;
+			transitionHappened = true;
+			if (scenario === "sell_move") {
+				reHouse = 0;
+				reMortgage = 0;
+				reCC = retainedRE?.ccHomeCost || 0;
+			}
 		}
 
-		// Determine active scenario for this year (pre-move = stay, post-move = target)
 		const activeScenario =
 			transition && a < transition.moveAge ? "stay" : scenario;
 
-		// Dynamic spending with accumulated inflation per expense
+		// Dynamic spending with per-expense inflation + downturn tier cuts
 		let monthlySpend = 0;
 		expenses.forEach((e, i) => {
 			const scenarioMatch =
@@ -101,7 +175,18 @@ export function project({
 				(e.ageMin == null || a >= e.ageMin) &&
 				(e.ageMax == null || a <= e.ageMax);
 			if (scenarioMatch && ageMatch) {
-				monthlySpend += e.amount * inflAccum[i];
+				let amount = e.amount * inflAccum[i];
+				// Apply downturn spending cuts — when an array of returns is
+				// supplied (lost_decade mode or programmatic tests), use shouldApplyCut
+				// so cutMode controls which years get trimmed.
+				if (Array.isArray(nomReturn)) {
+					const yearIdx = yi;
+					if (shouldApplyCut(yearIdx, nomReturn, cutMode)) {
+						if (e.tier === "discretionary") amount *= 1 - discretionaryCut;
+						else if (e.tier === "luxury") amount *= 1 - luxuryCut;
+					}
+				}
+				monthlySpend += amount;
 			}
 		});
 		const annualSpend = monthlySpend * 12;
@@ -118,16 +203,20 @@ export function project({
 		const rental = activeScenario !== "stay" ? rentalNet : 0;
 		const income = (isRetired ? 0 : workIncome) + ssIncome + rental;
 
-		// Net withdrawal (only if retired)
+		// Net withdrawal
 		if (isRetired) {
 			b -= Math.max(0, annualSpend - income);
 		} else {
-			// Working: income covers spending, surplus goes to portfolio
 			const surplus = income - annualSpend;
 			if (surplus > 0) b += surplus;
 		}
 
 		if (b < 0) b = 0;
+
+		// Net worth
+		const netWorth = hasRE
+			? Math.round(b + reHouse - reMortgage + reCC)
+			: Math.round(b);
 
 		data.push({
 			age: a,
@@ -138,7 +227,16 @@ export function project({
 				isRetired ? Math.max(0, annualSpend - income) : 0,
 			),
 			activeScenario,
+			netWorth,
 		});
+
+		// Appreciate retained RE for next year
+		if (hasRE) {
+			const houseRetained =
+				scenario === "stay" || scenario === "rent_out" || !transitionHappened;
+			if (houseRetained && reHouse > 0) reHouse *= 1 + reAppreciation;
+			if (reCC > 0) reCC *= 1 + reAppreciation;
+		}
 	}
 	return data;
 }
@@ -208,6 +306,7 @@ export const DEFAULT_EXPENSES = [
 		amount: 2400,
 		scenarios: ["stay"],
 		inflOverride: 0,
+		tier: "essential",
 	},
 	{
 		id: uid(),
@@ -216,6 +315,7 @@ export const DEFAULT_EXPENSES = [
 		amount: 1200,
 		scenarios: ["stay"],
 		inflOverride: 0.02,
+		tier: "essential",
 	},
 	{
 		id: uid(),
@@ -223,6 +323,7 @@ export const DEFAULT_EXPENSES = [
 		name: "Home Insurance",
 		amount: 250,
 		scenarios: ["stay"],
+		tier: "essential",
 	},
 	{
 		id: uid(),
@@ -230,6 +331,7 @@ export const DEFAULT_EXPENSES = [
 		name: "Maintenance",
 		amount: 400,
 		scenarios: ["stay"],
+		tier: "essential",
 	},
 
 	// Crescent City housing — when moving (sell or rent out SJ)
@@ -240,6 +342,7 @@ export const DEFAULT_EXPENSES = [
 		amount: 850,
 		scenarios: ["sell_move", "rent_out"],
 		inflOverride: 0.02,
+		tier: "essential",
 	},
 	{
 		id: uid(),
@@ -247,6 +350,7 @@ export const DEFAULT_EXPENSES = [
 		name: "CC Home Insurance",
 		amount: 200,
 		scenarios: ["sell_move", "rent_out"],
+		tier: "essential",
 	},
 	{
 		id: uid(),
@@ -254,6 +358,7 @@ export const DEFAULT_EXPENSES = [
 		name: "CC Maintenance",
 		amount: 300,
 		scenarios: ["sell_move", "rent_out"],
+		tier: "essential",
 	},
 
 	// Healthcare — AGE-PHASED
@@ -265,6 +370,7 @@ export const DEFAULT_EXPENSES = [
 		scenarios: ["all"],
 		ageMax: 64,
 		inflOverride: 0.065,
+		tier: "essential",
 	},
 	{
 		id: uid(),
@@ -273,6 +379,7 @@ export const DEFAULT_EXPENSES = [
 		amount: 400,
 		scenarios: ["all"],
 		ageMin: 65,
+		tier: "essential",
 	},
 	{
 		id: uid(),
@@ -280,6 +387,7 @@ export const DEFAULT_EXPENSES = [
 		name: "Medical/Dental OOP",
 		amount: 200,
 		scenarios: ["all"],
+		tier: "essential",
 	},
 
 	// Core living — all scenarios, all ages
@@ -290,6 +398,7 @@ export const DEFAULT_EXPENSES = [
 		amount: 400,
 		scenarios: ["all"],
 		inflOverride: 0,
+		tier: "essential",
 	},
 	{
 		id: uid(),
@@ -297,6 +406,7 @@ export const DEFAULT_EXPENSES = [
 		name: "Groceries",
 		amount: 800,
 		scenarios: ["all"],
+		tier: "essential",
 	},
 	{
 		id: uid(),
@@ -304,6 +414,7 @@ export const DEFAULT_EXPENSES = [
 		name: "Dining Out",
 		amount: 600,
 		scenarios: ["all"],
+		tier: "discretionary",
 	},
 	{
 		id: uid(),
@@ -312,6 +423,7 @@ export const DEFAULT_EXPENSES = [
 		amount: 800,
 		scenarios: ["all"],
 		inflOverride: 0,
+		tier: "discretionary",
 	},
 	{
 		id: uid(),
@@ -319,6 +431,7 @@ export const DEFAULT_EXPENSES = [
 		name: "Fuel & Maintenance",
 		amount: 1000,
 		scenarios: ["all"],
+		tier: "discretionary",
 	},
 	{
 		id: uid(),
@@ -327,6 +440,7 @@ export const DEFAULT_EXPENSES = [
 		amount: 400,
 		scenarios: ["all"],
 		inflOverride: 0,
+		tier: "essential",
 	},
 	{
 		id: uid(),
@@ -335,6 +449,7 @@ export const DEFAULT_EXPENSES = [
 		amount: 200,
 		scenarios: ["all"],
 		inflOverride: 0,
+		tier: "essential",
 	},
 	{
 		id: uid(),
@@ -342,6 +457,7 @@ export const DEFAULT_EXPENSES = [
 		name: "Electric, Water, Internet",
 		amount: 350,
 		scenarios: ["all"],
+		tier: "essential",
 	},
 	{
 		id: uid(),
@@ -349,6 +465,7 @@ export const DEFAULT_EXPENSES = [
 		name: "Subscriptions & Shopping",
 		amount: 500,
 		scenarios: ["all"],
+		tier: "discretionary",
 	},
 	{
 		id: uid(),
@@ -356,6 +473,7 @@ export const DEFAULT_EXPENSES = [
 		name: "Vacations / Trips",
 		amount: 1000,
 		scenarios: ["all"],
+		tier: "luxury",
 	},
 	{
 		id: uid(),
@@ -363,5 +481,6 @@ export const DEFAULT_EXPENSES = [
 		name: "Misc / Buffer",
 		amount: 500,
 		scenarios: ["all"],
+		tier: "discretionary",
 	},
 ];

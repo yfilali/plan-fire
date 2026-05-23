@@ -145,6 +145,13 @@ function SliderRow({ label, value, onChange, min, max, step, format }) {
 				max={max}
 				step={step}
 				value={value}
+				onPointerDown={(e) => {
+					const rect = e.currentTarget.getBoundingClientRect();
+					const pct = (e.clientX - rect.left) / rect.width;
+					const newValue = Math.round((min + pct * (max - min)) / step) * step;
+					onChange(Math.max(min, Math.min(max, parseFloat(newValue.toFixed(4)))));
+				}}
+				onInput={(e) => onChange(Number(e.target.value))}
 				onChange={(e) => onChange(Number(e.target.value))}
 				style={{ width: "100%" }}
 			/>
@@ -499,6 +506,15 @@ export default function App() {
 		"historical",
 	);
 
+	// Downturn spending cuts (0–1 range)
+	const [discretionaryCut, setDiscretionaryCut] = usePersistedState(
+		"discretionaryCut",
+		0.3,
+	);
+	const [luxuryCut, setLuxuryCut] = usePersistedState("luxuryCut", 0.7);
+	// cutMode: "down_recovery" = cuts during downturn + until recovery
+	const [cutMode, setCutMode] = usePersistedState("cutMode", "down_recovery");
+
 	// Housing
 	const [housingPlan, setHousingPlan] = usePersistedState(
 		"housingPlan",
@@ -549,6 +565,7 @@ export default function App() {
 		name: "",
 		amount: "",
 		scenarios: ["all"],
+		tier: "essential",
 		inflOverride: "",
 		ageMin: "",
 		ageMax: "",
@@ -569,9 +586,22 @@ export default function App() {
 	const [viewTo, setViewTo] = useState(endAge);
 	const realRet = (1 + nomReturn) / (1 + inflation) - 1;
 
-	// Spending at key ages for the active scenario (inflation-aware)
+	// Spending at key ages — passes market mode + cuts so they apply in bear markets
+	const avgReturns = buildReturns("avg", nomReturn);
+	const bearReturns = buildReturns("lost_decade", nomReturn);
 	const spendAt = (a, scen) =>
-		monthlySpendAtAge(expenses, a, scen || housingPlan, age, inflation) * 12;
+		monthlySpendAtAge(
+			expenses,
+			a,
+			scen || housingPlan,
+			age,
+			inflation,
+			marketMode === "lost_decade" ? "lost_decade" : null,
+			bearReturns,
+			discretionaryCut,
+			luxuryCut,
+			cutMode,
+		) * 12;
 	const spendNow = spendAt(
 		age,
 		housingPlan === "stay"
@@ -628,6 +658,9 @@ export default function App() {
 			nomReturn: activeR,
 			rentalNet: rental,
 			transition: trans,
+			discretionaryCut,
+			luxuryCut,
+			cutMode,
 		});
 		const alt = project({
 			...common,
@@ -636,10 +669,10 @@ export default function App() {
 			nomReturn: altR,
 			rentalNet: rental,
 			transition: trans,
+			discretionaryCut,
+			luxuryCut,
+			cutMode,
 		});
-
-		const postTransAge = trans ? trans.moveAge : age;
-		const atPost = primary.find((d) => d.age === postTransAge);
 
 		return {
 			primary,
@@ -647,7 +680,7 @@ export default function App() {
 			primaryLabel:
 				marketMode === "lost_decade" ? "Lost Decade" : "Historical Avg",
 			altLabel: marketMode === "lost_decade" ? "Historical Avg" : "Lost Decade",
-			startPort: atPost?.balance || startPort,
+			startPort,
 		};
 	}, [
 		age,
@@ -704,7 +737,7 @@ export default function App() {
 		[projections, viewFrom, viewTo],
 	);
 
-	// Spending timeline data
+	// Spending timeline — with downturn cuts in Lost Decade mode
 	const spendTimeline = useMemo(() => {
 		const pts = [];
 		for (let a = viewFrom; a <= viewTo; a += 1) {
@@ -712,18 +745,44 @@ export default function App() {
 				housingPlan !== "stay" && a >= age + transitionYears
 					? housingPlan
 					: "stay";
-			const m = monthlySpendAtAge(expenses, a, scen, age, inflation);
+			const returnsToUse =
+				marketMode === "lost_decade" ? bearReturns : avgReturns;
+			const m = monthlySpendAtAge(
+				expenses,
+				a,
+				scen,
+				age,
+				inflation,
+				marketMode === "lost_decade" ? "lost_decade" : null,
+				returnsToUse,
+				discretionaryCut,
+				luxuryCut,
+				cutMode,
+			);
 			pts.push({ age: a, monthly: m, annual: m * 12 });
 		}
 		return pts;
-	}, [expenses, age, housingPlan, transitionYears, viewFrom, viewTo]);
+	}, [
+		expenses,
+		age,
+		housingPlan,
+		transitionYears,
+		viewFrom,
+		viewTo,
+		marketMode,
+		nomReturn,
+		discretionaryCut,
+		luxuryCut,
+		cutMode,
+	]);
 
 	// Market returns timeline - maps LOST_DECADE to actual ages
 	const returnsTimeline = useMemo(() => {
 		const pts = [];
 		for (let a = viewFrom; a <= viewTo; a += 1) {
 			const yearIdx = a - age; // 0-based year index
-			const lost = yearIdx < LOST_DECADE.length ? LOST_DECADE[yearIdx] : nomReturn;
+			const lost =
+				yearIdx < LOST_DECADE.length ? LOST_DECADE[yearIdx] : nomReturn;
 			const hist = nomReturn;
 			pts.push({ age: a, lost, hist });
 		}
@@ -750,6 +809,7 @@ export default function App() {
 				name: newExpense.name,
 				amount: Number(newExpense.amount),
 				scenarios: newExpense.scenarios,
+				tier: newExpense.tier || "essential",
 				inflOverride:
 					newExpense.inflOverride !== ""
 						? Number(newExpense.inflOverride) / 100
@@ -1118,7 +1178,15 @@ export default function App() {
 								borderRadius: 8,
 							}}
 						>
-							<span style={{ fontSize: 11, color: S.textMuted, whiteSpace: "nowrap" }}>🔍</span>
+							<span
+								style={{
+									fontSize: 11,
+									color: S.textMuted,
+									whiteSpace: "nowrap",
+								}}
+							>
+								🔍
+							</span>
 							<AgeRangeSlider
 								from={viewFrom}
 								to={viewTo}
@@ -1131,7 +1199,10 @@ export default function App() {
 							/>
 							{viewFrom !== age || viewTo !== endAge ? (
 								<button
-									onClick={() => { setViewFrom(age); setViewTo(endAge); }}
+									onClick={() => {
+										setViewFrom(age);
+										setViewTo(endAge);
+									}}
 									style={{
 										...btnBase,
 										padding: "2px 8px",
@@ -1296,6 +1367,136 @@ export default function App() {
 							</ResponsiveContainer>
 						</div>
 
+						{/* Downturn Spending Controls */}
+						<div
+							style={{
+								background: S.card,
+								borderRadius: 12,
+								border: `1px solid ${S.border}`,
+								padding: 18,
+							}}
+						>
+							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+								📉 Downturn Spending Controls
+							</div>
+							<div
+								style={{ fontSize: 11, color: S.textMuted, marginBottom: 14 }}
+							>
+								When the market crashes, you cut spending — no brainer.
+							</div>
+
+							{/* Cut mode toggle */}
+							<div
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: 10,
+									marginBottom: 14,
+								}}
+							>
+								<span
+									style={{ fontSize: 11, color: S.textMuted, fontWeight: 600 }}
+								>
+									Apply cuts:
+								</span>
+								<button
+									onClick={() => setCutMode("down_recovery")}
+									style={{
+										...btnBase,
+										padding: "5px 12px",
+										borderRadius: 20,
+										border: `1.5px solid ${cutMode === "down_recovery" ? S.blue : S.border}`,
+										background:
+											cutMode === "down_recovery"
+												? S.blue + "18"
+												: "transparent",
+										color: cutMode === "down_recovery" ? S.blue : S.textMuted,
+										fontSize: 11,
+										fontWeight: 500,
+									}}
+								>
+									During downturn + recovery
+								</button>
+								<button
+									onClick={() => setCutMode("all")}
+									style={{
+										...btnBase,
+										padding: "5px 12px",
+										borderRadius: 20,
+										border: `1.5px solid ${cutMode === "all" ? S.accent : S.border}`,
+										background:
+											cutMode === "all" ? S.accent + "18" : "transparent",
+										color: cutMode === "all" ? S.accent : S.textMuted,
+										fontSize: 11,
+										fontWeight: 500,
+									}}
+								>
+									All years
+								</button>
+							</div>
+
+							<SliderRow
+								label="Discretionary Cut"
+								value={discretionaryCut}
+								onChange={setDiscretionaryCut}
+								min={0}
+								max={1}
+								step={0.05}
+								format={(v) => `${(v * 100).toFixed(0)}%`}
+							/>
+							<SliderRow
+								label="Luxury Cut"
+								value={luxuryCut}
+								onChange={setLuxuryCut}
+								min={0}
+								max={1}
+								step={0.05}
+								format={(v) => `${(v * 100).toFixed(0)}%`}
+							/>
+
+							<div
+								style={{
+									display: "flex",
+									gap: 8,
+									marginTop: 10,
+									padding: 10,
+									background: S.bg,
+									borderRadius: 8,
+								}}
+							>
+								<div style={{ flex: 1 }}>
+									<div style={{ fontSize: 10, color: S.textDim }}>
+										🛡️ Essential
+									</div>
+									<div
+										style={{ fontSize: 12, fontWeight: 600, color: S.accent }}
+									>
+										Never cut
+									</div>
+								</div>
+								<div style={{ flex: 1 }}>
+									<div style={{ fontSize: 10, color: S.textDim }}>
+										⚠️ Discretionary
+									</div>
+									<div
+										style={{ fontSize: 12, fontWeight: 600, color: S.warning }}
+									>
+										{(discretionaryCut * 100).toFixed(0)}% cut
+									</div>
+								</div>
+								<div style={{ flex: 1 }}>
+									<div style={{ fontSize: 10, color: S.textDim }}>
+										💎 Luxury
+									</div>
+									<div
+										style={{ fontSize: 12, fontWeight: 600, color: S.danger }}
+									>
+										{(luxuryCut * 100).toFixed(0)}% cut
+									</div>
+								</div>
+							</div>
+						</div>
+
 						{/* Market Returns - bar chart aligned with age axis */}
 						<div
 							style={{
@@ -1344,7 +1545,9 @@ export default function App() {
 									/>
 									<Legend
 										formatter={(v) => (
-											<span style={{ fontSize: 11, color: S.textMuted }}>{v}</span>
+											<span style={{ fontSize: 11, color: S.textMuted }}>
+												{v}
+											</span>
 										)}
 									/>
 									<Bar
@@ -1365,19 +1568,20 @@ export default function App() {
 							</ResponsiveContainer>
 						</div>
 
-												{/* Milestones */}
+						{/* Milestones */}
+						<div
+							style={{
+								background: S.card,
+								borderRadius: 12,
+								border: `1px solid ${S.border}`,
+								padding: 14,
+							}}
+						>
+							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
+								Key Milestones
+							</div>
 							<div
 								style={{
-									background: S.card,
-									borderRadius: 12,
-									border: `1px solid ${S.border}`,
-									padding: 14,
-								}}
-							>
-								<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
-									Key Milestones
-								</div>
-								<div style={{
 									display: "grid",
 									gridTemplateColumns: "1fr 1fr 1fr",
 									gap: 8,
@@ -1626,6 +1830,25 @@ export default function App() {
 									</Chip>
 								))}
 								<span style={{ fontSize: 11, color: S.textDim, marginLeft: 8 }}>
+									Tier:
+								</span>
+								<select
+									value={newExpense.tier || "essential"}
+									onChange={(e) =>
+										setNewExpense((p) => ({ ...p, tier: e.target.value }))
+									}
+									style={{
+										...inputBase,
+										padding: "4px 6px",
+										fontSize: 11,
+										width: 130,
+									}}
+								>
+									<option value="essential">🛡️ Essential</option>
+									<option value="discretionary">⚠️ Discretionary</option>
+									<option value="luxury">💎 Luxury</option>
+								</select>
+								<span style={{ fontSize: 11, color: S.textDim, marginLeft: 8 }}>
 									Ages:
 								</span>
 								<input
@@ -1768,6 +1991,24 @@ export default function App() {
 																	</option>
 																))}
 															</select>
+															<select
+																value={exp.tier || "essential"}
+																onChange={(e) =>
+																	updateExpense(exp.id, "tier", e.target.value)
+																}
+																style={{
+																	...inputBase,
+																	padding: "3px 6px",
+																	fontSize: 11,
+																	width: 120,
+																}}
+															>
+																<option value="essential">🛡️ Essential</option>
+																<option value="discretionary">
+																	⚠️ Discretionary
+																</option>
+																<option value="luxury">💎 Luxury</option>
+															</select>
 															<input
 																value={exp.name}
 																onChange={(e) =>
@@ -1803,12 +2044,20 @@ export default function App() {
 																placeholder="%"
 																type="number"
 																step="0.5"
-																value={exp.inflOverride != null ? (exp.inflOverride * 100).toString().replace(/\.?0+$/, "") : ""}
+																value={
+																	exp.inflOverride != null
+																		? (exp.inflOverride * 100)
+																				.toString()
+																				.replace(/\.?0+$/, "")
+																		: ""
+																}
 																onChange={(e) =>
 																	updateExpense(
 																		exp.id,
 																		"inflOverride",
-																		e.target.value === "" ? null : Number(e.target.value) / 100,
+																		e.target.value === ""
+																			? null
+																			: Number(e.target.value) / 100,
 																	)
 																}
 																style={{
@@ -1985,6 +2234,19 @@ export default function App() {
 																				: "Rent+CC"}
 																	</Tag>
 																))}
+															{exp.tier != null && exp.tier !== "essential" && (
+																<Tag
+																	color={
+																		exp.tier === "discretionary"
+																			? "#f59e0b"
+																			: "#ef4444"
+																	}
+																>
+																	{exp.tier === "discretionary"
+																		? "⚠️ Disc."
+																		: "💎 Lux"}
+																</Tag>
+															)}
 															{(exp.ageMin != null || exp.ageMax != null) && (
 																<Tag color={S.blue}>
 																	{exp.ageMin ?? ""}–{exp.ageMax ?? ""}
@@ -2278,27 +2540,122 @@ export default function App() {
 										📉 Lost Decade
 									</Chip>
 								</div>
-								<div style={{ marginBottom: 12, fontSize: 10, fontFamily: S.mono }}>
-									<div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-										{[{ label: "Year", years: ["1","2","3","4","5","6","7","8","9","10","11+"] }].map((row) => (
+								<div
+									style={{ marginBottom: 12, fontSize: 10, fontFamily: S.mono }}
+								>
+									<div
+										style={{
+											display: "flex",
+											justifyContent: "space-between",
+											marginBottom: 4,
+										}}
+									>
+										{[
+											{
+												label: "Year",
+												years: [
+													"1",
+													"2",
+													"3",
+													"4",
+													"5",
+													"6",
+													"7",
+													"8",
+													"9",
+													"10",
+													"11+",
+												],
+											},
+										].map((row) =>
 											row.years.map((y, i) => (
-												<div key={i} style={{ width: 28, textAlign: "right", color: S.textMuted }}>{y}</div>
-											))
-										))}
+												<div
+													key={i}
+													style={{
+														width: 28,
+														textAlign: "right",
+														color: S.textMuted,
+													}}
+												>
+													{y}
+												</div>
+											)),
+										)}
 									</div>
-									<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, marginBottom: 2 }}>
-										<span style={{ color: marketMode === "lost_decade" ? S.danger : S.textMuted, width: 28 }}>{marketMode === "lost_decade" ? "Lost" : "Avg"}:</span>
-										{(marketMode === "lost_decade" ? [...LOST_DECADE, null] : Array(11).fill(null)).map((r, i) => (
-											<div key={i} style={{ width: 28, textAlign: "right", color: r !== null ? (r < 0 ? S.danger : S.accent) : S.accent, fontWeight: r !== null && r < 0 ? 700 : 500 }}>
-												{r !== null ? `${(r * 100).toFixed(0)}%` : `${(nomReturn * 100).toFixed(0)}%`}
+									<div
+										style={{
+											display: "flex",
+											justifyContent: "space-between",
+											alignItems: "center",
+											gap: 4,
+											marginBottom: 2,
+										}}
+									>
+										<span
+											style={{
+												color:
+													marketMode === "lost_decade" ? S.danger : S.textMuted,
+												width: 28,
+											}}
+										>
+											{marketMode === "lost_decade" ? "Lost" : "Avg"}:
+										</span>
+										{(marketMode === "lost_decade"
+											? [...LOST_DECADE, null]
+											: Array(11).fill(null)
+										).map((r, i) => (
+											<div
+												key={i}
+												style={{
+													width: 28,
+													textAlign: "right",
+													color:
+														r !== null
+															? r < 0
+																? S.danger
+																: S.accent
+															: S.accent,
+													fontWeight: r !== null && r < 0 ? 700 : 500,
+												}}
+											>
+												{r !== null
+													? `${(r * 100).toFixed(0)}%`
+													: `${(nomReturn * 100).toFixed(0)}%`}
 											</div>
 										))}
 									</div>
-									<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
-										<span style={{ color: marketMode === "historical" ? S.accent : S.textMuted, width: 28 }}>Hist:</span>
-										{Array(11).fill(nomReturn).map((r, i) => (
-											<div key={i} style={{ width: 28, textAlign: "right", color: S.accent, opacity: marketMode === "historical" ? 1 : 0.4 }}>{r ? `${(r * 100).toFixed(0)}%` : "—"}</div>
-										))}
+									<div
+										style={{
+											display: "flex",
+											justifyContent: "space-between",
+											alignItems: "center",
+											gap: 4,
+										}}
+									>
+										<span
+											style={{
+												color:
+													marketMode === "historical" ? S.accent : S.textMuted,
+												width: 28,
+											}}
+										>
+											Hist:
+										</span>
+										{Array(11)
+											.fill(nomReturn)
+											.map((r, i) => (
+												<div
+													key={i}
+													style={{
+														width: 28,
+														textAlign: "right",
+														color: S.accent,
+														opacity: marketMode === "historical" ? 1 : 0.4,
+													}}
+												>
+													{r ? `${(r * 100).toFixed(0)}%` : "—"}
+												</div>
+											))}
 									</div>
 								</div>
 								<SliderRow
@@ -2358,7 +2715,7 @@ export default function App() {
 								</div>
 							</div>
 						</div>
-					
+
 						<div
 							style={{
 								background: S.card,
@@ -2368,33 +2725,142 @@ export default function App() {
 								marginTop: 16,
 							}}
 						>
-							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>🏘️ Property Values</div>
-							<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
-								<SliderRow label="SJ House Value" value={houseValue} onChange={setHouseValue} min={1e6} max={3e6} step={50000} format={fmt} />
-								<SliderRow label="Mortgage Owed" value={mortgageOwed} onChange={setMortgageOwed} min={0} max={1e6} step={25000} format={fmt} />
-								<SliderRow label="Byers Value" value={byersValue} onChange={setByersValue} min={200000} max={1e6} step={25000} format={fmt} />
+							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
+								🏘️ Property Values
+							</div>
+							<div
+								style={{
+									display: "grid",
+									gridTemplateColumns: "1fr 1fr 1fr",
+									gap: 14,
+									marginBottom: 16,
+								}}
+							>
+								<SliderRow
+									label="SJ House Value"
+									value={houseValue}
+									onChange={setHouseValue}
+									min={1e6}
+									max={3e6}
+									step={50000}
+									format={fmt}
+								/>
+								<SliderRow
+									label="Mortgage Owed"
+									value={mortgageOwed}
+									onChange={setMortgageOwed}
+									min={0}
+									max={1e6}
+									step={25000}
+									format={fmt}
+								/>
+								<SliderRow
+									label="Byers Value"
+									value={byersValue}
+									onChange={setByersValue}
+									min={200000}
+									max={1e6}
+									step={25000}
+									format={fmt}
+								/>
 							</div>
 							{housingPlan !== "stay" && (
-								<div style={{ background: S.bg, borderRadius: 8, padding: 14, marginBottom: 16 }}>
-									<div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}>🌲 Crescent City</div>
-									<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-										<SliderRow label="CC Home Price" value={ccHomeCost} onChange={setCcHomeCost} min={200000} max={1500000} step={25000} format={fmt} />
-										{housingPlan === "sell_move" && <SliderRow label="Transition Years" value={transitionYears} onChange={setTransitionYears} min={0} max={3} step={1} format={(v) => `${v} yr`} />}
+								<div
+									style={{
+										background: S.bg,
+										borderRadius: 8,
+										padding: 14,
+										marginBottom: 16,
+									}}
+								>
+									<div
+										style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}
+									>
+										🌲 Crescent City
 									</div>
-									<div style={{ display: "grid", gridTemplateColumns: housingPlan === "sell_move" ? "repeat(4, 1fr)" : "repeat(3, 1fr)", gap: 8, marginTop: 10, padding: 10, background: S.card, borderRadius: 6 }}>
-										{(housingPlan === "sell_move" ? [
-											{ l: "House Net", v: fmt(houseNet), c: S.accent },
-											{ l: "Byers Net", v: fmt(byersNet), c: S.accent },
-											{ l: "CC Buy", v: `-${fmt(ccHomeCost)}`, c: S.danger },
-											{ l: "Proceeds to Portfolio", v: fmt(totalRENet - ccHomeCost), c: totalRENet - ccHomeCost >= 0 ? S.accent : S.danger },
-										] : [
-											{ l: "Byers Net", v: fmt(byersNet), c: S.accent },
-											{ l: "CC Buy", v: `-${fmt(ccHomeCost)}`, c: S.danger },
-											{ l: "From Portfolio", v: fmt(byersNet - ccHomeCost), c: byersNet - ccHomeCost >= 0 ? S.accent : S.danger },
-										]).map((x, i) => (
+									<div
+										style={{
+											display: "grid",
+											gridTemplateColumns: "1fr 1fr",
+											gap: 14,
+										}}
+									>
+										<SliderRow
+											label="CC Home Price"
+											value={ccHomeCost}
+											onChange={setCcHomeCost}
+											min={200000}
+											max={1500000}
+											step={25000}
+											format={fmt}
+										/>
+										{housingPlan === "sell_move" && (
+											<SliderRow
+												label="Transition Years"
+												value={transitionYears}
+												onChange={setTransitionYears}
+												min={0}
+												max={3}
+												step={1}
+												format={(v) => `${v} yr`}
+											/>
+										)}
+									</div>
+									<div
+										style={{
+											display: "grid",
+											gridTemplateColumns:
+												housingPlan === "sell_move"
+													? "repeat(4, 1fr)"
+													: "repeat(3, 1fr)",
+											gap: 8,
+											marginTop: 10,
+											padding: 10,
+											background: S.card,
+											borderRadius: 6,
+										}}
+									>
+										{(housingPlan === "sell_move"
+											? [
+													{ l: "House Net", v: fmt(houseNet), c: S.accent },
+													{ l: "Byers Net", v: fmt(byersNet), c: S.accent },
+													{
+														l: "CC Buy",
+														v: `-${fmt(ccHomeCost)}`,
+														c: S.danger,
+													},
+													{
+														l: "Proceeds to Portfolio",
+														v: fmt(totalRENet - ccHomeCost),
+														c:
+															totalRENet - ccHomeCost >= 0
+																? S.accent
+																: S.danger,
+													},
+												]
+											: [
+													{ l: "Byers Net", v: fmt(byersNet), c: S.accent },
+													{
+														l: "CC Buy",
+														v: `-${fmt(ccHomeCost)}`,
+														c: S.danger,
+													},
+													{
+														l: "From Portfolio",
+														v: fmt(byersNet - ccHomeCost),
+														c: byersNet - ccHomeCost >= 0 ? S.accent : S.danger,
+													},
+												]
+										).map((x, i) => (
 											<div key={i} style={{ textAlign: "center" }}>
-												<div style={{ fontSize: 10, color: S.textMuted }}>{x.l}</div>
-												<div style={{ fontSize: 15, fontWeight: 700, color: x.c }}>{x.v}</div>
+												<div style={{ fontSize: 10, color: S.textMuted }}>
+													{x.l}
+												</div>
+												<div
+													style={{ fontSize: 15, fontWeight: 700, color: x.c }}
+												>
+													{x.v}
+												</div>
 											</div>
 										))}
 									</div>
@@ -2402,29 +2868,91 @@ export default function App() {
 							)}
 							{housingPlan === "rent_out" && (
 								<div style={{ background: S.bg, borderRadius: 8, padding: 14 }}>
-									<div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}>🏠 SJ Rental P&L</div>
-									<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-										<SliderRow label="Monthly Rent" value={monthlyRent} onChange={setMonthlyRent} min={3000} max={7000} step={100} format={(v) => `$${v.toLocaleString()}/mo`} />
-										<SliderRow label="Monthly Mortgage" value={monthlyMortgage} onChange={setMonthlyMortgage} min={1500} max={4000} step={100} format={(v) => `$${v.toLocaleString()}/mo`} />
-										<SliderRow label="Annual Property Tax" value={annualPropTax} onChange={setAnnualPropTax} min={5000} max={25000} step={500} format={(v) => `${fmt(v)}/yr`} />
-										<SliderRow label="Ins+Maint+Mgmt" value={annualLandlordCosts} onChange={setAnnualLandlordCosts} min={5000} max={25000} step={500} format={(v) => `${fmt(v)}/yr`} />
+									<div
+										style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}
+									>
+										🏠 SJ Rental P&L
 									</div>
-									<div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 10, padding: 10, background: S.card, borderRadius: 6 }}>
+									<div
+										style={{
+											display: "grid",
+											gridTemplateColumns: "1fr 1fr",
+											gap: 14,
+										}}
+									>
+										<SliderRow
+											label="Monthly Rent"
+											value={monthlyRent}
+											onChange={setMonthlyRent}
+											min={3000}
+											max={7000}
+											step={100}
+											format={(v) => `$${v.toLocaleString()}/mo`}
+										/>
+										<SliderRow
+											label="Monthly Mortgage"
+											value={monthlyMortgage}
+											onChange={setMonthlyMortgage}
+											min={1500}
+											max={4000}
+											step={100}
+											format={(v) => `$${v.toLocaleString()}/mo`}
+										/>
+										<SliderRow
+											label="Annual Property Tax"
+											value={annualPropTax}
+											onChange={setAnnualPropTax}
+											min={5000}
+											max={25000}
+											step={500}
+											format={(v) => `${fmt(v)}/yr`}
+										/>
+										<SliderRow
+											label="Ins+Maint+Mgmt"
+											value={annualLandlordCosts}
+											onChange={setAnnualLandlordCosts}
+											min={5000}
+											max={25000}
+											step={500}
+											format={(v) => `${fmt(v)}/yr`}
+										/>
+									</div>
+									<div
+										style={{
+											display: "grid",
+											gridTemplateColumns: "repeat(3, 1fr)",
+											gap: 8,
+											marginTop: 10,
+											padding: 10,
+											background: S.card,
+											borderRadius: 6,
+										}}
+									>
 										{[
 											{ l: "Gross Rent", v: fmt(grossRent), c: S.accent },
 											{ l: "Expenses", v: fmt(landlordExp), c: S.danger },
-											{ l: "Net Flow", v: `${netRental >= 0 ? "+" : ""}${fmt(netRental)}/yr`, c: netRental >= 0 ? S.accent : S.danger },
+											{
+												l: "Net Flow",
+												v: `${netRental >= 0 ? "+" : ""}${fmt(netRental)}/yr`,
+												c: netRental >= 0 ? S.accent : S.danger,
+											},
 										].map((x, i) => (
 											<div key={i} style={{ textAlign: "center" }}>
-												<div style={{ fontSize: 10, color: S.textMuted }}>{x.l}</div>
-												<div style={{ fontSize: 16, fontWeight: 700, color: x.c }}>{x.v}</div>
+												<div style={{ fontSize: 10, color: S.textMuted }}>
+													{x.l}
+												</div>
+												<div
+													style={{ fontSize: 16, fontWeight: 700, color: x.c }}
+												>
+													{x.v}
+												</div>
 											</div>
 										))}
 									</div>
 								</div>
 							)}
 						</div>
-</>
+					</>
 				)}
 			</div>
 			<div
