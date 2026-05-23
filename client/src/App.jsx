@@ -729,7 +729,7 @@ export default function App() {
 				scenarios: newExpense.scenarios,
 				inflOverride:
 					newExpense.inflOverride !== ""
-						? Number(newExpense.inflOverride)
+						? Number(newExpense.inflOverride) / 100
 						: undefined,
 				...(newExpense.ageMin !== ""
 					? { ageMin: Number(newExpense.ageMin) }
@@ -1666,12 +1666,12 @@ export default function App() {
 																placeholder="%"
 																type="number"
 																step="0.5"
-																value={exp.inflOverride ?? ""}
+																value={exp.inflOverride != null ? (exp.inflOverride * 100).toString().replace(/\.?0+$/, "") : ""}
 																onChange={(e) =>
 																	updateExpense(
 																		exp.id,
 																		"inflOverride",
-																		e.target.value,
+																		e.target.value === "" ? null : Number(e.target.value) / 100,
 																	)
 																}
 																style={{
