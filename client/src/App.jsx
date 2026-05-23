@@ -9,11 +9,7 @@ import {
 	ResponsiveContainer,
 	ReferenceLine,
 	CartesianGrid,
-	PieChart,
-	Pie,
-	Cell,
-	BarChart,
-	Bar,
+
 	ComposedChart,
 	Area,
 } from "recharts";
@@ -29,7 +25,6 @@ import {
 	buildReturns,
 	monthlySpendAtAge,
 	fmt,
-	fmtFull,
 	uid,
 	DEFAULT_CATEGORIES,
 	DEFAULT_EXPENSES,
@@ -558,12 +553,7 @@ export default function App() {
 	const [showCatManager, setShowCatManager] = useState(false);
 
 	// ── Computed ──
-	const getCat = (id) =>
-		categories.find((c) => c.id === id) || {
-			label: "?",
-			icon: "❓",
-			color: "#666",
-		};
+
 
 	const grossRent = monthlyRent * 12;
 	const landlordExp =
