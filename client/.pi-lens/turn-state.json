@@ -1,0 +1,156 @@
+{
+  "files": {
+    "vite.config.js": {
+      "modifiedRanges": [
+        {
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-23T00:41:52.357Z"
+    },
+    "src/engine.js": {
+      "modifiedRanges": [
+        {
+          "start": 7,
+          "end": 10
+        },
+        {
+          "start": 16,
+          "end": 28
+        },
+        {
+          "start": 32,
+          "end": 35
+        },
+        {
+          "start": 37,
+          "end": 37
+        },
+        {
+          "start": 44,
+          "end": 48
+        },
+        {
+          "start": 54,
+          "end": 55
+        },
+        {
+          "start": 57,
+          "end": 62
+        },
+        {
+          "start": 71,
+          "end": 82
+        },
+        {
+          "start": 156,
+          "end": 157
+        },
+        {
+          "start": 162,
+          "end": 162
+        },
+        {
+          "start": 167,
+          "end": 167
+        },
+        {
+          "start": 172,
+          "end": 172
+        },
+        {
+          "start": 175,
+          "end": 175
+        },
+        {
+          "start": 177,
+          "end": 178
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-23T00:52:44.024Z"
+    },
+    "src/App.jsx": {
+      "modifiedRanges": [
+        {
+          "start": 141,
+          "end": 141
+        },
+        {
+          "start": 156,
+          "end": 157
+        },
+        {
+          "start": 217,
+          "end": 217
+        },
+        {
+          "start": 234,
+          "end": 234
+        },
+        {
+          "start": 240,
+          "end": 241
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-23T00:47:06.169Z"
+    },
+    "src/engine.test.js": {
+      "modifiedRanges": [
+        {
+          "start": 17,
+          "end": 19
+        },
+        {
+          "start": 23,
+          "end": 25
+        },
+        {
+          "start": 33,
+          "end": 35
+        },
+        {
+          "start": 75,
+          "end": 76
+        },
+        {
+          "start": 79,
+          "end": 79
+        },
+        {
+          "start": 81,
+          "end": 83
+        },
+        {
+          "start": 99,
+          "end": 102
+        },
+        {
+          "start": 105,
+          "end": 107
+        },
+        {
+          "start": 109,
+          "end": 109
+        },
+        {
+          "start": 111,
+          "end": 111
+        },
+        {
+          "start": 113,
+          "end": 115
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-23T00:59:03.348Z"
+    }
+  },
+  "turnCycles": 0,
+  "maxCycles": 3,
+  "lastUpdated": "2026-05-23T00:59:03.348Z",
+  "sessionId": "lens-mphlx9rs-b54b26c9"
+}

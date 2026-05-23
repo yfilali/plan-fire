@@ -138,7 +138,7 @@ export default function App() {
   const [categories, setCategories] = usePersistedState('categories', DEFAULT_CATEGORIES);
   const [expenses, setExpenses] = usePersistedState('expenses', DEFAULT_EXPENSES);
   const [editingId, setEditingId] = useState(null);
-  const [newExpense, setNewExpense] = useState({ cat: 'other', name: '', amount: '', scenarios: ['all'], ageMin: '', ageMax: '' });
+  const [newExpense, setNewExpense] = useState({ cat: 'other', name: '', amount: '', scenarios: ['all'], inflOverride: '', ageMin: '', ageMax: '' });
   const [showCatManager, setShowCatManager] = useState(false);
 
   // ── Computed ──
@@ -153,8 +153,8 @@ export default function App() {
   const endAge = 95;
   const realRet = (1 + nomReturn) / (1 + inflation) - 1;
 
-  // Spending at key ages for the active scenario
-  const spendAt = (a, scen) => monthlySpendAtAge(expenses, a, scen || housingPlan) * 12;
+  // Spending at key ages for the active scenario (inflation-aware)
+  const spendAt = (a, scen) => monthlySpendAtAge(expenses, a, scen || housingPlan, age, inflation) * 12;
   const spendNow = spendAt(age, housingPlan === 'stay' ? 'stay' : (age < age + transitionYears ? 'stay' : housingPlan));
   const spend65 = spendAt(65, housingPlan);
   const spend70 = spendAt(70, housingPlan);
@@ -169,7 +169,7 @@ export default function App() {
 
     let trans = null;
     let rental = 0;
-    let scenario = housingPlan;
+    const scenario = housingPlan;
 
     if (housingPlan === 'sell_move') {
       trans = { moveAge: age + transitionYears, netProceeds: totalRENet, newHomeCost: ccHomeCost, preSpend: 0 };
@@ -214,7 +214,7 @@ export default function App() {
     const pts = [];
     for (let a = age; a <= endAge; a += 1) {
       const scen = (housingPlan !== 'stay' && a >= age + transitionYears) ? housingPlan : 'stay';
-      const m = monthlySpendAtAge(expenses, a, scen);
+      const m = monthlySpendAtAge(expenses, a, scen, age, inflation);
       pts.push({ age: a, monthly: m, annual: m * 12 });
     }
     return pts;
@@ -231,13 +231,14 @@ export default function App() {
     setExpenses(p => [...p, {
       id: uid(), cat: newExpense.cat, name: newExpense.name, amount: Number(newExpense.amount),
       scenarios: newExpense.scenarios,
+      inflOverride: newExpense.inflOverride !== '' ? Number(newExpense.inflOverride) : undefined,
       ...(newExpense.ageMin !== '' ? { ageMin: Number(newExpense.ageMin) } : {}),
       ...(newExpense.ageMax !== '' ? { ageMax: Number(newExpense.ageMax) } : {}),
     }]);
     setNewExpense(p => ({ ...p, name: '', amount: '' }));
   };
   const removeExpense = id => setExpenses(p => p.filter(e => e.id !== id));
-  const updateExpense = (id, field, val) => setExpenses(p => p.map(e => e.id === id ? { ...e, [field]: field === 'amount' || field === 'ageMin' || field === 'ageMax' ? (val === '' ? undefined : Number(val)) : val } : e));
+  const updateExpense = (id, field, val) => setExpenses(p => p.map(e => e.id === id ? { ...e, [field]: field === 'amount' || field === 'ageMin' || field === 'ageMax' || field === 'inflOverride' ? (val === '' ? undefined : Number(val)) : val } : e));
 
   // ── Data mgmt ──
   const handleExport = () => exportData();
