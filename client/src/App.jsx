@@ -29,6 +29,7 @@ import {
 	DEFAULT_EXPENSES,
 	COLOR_OPTIONS,
 	SCENARIO_LABELS,
+	LOST_DECADE,
 } from "./engine";
 
 // ── Theme ────────────────────────────────────────────────────────────
@@ -1227,20 +1228,65 @@ export default function App() {
 							</ResponsiveContainer>
 						</div>
 
-						{/* Milestones */}
+						{/* Lost Decade Returns Reference — always shown */}
 						<div
 							style={{
 								background: S.card,
 								borderRadius: 12,
 								border: `1px solid ${S.border}`,
 								padding: 14,
+								marginBottom: 16,
 							}}
 						>
-							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
-								Key Milestones
+							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+								Market Returns (Nominal)
 							</div>
+							<div style={{ fontSize: 10, fontFamily: S.mono }}>
+								<div
+									style={{
+										display: "grid",
+										gridTemplateColumns: "auto repeat(11, 1fr)",
+										gap: "2px 4px",
+										marginBottom: 4,
+									}}
+								>
+									<div style={{ color: S.textMuted }}>Year:</div>
+									{["1","2","3","4","5","6","7","8","9","10","11+"].map((y, i) => (
+										<div key={i} style={{ textAlign: "right", color: S.textMuted }}>{y}</div>
+									))}
+									<div style={{ color: S.danger, fontWeight: 600 }}>Lost:</div>
+									{[...LOST_DECADE, nomReturn].map((r, i) => (
+										<div key={i} style={{
+											textAlign: "right",
+											color: r < 0 ? S.danger : S.accent,
+											fontWeight: r < 0 ? 700 : 500,
+										}}>
+											{(r * 100).toFixed(0)}%
+										</div>
+									))}
+									<div style={{ color: S.accent, fontWeight: 600 }}>Hist:</div>
+									{Array(11).fill(nomReturn).map((r, i) => (
+										<div key={i} style={{ textAlign: "right", color: S.accent }}>
+											{(r * 100).toFixed(0)}%
+										</div>
+									))}
+								</div>
+							</div>
+						</div>
+
+												{/* Milestones */}
 							<div
 								style={{
+									background: S.card,
+									borderRadius: 12,
+									border: `1px solid ${S.border}`,
+									padding: 14,
+								}}
+							>
+								<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
+									Key Milestones
+								</div>
+								<div style={{
 									display: "grid",
 									gridTemplateColumns: "1fr 1fr 1fr",
 									gap: 8,
@@ -2141,22 +2187,29 @@ export default function App() {
 										📉 Lost Decade
 									</Chip>
 								</div>
-								{marketMode === "lost_decade" && (
-									<div
-										style={{
-											padding: 10,
-											background: S.bg,
-											borderRadius: 8,
-											marginBottom: 12,
-											fontSize: 11,
-											color: S.textMuted,
-											lineHeight: 1.5,
-										}}
-									>
-										2000-2010 simulation: -15%, -10% early crashes, slow
-										recovery, then historical avg.
+								<div style={{ marginBottom: 12, fontSize: 10, fontFamily: S.mono }}>
+									<div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+										{[{ label: "Year", years: ["1","2","3","4","5","6","7","8","9","10","11+"] }].map((row) => (
+											row.years.map((y, i) => (
+												<div key={i} style={{ width: 28, textAlign: "right", color: S.textMuted }}>{y}</div>
+											))
+										))}
 									</div>
-								)}
+									<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, marginBottom: 2 }}>
+										<span style={{ color: marketMode === "lost_decade" ? S.danger : S.textMuted, width: 28 }}>{marketMode === "lost_decade" ? "Lost" : "Avg"}:</span>
+										{(marketMode === "lost_decade" ? [...LOST_DECADE, null] : Array(11).fill(null)).map((r, i) => (
+											<div key={i} style={{ width: 28, textAlign: "right", color: r !== null ? (r < 0 ? S.danger : S.accent) : S.accent, fontWeight: r !== null && r < 0 ? 700 : 500 }}>
+												{r !== null ? `${(r * 100).toFixed(0)}%` : `${(nomReturn * 100).toFixed(0)}%`}
+											</div>
+										))}
+									</div>
+									<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
+										<span style={{ color: marketMode === "historical" ? S.accent : S.textMuted, width: 28 }}>Hist:</span>
+										{Array(11).fill(nomReturn).map((r, i) => (
+											<div key={i} style={{ width: 28, textAlign: "right", color: S.accent, opacity: marketMode === "historical" ? 1 : 0.4 }}>{r ? `${(r * 100).toFixed(0)}%` : "—"}</div>
+										))}
+									</div>
+								</div>
 								<SliderRow
 									label="Nominal Return"
 									value={nomReturn}
