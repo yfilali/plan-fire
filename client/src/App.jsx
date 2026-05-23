@@ -2237,13 +2237,17 @@ export default function App() {
 										<SliderRow label="CC Home Price" value={ccHomeCost} onChange={setCcHomeCost} min={200000} max={1500000} step={25000} format={fmt} />
 										{housingPlan === "sell_move" && <SliderRow label="Transition Years" value={transitionYears} onChange={setTransitionYears} min={0} max={3} step={1} format={(v) => `${v} yr`} />}
 									</div>
-									<div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 10, padding: 10, background: S.card, borderRadius: 6 }}>
-										{[
+									<div style={{ display: "grid", gridTemplateColumns: housingPlan === "sell_move" ? "repeat(4, 1fr)" : "repeat(3, 1fr)", gap: 8, marginTop: 10, padding: 10, background: S.card, borderRadius: 6 }}>
+										{(housingPlan === "sell_move" ? [
 											{ l: "House Net", v: fmt(houseNet), c: S.accent },
 											{ l: "Byers Net", v: fmt(byersNet), c: S.accent },
-											{ l: "CC Home", v: `-${fmt(ccHomeCost)}`, c: S.danger },
-											{ l: "Net Portfolio", v: fmt(housingPlan === "sell_move" ? totalRENet - ccHomeCost : byersNet - ccHomeCost), c: (housingPlan === "sell_move" ? totalRENet - ccHomeCost : byersNet - ccHomeCost) >= 0 ? S.accent : S.danger },
-										].map((x, i) => (
+											{ l: "CC Buy", v: `-${fmt(ccHomeCost)}`, c: S.danger },
+											{ l: "Proceeds to Portfolio", v: fmt(totalRENet - ccHomeCost), c: totalRENet - ccHomeCost >= 0 ? S.accent : S.danger },
+										] : [
+											{ l: "Byers Net", v: fmt(byersNet), c: S.accent },
+											{ l: "CC Buy", v: `-${fmt(ccHomeCost)}`, c: S.danger },
+											{ l: "From Portfolio", v: fmt(byersNet - ccHomeCost), c: byersNet - ccHomeCost >= 0 ? S.accent : S.danger },
+										]).map((x, i) => (
 											<div key={i} style={{ textAlign: "center" }}>
 												<div style={{ fontSize: 10, color: S.textMuted }}>{x.l}</div>
 												<div style={{ fontSize: 15, fontWeight: 700, color: x.c }}>{x.v}</div>

@@ -115,7 +115,7 @@ export function project({
 		// Income sources
 		const isRetired = a >= retireAge;
 		const ssIncome = a >= ssAge ? ssAnnual : 0;
-		const rental = activeScenario !== "stay" ? Math.max(0, rentalNet) : 0;
+		const rental = activeScenario !== "stay" ? rentalNet : 0;
 		const income = (isRetired ? 0 : workIncome) + ssIncome + rental;
 
 		// Net withdrawal (only if retired)
@@ -123,7 +123,7 @@ export function project({
 			b -= Math.max(0, annualSpend - income);
 		} else {
 			// Working: income covers spending, surplus goes to portfolio
-			const surplus = workIncome - annualSpend;
+			const surplus = income - annualSpend;
 			if (surplus > 0) b += surplus;
 		}
 
