@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { project, monthlySpendAtAge, buildReturns } from "./engine";
+import {
+	project,
+	monthlySpendAtAge,
+	buildReturns,
+	returnForYear,
+	deflate,
+	LOST_DECADE,
+} from "./engine";
 
 describe("monthlySpendAtAge", () => {
 	// Base expenses: $800/mo groceries (CPI-linked), $2400/mo mortgage (fixed)
@@ -247,5 +254,54 @@ describe("project — inflation-aware with nominal returns", () => {
 		const at60Loss = lossResult.find((d) => d.age === 60);
 		const at60Zero = zeroResult.find((d) => d.age === 60);
 		expect(at60Loss.balance).toBeLessThan(at60Zero.balance);
+	});
+});
+
+describe("returnForYear", () => {
+	it("returns the first lost decade value at year 0", () => {
+		expect(returnForYear("lost_decade", 0, 0.07)).toBe(-0.15);
+	});
+
+	it("returns the last lost decade value at year 9", () => {
+		expect(returnForYear("lost_decade", 9, 0.07)).toBe(0.09);
+	});
+
+	it("falls back to nominal average at year 10 and beyond", () => {
+		expect(returnForYear("lost_decade", 10, 0.07)).toBe(0.07);
+		expect(returnForYear("lost_decade", 25, 0.07)).toBe(0.07);
+	});
+
+	it("returns nominal average for historical mode at any year", () => {
+		expect(returnForYear("historical", 0, 0.07)).toBe(0.07);
+		expect(returnForYear("historical", 5, 0.07)).toBe(0.07);
+		expect(returnForYear("historical", 40, 0.07)).toBe(0.07);
+	});
+
+	it("matches buildReturns lost_decade output for each year index", () => {
+		const avg = 0.07;
+		const returns = buildReturns("lost_decade", avg);
+		for (let i = 0; i <= 10; i++) {
+			expect(returnForYear("lost_decade", i, avg)).toBe(returns[i]);
+		}
+		expect(returns.length).toBe(LOST_DECADE.length + 1);
+	});
+});
+
+describe("deflate", () => {
+	it("leaves value unchanged at 0 years", () => {
+		expect(deflate(1000, 0, 0.03)).toBe(1000);
+	});
+
+	it("discounts one year of 3% inflation", () => {
+		expect(deflate(103, 1, 0.03)).toBeCloseTo(100, 6);
+	});
+
+	it("compounds over 10 years of 3% inflation", () => {
+		// 100 / 1.03^10 ≈ 74.41
+		expect(deflate(100, 10, 0.03)).toBeCloseTo(74.41, 2);
+	});
+
+	it("leaves value unchanged when inflation is 0", () => {
+		expect(deflate(5000, 30, 0)).toBe(5000);
 	});
 });

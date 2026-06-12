@@ -155,6 +155,9 @@ export function returnForYear(mode, yearIdx, nomAvg) {
 	return nomAvg;
 }
 
+// Convert a nominal amount N years out into today's dollars.
+export const deflate = (v, years, inflation) => v / (1 + inflation) ** years;
+
 // ── Helpers ──────────────────────────────────────────────────────────
 
 export const fmt = (v) => {

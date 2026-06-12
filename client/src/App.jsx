@@ -1,6 +1,5 @@
 import { useState, useMemo, useRef } from "react";
 import {
-	LineChart,
 	Line,
 	XAxis,
 	YAxis,
@@ -35,6 +34,7 @@ import {
 	SCENARIO_LABELS,
 	LOST_DECADE,
 	returnForYear,
+	deflate,
 } from "./engine";
 
 // ── Theme ────────────────────────────────────────────────────────────
@@ -189,6 +189,8 @@ function CardTitle({ children, right }) {
 				display: "flex",
 				alignItems: "baseline",
 				justifyContent: "space-between",
+				flexWrap: "wrap",
+				gap: 8,
 				marginBottom: 8,
 			}}
 		>
@@ -498,6 +500,7 @@ function CategoryManager({
 // ── Main App ─────────────────────────────────────────────────────────
 export default function App() {
 	const [tab, setTab] = usePersistedState("tab", "dashboard");
+	const [realDollars, setRealDollars] = usePersistedState("realDollars", false);
 	const { loaded, serverOk } = useStoreStatus();
 	const fileInputRef = useRef(null);
 
@@ -602,6 +605,9 @@ export default function App() {
 	);
 	const spend65 = spendAt(65, housingPlan);
 	const spend70 = spendAt(70, housingPlan);
+	// Stat-card display values follow the Nominal/Today's $ toggle
+	const dispSpend65 = realDollars ? deflate(spend65, 65 - age, inflation) : spend65;
+	const dispSpend70 = realDollars ? deflate(spend70, 70 - age, inflation) : spend70;
 
 	// ── Projections ──
 	const projections = useMemo(() => {
@@ -709,36 +715,30 @@ export default function App() {
 
 	const fullChartData = useMemo(
 		() =>
-			projections.primary.map((d, i) => ({
-				age: d.age,
-				primary: d.balance,
-				alt: projections.alt[i]?.balance || 0,
-				spending: d.annualSpend,
-				income: d.income,
-			})),
-		[projections],
+			projections.primary.map((d, i) => {
+				const adj = (v) =>
+					realDollars ? deflate(v, d.age - age, inflation) : v;
+				return {
+					age: d.age,
+					primary: adj(d.balance),
+					alt: adj(projections.alt[i]?.balance || 0),
+					spending: adj(d.annualSpend),
+					income: adj(d.income),
+					netWithdrawal: adj(d.netWithdrawal),
+					// Rate is dimensionless — compute from nominal values
+					wdRate:
+						d.balance > 0 && d.netWithdrawal > 0
+							? (d.netWithdrawal / d.balance) * 100
+							: d.balance > 0
+								? 0
+								: null,
+				};
+			}),
+		[projections, realDollars, age, inflation],
 	);
 	const chartData = useMemo(
 		() => fullChartData.filter((d) => d.age >= effFrom && d.age <= effTo),
 		[fullChartData, effFrom, effTo],
-	);
-
-	// Spending timeline data (full range; zoom is a cheap filter below)
-	const fullSpendTimeline = useMemo(() => {
-		const pts = [];
-		for (let a = age; a <= endAge; a += 1) {
-			const scen =
-				housingPlan !== "stay" && a >= age + transitionYears
-					? housingPlan
-					: "stay";
-			const m = monthlySpendAtAge(expenses, a, scen, age, inflation);
-			pts.push({ age: a, monthly: m, annual: m * 12 });
-		}
-		return pts;
-	}, [expenses, age, housingPlan, transitionYears, inflation]);
-	const spendTimeline = useMemo(
-		() => fullSpendTimeline.filter((d) => d.age >= effFrom && d.age <= effTo),
-		[fullSpendTimeline, effFrom, effTo],
 	);
 
 	// Market returns timeline - maps LOST_DECADE to actual ages
@@ -1113,14 +1113,14 @@ export default function App() {
 							/>
 							<StatCard
 								label="Spend @65"
-								value={fmt(spend65)}
+								value={fmt(dispSpend65)}
 								sub="Medicare kicks in"
 								small
-								color={spend65 < spendNow ? S.accent : S.text}
+								color={dispSpend65 < spendNow ? S.accent : S.text}
 							/>
 							<StatCard
 								label="Spend @70"
-								value={fmt(spend70)}
+								value={fmt(dispSpend70)}
 								sub="SS starts"
 								small
 								color={S.accent}
@@ -1136,7 +1136,11 @@ export default function App() {
 							/>
 							<StatCard
 								label="At 90"
-								value={fmt(getD(90).balance || 0)}
+								value={fmt(
+									realDollars
+										? deflate(getD(90).balance || 0, 90 - age, inflation)
+										: getD(90).balance || 0,
+								)}
 								color={(getD(90).balance || 0) > 0 ? S.accent : S.danger}
 								small
 							/>
@@ -1195,145 +1199,34 @@ export default function App() {
 									Reset
 								</button>
 							) : null}
-						</div>
-
-						{/* Portfolio chart */}
-						<div
-							style={{
-								background: S.card,
-								borderRadius: 12,
-								border: `1px solid ${S.border}`,
-								padding: "14px 14px 6px",
-								marginBottom: 16,
-							}}
-						>
-							<CardTitle>Portfolio Balance</CardTitle>
-							<ResponsiveContainer width="100%" height={280}>
-								<LineChart
-									data={chartData}
-									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
-								>
-									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
-									<XAxis {...ageAxisProps} />
-									<YAxis
-										tickFormatter={fmt}
-										tick={{ fontSize: 10, fill: S.textMuted }}
-										tickLine={false}
-										axisLine={false}
-										width={50}
-									/>
-									<Tooltip
-										content={<ChartTip />}
-										cursor={{ stroke: S.border }}
-									/>
-									<Legend
-										formatter={(v) => (
-											<span style={{ fontSize: 11, color: S.textMuted }}>
-												{v}
-											</span>
-										)}
-									/>
-									<ReferenceLine
-										y={0}
-										stroke={S.danger}
-										strokeDasharray="4 4"
-										strokeWidth={1}
-									/>
-									{retireAge > age && (
-										<ReferenceLine
-											x={retireAge}
-											stroke={S.blue}
-											strokeDasharray="4 4"
-											label={{ value: "Retire", fontSize: 10, fill: S.blue }}
-										/>
-									)}
-									<ReferenceLine
-										x={65}
-										stroke={S.purple}
-										strokeDasharray="4 4"
-										label={{ value: "Medicare", fontSize: 10, fill: S.purple }}
-									/>
-									<ReferenceLine
-										x={ssAge}
-										stroke={S.accent}
-										strokeDasharray="4 4"
-										label={{ value: "SS", fontSize: 10, fill: S.accent }}
-									/>
-									<Line
-										type="monotone"
-										dataKey="primary"
-										name={projections.primaryLabel}
-										stroke={S.accent}
-										strokeWidth={2}
-										dot={false}
-									/>
-									<Line
-										type="monotone"
-										dataKey="alt"
-										name={projections.altLabel}
-										stroke={S.textDim}
-										strokeWidth={2}
-										strokeDasharray="6 4"
-										dot={false}
-										opacity={0.5}
-									/>
-								</LineChart>
-							</ResponsiveContainer>
-						</div>
-
-						{/* Spending timeline */}
-						<div
-							style={{
-								background: S.card,
-								borderRadius: 12,
-								border: `1px solid ${S.border}`,
-								padding: "14px 14px 6px",
-								marginBottom: 16,
-							}}
-						>
-							<CardTitle>Annual Spending Over Time</CardTitle>
-							<div
-								style={{ fontSize: 11, color: S.textMuted, marginBottom: 10 }}
-							>
-								Shows how costs change: healthcare drops at 65 (Medicare),
-								mortgage gone when selling, etc.
+							<div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+								{[
+									{ label: "Nominal $", val: false },
+									{ label: "Today's $", val: true },
+								].map((o) => (
+									<button
+										key={o.label}
+										onClick={() => setRealDollars(o.val)}
+										style={{
+											...btnBase,
+											padding: "3px 10px",
+											borderRadius: 6,
+											background: "transparent",
+											border: `1px solid ${
+												realDollars === o.val ? S.accent : S.border
+											}`,
+											color: realDollars === o.val ? S.accent : S.textMuted,
+											fontSize: 10,
+											whiteSpace: "nowrap",
+										}}
+									>
+										{o.label}
+									</button>
+								))}
 							</div>
-							<ResponsiveContainer width="100%" height={200}>
-								<ComposedChart
-									data={spendTimeline}
-									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
-								>
-									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
-									<XAxis {...ageAxisProps} />
-									<YAxis
-										tickFormatter={fmt}
-										tick={{ fontSize: 10, fill: S.textMuted }}
-										tickLine={false}
-										axisLine={false}
-										width={50}
-									/>
-									<Tooltip
-										content={<ChartTip />}
-										cursor={{ stroke: S.border }}
-									/>
-									<Area
-										type="stepAfter"
-										dataKey="annual"
-										name="Annual Spending"
-										fill={S.purple + "33"}
-										stroke={S.purple}
-										strokeWidth={2}
-									/>
-									<ReferenceLine
-										x={65}
-										stroke={S.accent}
-										strokeDasharray="3 3"
-									/>
-								</ComposedChart>
-							</ResponsiveContainer>
 						</div>
 
-						{/* Market Returns - bar chart aligned with age axis */}
+						{/* Hero: portfolio + spending/income + returns strip */}
 						<div
 							style={{
 								background: S.card,
@@ -1360,25 +1253,170 @@ export default function App() {
 												? "Lost Decade"
 												: "Historical Avg"}
 										</span>
+										{realDollars && (
+											<span style={{ color: S.textMuted }}>
+												{" "}
+												· today's $
+											</span>
+										)}
 									</span>
 								}
 							>
-								Market Returns (Nominal)
+								Portfolio Projection
 							</CardTitle>
-							<ResponsiveContainer width="100%" height={180}>
-								<BarChart
-									data={returnsTimeline}
+							<div
+								style={{ fontSize: 11, color: S.textMuted, marginBottom: 10 }}
+							>
+								Spending (purple) steps down at 65 (Medicare) and at housing
+								transitions; income (blue) is work + SS + rental. Right axis.
+							</div>
+							<ResponsiveContainer width="100%" height={300}>
+								<ComposedChart
+									data={chartData}
+									syncId="dash"
 									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
 								>
 									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
 									<XAxis {...ageAxisProps} />
 									<YAxis
-										tickFormatter={(v) => `${Math.round(v * 100)}%`}
+										yAxisId="bal"
+										tickFormatter={fmt}
 										tick={{ fontSize: 10, fill: S.textMuted }}
 										tickLine={false}
 										axisLine={false}
-										width={40}
-										allowDataOverflow={false}
+										width={50}
+									/>
+									<YAxis
+										yAxisId="cash"
+										orientation="right"
+										tickFormatter={fmt}
+										tick={{ fontSize: 10, fill: S.textMuted }}
+										tickLine={false}
+										axisLine={false}
+										width={50}
+									/>
+									<Tooltip
+										content={<ChartTip />}
+										cursor={{ stroke: S.border }}
+									/>
+									<Legend
+										formatter={(v) => (
+											<span style={{ fontSize: 11, color: S.textMuted }}>
+												{v}
+											</span>
+										)}
+									/>
+									{retireAge > age && (
+										<ReferenceLine
+											yAxisId="bal"
+											x={retireAge}
+											stroke={S.blue}
+											strokeDasharray="4 4"
+											label={{ value: "Retire", fontSize: 10, fill: S.blue }}
+										/>
+									)}
+									<ReferenceLine
+										yAxisId="bal"
+										x={65}
+										stroke={S.purple}
+										strokeDasharray="4 4"
+										label={{ value: "Medicare", fontSize: 10, fill: S.purple }}
+									/>
+									<ReferenceLine
+										yAxisId="bal"
+										x={ssAge}
+										stroke={S.accent}
+										strokeDasharray="4 4"
+										label={{ value: "SS", fontSize: 10, fill: S.accent }}
+									/>
+									{runsOut && (
+										<ReferenceLine
+											yAxisId="bal"
+											x={runsOut.age}
+											stroke={S.danger}
+											label={{
+												value: "Depleted",
+												fontSize: 10,
+												fill: S.danger,
+											}}
+										/>
+									)}
+									<Area
+										type="stepAfter"
+										yAxisId="cash"
+										dataKey="spending"
+										name="Annual Spending"
+										fill={S.purple + "26"}
+										stroke={S.purple}
+										strokeWidth={1.5}
+									/>
+									<Line
+										type="stepAfter"
+										yAxisId="cash"
+										dataKey="income"
+										name="Income (SS/rental/work)"
+										stroke={S.blue}
+										strokeWidth={1.5}
+										dot={false}
+										strokeDasharray="2 2"
+									/>
+									<Line
+										type="monotone"
+										yAxisId="bal"
+										dataKey="primary"
+										name={projections.primaryLabel}
+										stroke={S.accent}
+										strokeWidth={2}
+										dot={false}
+									/>
+									<Line
+										type="monotone"
+										yAxisId="bal"
+										dataKey="alt"
+										name={projections.altLabel}
+										stroke={S.textDim}
+										strokeWidth={2}
+										strokeDasharray="6 4"
+										dot={false}
+										opacity={0.5}
+									/>
+								</ComposedChart>
+							</ResponsiveContainer>
+							<div
+								style={{
+									display: "flex",
+									justifyContent: "space-between",
+									alignItems: "baseline",
+								}}
+							>
+								<span
+									style={{
+										fontSize: 9,
+										letterSpacing: 1,
+										textTransform: "uppercase",
+										color: S.textDim,
+										fontWeight: 600,
+									}}
+								>
+									Market Returns
+								</span>
+								<span style={{ fontSize: 10, color: S.textMuted }}>
+									Avg {Math.round(nomReturn * 100)}%/yr
+								</span>
+							</div>
+							<ResponsiveContainer width="100%" height={56}>
+								<BarChart
+									data={returnsTimeline}
+									syncId="dash"
+									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
+								>
+									<XAxis {...ageAxisProps} hide />
+									<YAxis hide width={50} />
+									<YAxis
+										yAxisId="right"
+										orientation="right"
+										hide
+										width={50}
 									/>
 									<ReferenceLine y={0} stroke={S.border} />
 									<Tooltip
@@ -1388,7 +1426,7 @@ export default function App() {
 									<Bar
 										dataKey="lost"
 										name="Lost Decade"
-										radius={[3, 3, 0, 0]}
+										radius={[2, 2, 0, 0]}
 										fillOpacity={marketMode === "lost_decade" ? 0.9 : 0.35}
 									>
 										{returnsTimeline.map((d) => (
@@ -1403,14 +1441,87 @@ export default function App() {
 										stroke={S.accent}
 										strokeDasharray="4 4"
 										strokeOpacity={marketMode === "historical" ? 1 : 0.5}
-										label={{
-											value: `Avg ${Math.round(nomReturn * 100)}%`,
-											position: "insideTopRight",
-											fontSize: 10,
-											fill: S.accent,
-										}}
 									/>
 								</BarChart>
+							</ResponsiveContainer>
+						</div>
+
+						{/* Withdrawal rate */}
+						<div
+							style={{
+								background: S.card,
+								borderRadius: 12,
+								border: `1px solid ${S.border}`,
+								padding: "14px 14px 6px",
+								marginBottom: 16,
+							}}
+						>
+							<CardTitle
+								right={
+									<span
+										style={{
+											fontSize: 11,
+											fontWeight: 600,
+											color:
+												effWR <= 4
+													? S.accent
+													: effWR <= 5
+														? S.warning
+														: S.danger,
+										}}
+									>
+										{effWR.toFixed(1)}% now
+									</span>
+								}
+							>
+								Withdrawal Rate
+							</CardTitle>
+							<div
+								style={{ fontSize: 11, color: S.textMuted, marginBottom: 10 }}
+							>
+								Net withdrawal (spending minus income) as % of portfolio. Gaps
+								after depletion.
+							</div>
+							<ResponsiveContainer width="100%" height={180}>
+								<ComposedChart
+									data={chartData}
+									syncId="dash"
+									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
+								>
+									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
+									<XAxis {...ageAxisProps} />
+									<YAxis
+										tickFormatter={(v) => `${v}%`}
+										tick={{ fontSize: 10, fill: S.textMuted }}
+										tickLine={false}
+										axisLine={false}
+										width={40}
+									/>
+									<Tooltip
+										content={<ChartTip formatter={(v) => `${v.toFixed(1)}%`} />}
+										cursor={{ stroke: S.border }}
+									/>
+									<ReferenceLine
+										y={4}
+										stroke={S.textDim}
+										strokeDasharray="4 4"
+										label={{
+											value: "4% rule",
+											position: "insideTopRight",
+											fontSize: 10,
+											fill: S.textMuted,
+										}}
+									/>
+									<Line
+										type="monotone"
+										dataKey="wdRate"
+										name="Withdrawal Rate"
+										stroke={S.warning}
+										strokeWidth={2}
+										dot={false}
+										connectNulls={false}
+									/>
+								</ComposedChart>
 							</ResponsiveContainer>
 						</div>
 
@@ -1426,12 +1537,7 @@ export default function App() {
 								<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
 									Key Milestones
 								</div>
-								<div style={{
-									display: "grid",
-									gridTemplateColumns: "1fr 1fr 1fr",
-									gap: 8,
-								}}
-							>
+								<div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
 								{[
 									...(housingPlan !== "stay"
 										? [
@@ -1456,57 +1562,36 @@ export default function App() {
 									},
 								]
 									.filter((m) => m.a >= age && m.a <= endAge)
-									.map((m, i) => {
-										const d = getD(Math.round(m.a));
-										return (
-											<div
-												key={i}
+									.map((m, i) => (
+										<div
+											key={i}
+											style={{
+												display: "inline-flex",
+												alignItems: "center",
+												gap: 6,
+												padding: "4px 10px",
+												borderRadius: 999,
+												border: `1px solid ${m.hl ? S.accent + "66" : S.border}`,
+												background: S.bg,
+												fontSize: 11,
+											}}
+										>
+											<span>{m.icon}</span>
+											<span
 												style={{
-													display: "flex",
-													justifyContent: "space-between",
-													alignItems: "center",
-													padding: "6px 10px",
-													borderRadius: 8,
-													background: S.bg,
+													fontWeight: m.hl ? 600 : 400,
+													color: m.hl ? S.accent : S.text,
 												}}
 											>
-												<div
-													style={{
-														display: "flex",
-														alignItems: "center",
-														gap: 6,
-													}}
-												>
-													<span style={{ fontSize: 14 }}>{m.icon}</span>
-													<div>
-														<div
-															style={{
-																fontSize: 12,
-																fontWeight: m.hl ? 600 : 400,
-																color: m.hl ? S.accent : S.text,
-															}}
-														>
-															{m.l}
-														</div>
-														<div style={{ fontSize: 10, color: S.textDim }}>
-															Age {m.a} · Spend {fmt(spendAt(m.a, housingPlan))}
-															/yr
-														</div>
-													</div>
-												</div>
-												<span
-													style={{
-														fontSize: 12,
-														fontWeight: 600,
-														fontFamily: S.mono,
-														color: (d.balance || 0) > 0 ? S.text : S.danger,
-													}}
-												>
-													{fmt(d.balance || 0)}
-												</span>
-											</div>
-										);
-									})}
+												{m.l}
+											</span>
+											<span
+												style={{ fontFamily: S.mono, color: S.textMuted }}
+											>
+												@{m.a}
+											</span>
+										</div>
+									))}
 							</div>
 						</div>
 					</>
