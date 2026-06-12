@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 /**
  * Dual-handle age range slider for dashboard zoom.
  * Draggable handles (pointer events + pointer capture), click-to-snap, touch support.
+ * Keyboard accessible (role="slider", arrow keys, Home/End) with visible focus ring.
  */
 export function AgeRangeSlider({
 	from,
@@ -21,6 +22,9 @@ export function AgeRangeSlider({
 	const containerRef = useRef(null);
 	const didDrag = useRef(false);
 	const [dragging, setDragging] = useState(null);
+	const [focused, setFocused] = useState(null);
+
+	const accent = active || "#3b82f6";
 
 	const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
 
@@ -48,21 +52,67 @@ export function AgeRangeSlider({
 
 	const endDrag = () => setDragging(null);
 
-	const handleStyle = {
+	// Keyboard path: same clamping as the pointer path.
+	const keyHandle = (which) => (e) => {
+		const cur = which === "from" ? from : to;
+		const lo = which === "from" ? min : from + 1;
+		const hi = which === "from" ? to - 1 : max;
+		let val;
+		switch (e.key) {
+			case "ArrowLeft":
+			case "ArrowDown":
+				val = cur - 1;
+				break;
+			case "ArrowRight":
+			case "ArrowUp":
+				val = cur + 1;
+				break;
+			case "Home":
+				val = lo;
+				break;
+			case "End":
+				val = hi;
+				break;
+			default:
+				return;
+		}
+		e.preventDefault();
+		if (which === "from") onChangeFrom(clamp(val, min, to - 1));
+		else onChangeTo(clamp(val, from + 1, max));
+	};
+
+	// Outer handle: invisible 28x28 hit target centered on the track (track center is at 8px).
+	const hitStyle = (which) => ({
 		position: "absolute",
-		top: 0,
-		width: 14,
-		height: 14,
-		borderRadius: "50%",
-		background: "#3b82f6",
-		border: "2px solid #fff",
-		cursor: "grab",
+		top: -6,
+		width: 28,
+		height: 28,
+		background: "transparent",
+		cursor: dragging === which ? "grabbing" : "grab",
 		zIndex: 2,
-		transform: "translateX(-50%)",
-		boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
+		transform: dragging === which || focused === which ? "translateX(-50%) scale(1.15)" : "translateX(-50%)",
 		transition: dragging ? "none" : "0.15s ease",
 		touchAction: "none",
-	};
+		outline: "none",
+	});
+
+	// Inner visual circle: 14x14, vertically centered on the 6px track at top 5.
+	const dotStyle = (which) => ({
+		position: "absolute",
+		top: 7,
+		left: 7,
+		width: 14,
+		height: 14,
+		boxSizing: "border-box",
+		borderRadius: "50%",
+		background: accent,
+		border: "2px solid #fff",
+		boxShadow: dragging === which || focused === which
+			? `0 1px 3px rgba(0,0,0,0.4), 0 0 0 3px ${accent}40`
+			: "0 1px 3px rgba(0,0,0,0.4)",
+		transition: dragging ? "none" : "0.15s ease",
+		pointerEvents: "none",
+	});
 
 	return (
 		<div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
@@ -98,13 +148,20 @@ export function AgeRangeSlider({
 					width: `${pct(to) - pct(from)}%`,
 					height: 6,
 					borderRadius: 3,
-					background: active || "#3b82f6",
+					background: accent,
 					opacity: from === min && to === max ? 0.4 : 1,
 					transition: dragging ? "none" : "0.15s ease",
 				}} />
 				{/* From handle */}
 				<div
-					style={{ ...handleStyle, left: `${pct(from)}%`, cursor: dragging === "from" ? "grabbing" : "grab" }}
+					role="slider"
+					tabIndex={0}
+					aria-label="View from age"
+					aria-valuemin={min}
+					aria-valuemax={to - 1}
+					aria-valuenow={from}
+					aria-orientation="horizontal"
+					style={{ ...hitStyle("from"), left: `${pct(from)}%` }}
 					onPointerDown={startDrag("from")}
 					onPointerMove={(e) => {
 						if (dragging !== "from") return;
@@ -113,10 +170,22 @@ export function AgeRangeSlider({
 					}}
 					onPointerUp={endDrag}
 					onPointerCancel={endDrag}
-				/>
+					onKeyDown={keyHandle("from")}
+					onFocus={() => setFocused("from")}
+					onBlur={() => setFocused(null)}
+				>
+					<div style={dotStyle("from")} />
+				</div>
 				{/* To handle */}
 				<div
-					style={{ ...handleStyle, left: `${pct(to)}%`, cursor: dragging === "to" ? "grabbing" : "grab" }}
+					role="slider"
+					tabIndex={0}
+					aria-label="View to age"
+					aria-valuemin={from + 1}
+					aria-valuemax={max}
+					aria-valuenow={to}
+					aria-orientation="horizontal"
+					style={{ ...hitStyle("to"), left: `${pct(to)}%` }}
 					onPointerDown={startDrag("to")}
 					onPointerMove={(e) => {
 						if (dragging !== "to") return;
@@ -125,7 +194,12 @@ export function AgeRangeSlider({
 					}}
 					onPointerUp={endDrag}
 					onPointerCancel={endDrag}
-				/>
+					onKeyDown={keyHandle("to")}
+					onFocus={() => setFocused("to")}
+					onBlur={() => setFocused(null)}
+				>
+					<div style={dotStyle("to")} />
+				</div>
 			</div>
 			<span style={{ fontSize: 11, fontFamily: mono, fontWeight: 600, color: labelColor, minWidth: 24 }}>
 				{to}

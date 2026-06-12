@@ -12,6 +12,7 @@ import {
 	ComposedChart,
 	BarChart,
 	Bar,
+	Cell,
 	Area,
 } from "recharts";
 import { AgeRangeSlider } from "./AgeRangeSlider";
@@ -178,6 +179,21 @@ function ChartTip({ active, payload, label, formatter = fmt }) {
 					{p.name}: {typeof p.value === "number" ? formatter(p.value) : p.value}
 				</p>
 			))}
+		</div>
+	);
+}
+function CardTitle({ children, right }) {
+	return (
+		<div
+			style={{
+				display: "flex",
+				alignItems: "baseline",
+				justifyContent: "space-between",
+				marginBottom: 8,
+			}}
+		>
+			<div style={{ fontSize: 13, fontWeight: 600 }}>{children}</div>
+			{right || null}
 		</div>
 	);
 }
@@ -731,8 +747,7 @@ export default function App() {
 		for (let a = age; a <= endAge; a += 1) {
 			const yearIdx = a - age; // 0-based year index
 			const lost = returnForYear("lost_decade", yearIdx, nomReturn);
-			const hist = returnForYear("historical", yearIdx, nomReturn);
-			pts.push({ age: a, lost, hist });
+			pts.push({ age: a, lost });
 		}
 		return pts;
 	}, [age, nomReturn]);
@@ -1139,7 +1154,18 @@ export default function App() {
 								borderRadius: 8,
 							}}
 						>
-							<span style={{ fontSize: 11, color: S.textMuted, whiteSpace: "nowrap" }}>🔍</span>
+							<span
+								style={{
+									fontSize: 10,
+									letterSpacing: 1,
+									textTransform: "uppercase",
+									color: S.textDim,
+									fontWeight: 600,
+									whiteSpace: "nowrap",
+								}}
+							>
+								Zoom
+							</span>
 							<AgeRangeSlider
 								from={effFrom}
 								to={effTo}
@@ -1157,8 +1183,8 @@ export default function App() {
 									onClick={() => { setViewFrom(age); setViewTo(endAge); }}
 									style={{
 										...btnBase,
-										padding: "2px 8px",
-										borderRadius: 4,
+										padding: "3px 10px",
+										borderRadius: 6,
 										background: "transparent",
 										border: `1px solid ${S.border}`,
 										color: S.textMuted,
@@ -1181,9 +1207,7 @@ export default function App() {
 								marginBottom: 16,
 							}}
 						>
-							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
-								Portfolio Balance
-							</div>
+							<CardTitle>Portfolio Balance</CardTitle>
 							<ResponsiveContainer width="100%" height={280}>
 								<LineChart
 									data={chartData}
@@ -1198,7 +1222,10 @@ export default function App() {
 										axisLine={false}
 										width={50}
 									/>
-									<Tooltip content={<ChartTip />} />
+									<Tooltip
+										content={<ChartTip />}
+										cursor={{ stroke: S.border }}
+									/>
 									<Legend
 										formatter={(v) => (
 											<span style={{ fontSize: 11, color: S.textMuted }}>
@@ -1237,7 +1264,7 @@ export default function App() {
 										dataKey="primary"
 										name={projections.primaryLabel}
 										stroke={S.accent}
-										strokeWidth={2.5}
+										strokeWidth={2}
 										dot={false}
 									/>
 									<Line
@@ -1245,7 +1272,7 @@ export default function App() {
 										dataKey="alt"
 										name={projections.altLabel}
 										stroke={S.textDim}
-										strokeWidth={1.5}
+										strokeWidth={2}
 										strokeDasharray="6 4"
 										dot={false}
 										opacity={0.5}
@@ -1264,9 +1291,7 @@ export default function App() {
 								marginBottom: 16,
 							}}
 						>
-							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-								Annual Spending Over Time
-							</div>
+							<CardTitle>Annual Spending Over Time</CardTitle>
 							<div
 								style={{ fontSize: 11, color: S.textMuted, marginBottom: 10 }}
 							>
@@ -1287,7 +1312,10 @@ export default function App() {
 										axisLine={false}
 										width={50}
 									/>
-									<Tooltip content={<ChartTip />} />
+									<Tooltip
+										content={<ChartTip />}
+										cursor={{ stroke: S.border }}
+									/>
 									<Area
 										type="stepAfter"
 										dataKey="annual"
@@ -1315,9 +1343,28 @@ export default function App() {
 								marginBottom: 16,
 							}}
 						>
-							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+							<CardTitle
+								right={
+									<span style={{ fontSize: 11, color: S.textMuted }}>
+										Active:{" "}
+										<span
+											style={{
+												color:
+													marketMode === "lost_decade"
+														? S.danger
+														: S.accent,
+												fontWeight: 600,
+											}}
+										>
+											{marketMode === "lost_decade"
+												? "Lost Decade"
+												: "Historical Avg"}
+										</span>
+									</span>
+								}
+							>
 								Market Returns (Nominal)
-							</div>
+							</CardTitle>
 							<ResponsiveContainer width="100%" height={180}>
 								<BarChart
 									data={returnsTimeline}
@@ -1336,25 +1383,32 @@ export default function App() {
 									<ReferenceLine y={0} stroke={S.border} />
 									<Tooltip
 										content={<ChartTip formatter={(v) => `${(v * 100).toFixed(1)}%`} />}
-									/>
-									<Legend
-										formatter={(v) => (
-											<span style={{ fontSize: 11, color: S.textMuted }}>{v}</span>
-										)}
+										cursor={{ fill: "rgba(255,255,255,0.04)" }}
 									/>
 									<Bar
 										dataKey="lost"
 										name="Lost Decade"
-										fill="#ef4444"
 										radius={[3, 3, 0, 0]}
-										fillOpacity={marketMode === "lost_decade" ? 0.9 : 0.3}
-									/>
-									<Bar
-										dataKey="hist"
-										name="Hist Avg"
-										fill="#22c55e"
-										radius={[3, 3, 0, 0]}
-										fillOpacity={marketMode === "historical" ? 0.9 : 0.3}
+										fillOpacity={marketMode === "lost_decade" ? 0.9 : 0.35}
+									>
+										{returnsTimeline.map((d) => (
+											<Cell
+												key={d.age}
+												fill={d.lost < 0 ? S.danger : S.accent}
+											/>
+										))}
+									</Bar>
+									<ReferenceLine
+										y={nomReturn}
+										stroke={S.accent}
+										strokeDasharray="4 4"
+										strokeOpacity={marketMode === "historical" ? 1 : 0.5}
+										label={{
+											value: `Avg ${Math.round(nomReturn * 100)}%`,
+											position: "insideTopRight",
+											fontSize: 10,
+											fill: S.accent,
+										}}
 									/>
 								</BarChart>
 							</ResponsiveContainer>
