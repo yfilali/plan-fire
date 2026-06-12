@@ -148,6 +148,13 @@ export function buildReturns(mode, nomAvg) {
 	return nomAvg;
 }
 
+// Return for a single 0-based year index; matches how project() indexes
+// buildReturns output (years past the array reuse the last/average value).
+export function returnForYear(mode, yearIdx, nomAvg) {
+	if (mode === "lost_decade" && yearIdx < LOST_DECADE.length) return LOST_DECADE[yearIdx];
+	return nomAvg;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────
 
 export const fmt = (v) => {

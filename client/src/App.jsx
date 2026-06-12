@@ -33,6 +33,7 @@ import {
 	COLOR_OPTIONS,
 	SCENARIO_LABELS,
 	LOST_DECADE,
+	returnForYear,
 } from "./engine";
 
 // ── Theme ────────────────────────────────────────────────────────────
@@ -151,7 +152,7 @@ function SliderRow({ label, value, onChange, min, max, step, format }) {
 		</div>
 	);
 }
-function ChartTip({ active, payload, label }) {
+function ChartTip({ active, payload, label, formatter = fmt }) {
 	if (!active || !payload?.length) return null;
 	return (
 		<div
@@ -174,7 +175,7 @@ function ChartTip({ active, payload, label }) {
 			</p>
 			{payload.map((p, i) => (
 				<p key={i} style={{ color: p.color, margin: "3px 0", fontSize: 12 }}>
-					{p.name}: {typeof p.value === "number" ? fmt(p.value) : p.value}
+					{p.name}: {typeof p.value === "number" ? formatter(p.value) : p.value}
 				</p>
 			))}
 		</div>
@@ -567,6 +568,9 @@ export default function App() {
 	const endAge = 95;
 	const [viewFrom, setViewFrom] = useState(age);
 	const [viewTo, setViewTo] = useState(endAge);
+	// Clamp the zoom range so it stays valid when the Current Age slider moves
+	const effFrom = Math.min(Math.max(viewFrom, age), endAge - 1);
+	const effTo = Math.min(Math.max(viewTo, effFrom + 1), endAge);
 	const realRet = (1 + nomReturn) / (1 + inflation) - 1;
 
 	// Spending at key ages for the active scenario (inflation-aware)
@@ -687,27 +691,26 @@ export default function App() {
 			? (postData.netWithdrawal / postData.balance) * 100
 			: 0;
 
-	const chartData = useMemo(
+	const fullChartData = useMemo(
 		() =>
-			projections.primary
-				.filter((d) => d.age >= viewFrom && d.age <= viewTo)
-				.map((d) => {
-					const idx = projections.primary.findIndex((p) => p.age === d.age);
-					return {
-						age: d.age,
-						primary: d.balance,
-						alt: projections.alt[idx]?.balance || 0,
-						spending: d.annualSpend,
-						income: d.income,
-					};
-				}),
-		[projections, viewFrom, viewTo],
+			projections.primary.map((d, i) => ({
+				age: d.age,
+				primary: d.balance,
+				alt: projections.alt[i]?.balance || 0,
+				spending: d.annualSpend,
+				income: d.income,
+			})),
+		[projections],
+	);
+	const chartData = useMemo(
+		() => fullChartData.filter((d) => d.age >= effFrom && d.age <= effTo),
+		[fullChartData, effFrom, effTo],
 	);
 
-	// Spending timeline data
-	const spendTimeline = useMemo(() => {
+	// Spending timeline data (full range; zoom is a cheap filter below)
+	const fullSpendTimeline = useMemo(() => {
 		const pts = [];
-		for (let a = viewFrom; a <= viewTo; a += 1) {
+		for (let a = age; a <= endAge; a += 1) {
 			const scen =
 				housingPlan !== "stay" && a >= age + transitionYears
 					? housingPlan
@@ -716,19 +719,37 @@ export default function App() {
 			pts.push({ age: a, monthly: m, annual: m * 12 });
 		}
 		return pts;
-	}, [expenses, age, housingPlan, transitionYears, viewFrom, viewTo]);
+	}, [expenses, age, housingPlan, transitionYears, inflation]);
+	const spendTimeline = useMemo(
+		() => fullSpendTimeline.filter((d) => d.age >= effFrom && d.age <= effTo),
+		[fullSpendTimeline, effFrom, effTo],
+	);
 
 	// Market returns timeline - maps LOST_DECADE to actual ages
-	const returnsTimeline = useMemo(() => {
+	const fullReturnsTimeline = useMemo(() => {
 		const pts = [];
-		for (let a = viewFrom; a <= viewTo; a += 1) {
+		for (let a = age; a <= endAge; a += 1) {
 			const yearIdx = a - age; // 0-based year index
-			const lost = yearIdx < LOST_DECADE.length ? LOST_DECADE[yearIdx] : nomReturn;
-			const hist = nomReturn;
+			const lost = returnForYear("lost_decade", yearIdx, nomReturn);
+			const hist = returnForYear("historical", yearIdx, nomReturn);
 			pts.push({ age: a, lost, hist });
 		}
 		return pts;
-	}, [age, nomReturn, viewFrom, viewTo]);
+	}, [age, nomReturn]);
+	const returnsTimeline = useMemo(
+		() => fullReturnsTimeline.filter((d) => d.age >= effFrom && d.age <= effTo),
+		[fullReturnsTimeline, effFrom, effTo],
+	);
+
+	// Shared X-axis config for the three age-domain charts
+	const ageAxisProps = {
+		dataKey: "age",
+		type: "number",
+		domain: [effFrom, effTo],
+		tick: { fontSize: 10, fill: S.textMuted },
+		tickLine: false,
+		axisLine: { stroke: S.border },
+	};
 
 	const status =
 		effWR <= 3.5
@@ -1120,16 +1141,18 @@ export default function App() {
 						>
 							<span style={{ fontSize: 11, color: S.textMuted, whiteSpace: "nowrap" }}>🔍</span>
 							<AgeRangeSlider
-								from={viewFrom}
-								to={viewTo}
+								from={effFrom}
+								to={effTo}
 								min={age}
 								max={endAge}
 								onChangeFrom={setViewFrom}
 								onChangeTo={setViewTo}
 								bg={S.border}
 								active={S.accent}
+								mono={S.mono}
+								labelColor={S.text}
 							/>
-							{viewFrom !== age || viewTo !== endAge ? (
+							{effFrom !== age || effTo !== endAge ? (
 								<button
 									onClick={() => { setViewFrom(age); setViewTo(endAge); }}
 									style={{
@@ -1167,14 +1190,7 @@ export default function App() {
 									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
 								>
 									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
-									<XAxis
-										dataKey="age"
-										domain={[viewFrom, viewTo]}
-										type="number"
-										tick={{ fontSize: 10, fill: S.textMuted }}
-										tickLine={false}
-										axisLine={{ stroke: S.border }}
-									/>
+									<XAxis {...ageAxisProps} />
 									<YAxis
 										tickFormatter={fmt}
 										tick={{ fontSize: 10, fill: S.textMuted }}
@@ -1263,14 +1279,7 @@ export default function App() {
 									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
 								>
 									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
-									<XAxis
-										dataKey="age"
-										domain={[viewFrom, viewTo]}
-										type="number"
-										tick={{ fontSize: 10, fill: S.textMuted }}
-										tickLine={false}
-										axisLine={{ stroke: S.border }}
-									/>
+									<XAxis {...ageAxisProps} />
 									<YAxis
 										tickFormatter={fmt}
 										tick={{ fontSize: 10, fill: S.textMuted }}
@@ -1315,14 +1324,7 @@ export default function App() {
 									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
 								>
 									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
-									<XAxis
-										dataKey="age"
-										domain={[viewFrom, viewTo]}
-										type="number"
-										tick={{ fontSize: 10, fill: S.textMuted }}
-										tickLine={false}
-										axisLine={{ stroke: S.border }}
-									/>
+									<XAxis {...ageAxisProps} />
 									<YAxis
 										tickFormatter={(v) => `${Math.round(v * 100)}%`}
 										tick={{ fontSize: 10, fill: S.textMuted }}
@@ -1333,14 +1335,7 @@ export default function App() {
 									/>
 									<ReferenceLine y={0} stroke={S.border} />
 									<Tooltip
-										formatter={(v) => `${(v * 100).toFixed(1)}%`}
-										contentStyle={{
-											background: S.card,
-											border: `1px solid ${S.border}`,
-											borderRadius: 8,
-											fontSize: 12,
-											color: S.text,
-										}}
+										content={<ChartTip formatter={(v) => `${(v * 100).toFixed(1)}%`} />}
 									/>
 									<Legend
 										formatter={(v) => (
