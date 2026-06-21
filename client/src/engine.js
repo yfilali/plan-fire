@@ -81,13 +81,9 @@ export function monthlySpendAtAge(
 			}
 
 			// Apply spending cuts — cutMode is the sole decision gate
-			if (
-				cutMode === "all" ||
-				(returnsArr !== null && typeof amount === "number")
-			) {
+			if (cutMode === "all" || returnsArr !== null) {
 				const yearIdx = age - startAge;
-				// For "all" mode or when we have a returns array, use shouldApplyCut
-				if (cutMode === "all" || (returnsArr !== null && shouldApplyCut(yearIdx, returnsArr, cutMode))) {
+				if (cutMode === "all" || shouldApplyCut(yearIdx, returnsArr, cutMode)) {
 					if (e.tier === "discretionary") amount *= 1 - discretionaryCut;
 					else if (e.tier === "luxury") amount *= 1 - luxuryCut;
 				}
@@ -181,7 +177,10 @@ export function project({
 				// "down_recovery" requires a returns array to determine downtime/recovery.
 				if (cutMode === "all" || Array.isArray(nomReturn)) {
 					const yearIdx = yi;
-					if (cutMode === "all" || shouldApplyCut(yearIdx, nomReturn, cutMode)) {
+					if (
+						cutMode === "all" ||
+						shouldApplyCut(yearIdx, nomReturn, cutMode)
+					) {
 						if (e.tier === "discretionary") amount *= 1 - discretionaryCut;
 						else if (e.tier === "luxury") amount *= 1 - luxuryCut;
 					}

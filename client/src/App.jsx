@@ -36,37 +36,9 @@ import {
 	returnForYear,
 	deflate,
 } from "./engine";
-
-// ── Theme ────────────────────────────────────────────────────────────
-const S = {
-	bg: "#0f1117",
-	card: "#1a1d27",
-	border: "#2a2d3a",
-	text: "#e4e4e7",
-	textMuted: "#71717a",
-	textDim: "#52525b",
-	accent: "#22c55e",
-	warning: "#f59e0b",
-	danger: "#ef4444",
-	blue: "#3b82f6",
-	purple: "#8b5cf6",
-	font: "'DM Sans','Segoe UI',system-ui,sans-serif",
-	mono: "'DM Mono','Menlo',monospace",
-};
-const btnBase = {
-	border: "none",
-	cursor: "pointer",
-	fontFamily: S.font,
-	transition: "all .15s",
-};
-const inputBase = {
-	borderRadius: 6,
-	border: `1px solid ${S.border}`,
-	background: S.bg,
-	color: S.text,
-	fontSize: 13,
-	fontFamily: S.font,
-};
+import { S, btnBase, inputBase } from "./lib/styles.js";
+import SliderRow from "./components/SliderRow.jsx";
+import DownturnCutControls from "./components/DownturnCutControls.jsx";
 
 // ── Reusable Components ──────────────────────────────────────────────
 function Chip({ active, onClick, children, color }) {
@@ -126,33 +98,6 @@ function StatCard({ label, value, sub, color, small }) {
 		</div>
 	);
 }
-function SliderRow({ label, value, onChange, min, max, step, format }) {
-	return (
-		<div style={{ marginBottom: 12 }}>
-			<div
-				style={{
-					display: "flex",
-					justifyContent: "space-between",
-					marginBottom: 3,
-				}}
-			>
-				<label style={{ fontSize: 12, color: S.textMuted }}>{label}</label>
-				<span style={{ fontSize: 13, fontWeight: 600, fontFamily: S.mono }}>
-					{format(value)}
-				</span>
-			</div>
-			<input
-				type="range"
-				min={min}
-				max={max}
-				step={step}
-				value={value}
-				onChange={(e) => onChange(Number(e.target.value))}
-				style={{ width: "100%" }}
-			/>
-		</div>
-	);
-}
 function ChartTip({ active, payload, label, formatter = fmt }) {
 	if (!active || !payload?.length) return null;
 	return (
@@ -208,9 +153,10 @@ function Tag({ children, color }) {
 				borderRadius: 10,
 				fontSize: 10,
 				fontWeight: 500,
-				background: (color || S.textDim) + "22",
 				color: color || S.textMuted,
-				border: `1px solid ${color || S.textDim}44`,
+				border: `1px solid ${color || S.border}`,
+				verticalAlign: "middle",
+				lineHeight: "18px",
 			}}
 		>
 			{children}
@@ -519,6 +465,15 @@ export default function App() {
 		"historical",
 	);
 
+	// Downturn spending cuts (0–1 range)
+	const [discretionaryCut, setDiscretionaryCut] = usePersistedState(
+		"discretionaryCut",
+		0.3,
+	);
+	const [luxuryCut, setLuxuryCut] = usePersistedState("luxuryCut", 0.7);
+	// cutMode: "down_recovery" = cuts during downturn + until recovery
+	const [cutMode, setCutMode] = usePersistedState("cutMode", "down_recovery");
+
 	// Housing
 	const [housingPlan, setHousingPlan] = usePersistedState(
 		"housingPlan",
@@ -569,6 +524,7 @@ export default function App() {
 		name: "",
 		amount: "",
 		scenarios: ["all"],
+		tier: "essential",
 		inflOverride: "",
 		ageMin: "",
 		ageMax: "",
@@ -592,9 +548,21 @@ export default function App() {
 	const effTo = Math.min(Math.max(viewTo, effFrom + 1), endAge);
 	const realRet = (1 + nomReturn) / (1 + inflation) - 1;
 
-	// Spending at key ages for the active scenario (inflation-aware)
+	// Spending at key ages — passes market mode + cuts so they apply in bear markets
+	const avgReturns = buildReturns("avg", nomReturn);
+	const bearReturns = buildReturns("lost_decade", nomReturn);
 	const spendAt = (a, scen) =>
-		monthlySpendAtAge(expenses, a, scen || housingPlan, age, inflation) * 12;
+		monthlySpendAtAge(
+			expenses,
+			a,
+			scen || housingPlan,
+			age,
+			inflation,
+			marketMode === "lost_decade" ? bearReturns : avgReturns,
+			discretionaryCut,
+			luxuryCut,
+			cutMode,
+		) * 12;
 	const spendNow = spendAt(
 		age,
 		housingPlan === "stay"
@@ -654,6 +622,9 @@ export default function App() {
 			nomReturn: activeR,
 			rentalNet: rental,
 			transition: trans,
+			discretionaryCut,
+			luxuryCut,
+			cutMode,
 		});
 		const alt = project({
 			...common,
@@ -662,6 +633,9 @@ export default function App() {
 			nomReturn: altR,
 			rentalNet: rental,
 			transition: trans,
+			discretionaryCut,
+			luxuryCut,
+			cutMode,
 		});
 
 		const postTransAge = trans ? trans.moveAge : age;
@@ -691,6 +665,9 @@ export default function App() {
 		totalRENet,
 		netRental,
 		byersNet,
+		discretionaryCut,
+		luxuryCut,
+		cutMode,
 	]);
 
 	const runsOut = projections.primary.find(
@@ -766,6 +743,44 @@ export default function App() {
 		axisLine: { stroke: S.border },
 	};
 
+	// Spending timeline — with downturn cuts in Lost Decade mode
+	const spendTimeline = useMemo(() => {
+		const pts = [];
+		for (let a = viewFrom; a <= viewTo; a += 1) {
+			const scen =
+				housingPlan !== "stay" && a >= age + transitionYears
+					? housingPlan
+					: "stay";
+			const returnsToUse =
+				marketMode === "lost_decade" ? bearReturns : avgReturns;
+			const m = monthlySpendAtAge(
+				expenses,
+				a,
+				scen,
+				age,
+				inflation,
+				returnsToUse,
+				discretionaryCut,
+				luxuryCut,
+				cutMode,
+			);
+			pts.push({ age: a, monthly: m, annual: m * 12 });
+		}
+		return pts;
+	}, [
+		expenses,
+		age,
+		housingPlan,
+		transitionYears,
+		viewFrom,
+		viewTo,
+		marketMode,
+		nomReturn,
+		discretionaryCut,
+		luxuryCut,
+		cutMode,
+	]);
+
 	const status =
 		effWR <= 3.5
 			? { label: "Excellent", color: S.accent, bg: "#16a34a22" }
@@ -786,6 +801,7 @@ export default function App() {
 				name: newExpense.name,
 				amount: Number(newExpense.amount),
 				scenarios: newExpense.scenarios,
+				tier: newExpense.tier || "essential",
 				inflOverride:
 					newExpense.inflOverride !== ""
 						? Number(newExpense.inflOverride) / 100
@@ -1524,6 +1540,17 @@ export default function App() {
 								</ComposedChart>
 							</ResponsiveContainer>
 						</div>
+
+						<DownturnCutControls
+							discretionaryCut={discretionaryCut}
+							setDiscretionaryCut={setDiscretionaryCut}
+							luxuryCut={luxuryCut}
+							setLuxuryCut={setLuxuryCut}
+							cutMode={cutMode}
+							setCutMode={setCutMode}
+							S={S}
+							btnBase={btnBase}
+						/>
 
 												{/* Milestones */}
 							<div
