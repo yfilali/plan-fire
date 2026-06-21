@@ -118,6 +118,9 @@ export function project({
 	cutMode = "down_recovery",
 	reAppreciation = 0.04,
 	retainedRE = null,
+	// Plan id whose expenses apply before a relocation completes. Defaults to
+	// "stay" for backward compatibility; the app passes the user's baseline plan.
+	baselineScenario = "stay",
 }) {
 	const data = [];
 	let b = portfolio;
@@ -158,7 +161,7 @@ export function project({
 		}
 
 		const activeScenario =
-			transition && a < transition.moveAge ? "stay" : scenario;
+			transition && a < transition.moveAge ? baselineScenario : scenario;
 
 		// Dynamic spending with per-expense inflation + downturn tier cuts
 		let monthlySpend = 0;
@@ -199,7 +202,8 @@ export function project({
 		// Income sources
 		const isRetired = a >= retireAge;
 		const ssIncome = a >= ssAge ? ssAnnual : 0;
-		const rental = activeScenario !== "stay" ? rentalNet : 0;
+		// Rental income applies once you're living the active plan (post-move).
+		const rental = activeScenario === scenario ? rentalNet : 0;
 		const income = (isRetired ? 0 : workIncome) + ssIncome + rental;
 
 		// Net withdrawal

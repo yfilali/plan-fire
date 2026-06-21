@@ -24,8 +24,9 @@ Personal retirement planning dashboard with server-side persistence.
 - **Multi-scenario planning** — create, duplicate, rename and switch between named plans; each is an independent snapshot of every input
 - **Light / dark / system theming** — follows the OS by default, with a manual toggle; persisted across sessions
 - **Fully responsive** — sidebar navigation collapses to a drawer on mobile; grids and charts reflow
-- Expense tracker with custom categories, per-expense scenario tags, age ranges, inflation overrides, and spend tiers
-- Housing scenario modeling (stay, sell & move, rent out)
+- **User-defined housing plans** — create any number of plans (not just stay/sell/rent); each decides whether every property is kept, sold, or rented, with an optional new-home purchase and transition delay
+- **Flexible properties** — model zero, one, or many properties with arbitrary values, mortgages, and rental economics
+- Expense tracker with custom categories; tag each expense to whichever of *your* plans it applies to, plus age ranges, inflation overrides, and spend tiers
 - Market simulation (historical avg vs "lost decade" stress test)
 - Downturn spending-cut modeling by expense tier
 - Landlord P&L calculator
@@ -46,7 +47,8 @@ src/
     ui.jsx       design-system primitives (Card, Button, Chip, Modal, …)
     shell/       Sidebar, TopBar, ScenarioSwitcher, ThemeToggle, Brand
     expenses/    AddExpenseForm, ExpenseRow, CategoryManager
-    settings/    Profile / Market / Property / Data sections
+    plans/       PlanCard, PlanEditor (per-property keep/sell/rent)
+    settings/    Profile / Market / Properties / Data sections
   views/         DashboardView, ExpensesView, PlanView, SettingsView
   App.jsx        thin shell: navigation + view routing
 ```

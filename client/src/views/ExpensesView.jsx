@@ -11,11 +11,12 @@ export default function ExpensesView() {
 	const S = useTheme();
 	const {
 		categories,
-		setCategories,
 		expenses,
 		setExpenses,
 		age,
-		housingPlan,
+		activePlanId,
+		activePlan,
+		plans,
 		inflation,
 		spendAt,
 		spend65,
@@ -48,24 +49,16 @@ export default function ExpensesView() {
 
 	return (
 		<div className="fade-in">
-			{showCatManager && (
-				<CategoryManager
-					categories={categories}
-					setCategories={setCategories}
-					expenses={expenses}
-					setExpenses={setExpenses}
-					onClose={() => setShowCatManager(false)}
-				/>
-			)}
+			{showCatManager && <CategoryManager onClose={() => setShowCatManager(false)} />}
 
 			<SectionTitle
-				sub="Tag each expense by housing scenario, age range, and tier. Greyed-out rows don't apply to your current plan."
+				sub={`Tag each expense by plan, age range, and tier. Greyed-out rows don't apply to "${activePlan?.name}".`}
 				right={
 					<div style={{ display: "flex", gap: 10, alignItems: "center" }}>
 						<Button variant="secondary" onClick={() => setShowCatManager(true)}>🏷️ Categories</Button>
 						<div style={{ textAlign: "right" }}>
 							<div style={{ fontSize: 20, fontWeight: 750, fontFamily: S.mono, color: S.accent }}>
-								{fmt(spendAt(age, housingPlan))}
+								{fmt(spendAt(age, activePlanId))}
 								<span style={{ fontSize: 12, color: S.textMuted, fontFamily: S.font }}> /yr now</span>
 							</div>
 							<div style={{ fontSize: 11, color: S.textMuted }}>
@@ -82,7 +75,7 @@ export default function ExpensesView() {
 
 			{usedCategories.map((cat) => {
 				const catExps = expenses.filter((e) => e.cat === cat.id);
-				const activeMonthly = monthlySpendAtAge(catExps, age, housingPlan, age, inflation);
+				const activeMonthly = monthlySpendAtAge(catExps, age, activePlanId, age, inflation);
 				return (
 					<div key={cat.id} style={{ marginBottom: 16 }}>
 						<div
@@ -105,7 +98,7 @@ export default function ExpensesView() {
 							const scenarioActive =
 								!exp.scenarios ||
 								exp.scenarios.includes("all") ||
-								exp.scenarios.includes(housingPlan);
+								exp.scenarios.includes(activePlanId);
 							const ageActive =
 								(exp.ageMin == null || age >= exp.ageMin) &&
 								(exp.ageMax == null || age <= exp.ageMax);
@@ -114,6 +107,7 @@ export default function ExpensesView() {
 									key={exp.id}
 									exp={exp}
 									categories={categories}
+									plans={plans}
 									active={scenarioActive && ageActive}
 									editing={editingId === exp.id}
 									onEdit={setEditingId}

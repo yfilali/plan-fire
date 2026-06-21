@@ -33,9 +33,8 @@ export default function DashboardView() {
 		inflation,
 		nomReturn,
 		marketMode,
-		housingPlan,
-		ccHomeCost,
-		transitionYears,
+		activePlan,
+		activeEcon,
 		endAge,
 		realDollars,
 		setRealDollars,
@@ -80,11 +79,10 @@ export default function DashboardView() {
 		: getD(90).balance || 0;
 
 	const housingLabel =
-		housingPlan === "stay"
-			? "Stay put"
-			: housingPlan === "sell_move"
-				? `Sell + relocate (${fmt(ccHomeCost)})`
-				: "Rent out + relocate";
+		(activePlan?.name || "Plan") +
+		(activeEcon.relocates && activeEcon.newHomeCost
+			? ` · buy ${fmt(activeEcon.newHomeCost)}`
+			: "");
 
 	return (
 		<div style={{ display: "grid", gap: 16 }} className="fade-in">
@@ -270,14 +268,14 @@ export default function DashboardView() {
 
 			<DownturnCutControls />
 
-			<Milestones {...{ S, age, endAge, retireAge, ssAge, ssAnnual, housingPlan, transitionYears }} />
+			<Milestones {...{ S, age, endAge, retireAge, ssAge, ssAnnual, relocates: activeEcon.relocates, moveAge: activeEcon.moveAge, planIcon: activePlan?.icon }} />
 		</div>
 	);
 }
 
-function Milestones({ S, age, endAge, retireAge, ssAge, ssAnnual, housingPlan, transitionYears }) {
+function Milestones({ S, age, endAge, retireAge, ssAge, ssAnnual, relocates, moveAge, planIcon }) {
 	const items = [
-		...(housingPlan !== "stay" ? [{ a: age + transitionYears, l: "Relocate", icon: "🌲" }] : []),
+		...(relocates ? [{ a: moveAge, l: "Relocate", icon: planIcon || "🚚" }] : []),
 		...(retireAge > age ? [{ a: retireAge, l: "Retire", icon: "🎉" }] : []),
 		{ a: 59, l: "401k penalty-free", icon: "💼" },
 		{ a: 62, l: "Early SS eligible", icon: "📋" },

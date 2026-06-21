@@ -1,23 +1,28 @@
-// Housing-scenario presentation: colors + short/long labels. Keeps expense
-// tagging, the plan picker, and chips visually consistent.
-export const HOUSING_OPTIONS = [
-	{ id: "stay", label: "Stay put", short: "Stay", desc: "Keep current home + mortgage", icon: "🏙️", tone: "danger" },
-	{ id: "sell_move", label: "Sell + relocate", short: "Sell", desc: "Sell both properties, buy in new area", icon: "🌲", tone: "accent" },
-	{ id: "rent_out", label: "Rent out + relocate", short: "Rent", desc: "Keep home as a rental, sell the other", icon: "🏠", tone: "blue" },
-];
+// Plan presentation helpers. Plans are user-defined and carry a `tone`
+// (palette key); these resolve tone → real color against the active theme.
 
-export function scenarioColor(S, id) {
-	if (id === "all") return S.blue;
-	if (id === "stay") return S.danger;
-	if (id === "sell_move") return S.accent;
-	if (id === "rent_out") return S.purple;
-	return S.textMuted;
+export const ACTION_META = {
+	keep: { label: "Keep", icon: "•", tone: "textMuted" },
+	sell: { label: "Sell", icon: "↑", tone: "accent" },
+	rent: { label: "Rent", icon: "↻", tone: "blue" },
+};
+
+// Resolve a plan's tone to a hex color from the palette.
+export function planColor(S, plan) {
+	if (!plan) return S.textMuted;
+	return S[plan.tone] || S.accent;
 }
 
-export const SCENARIO_TAGS = ["all", "stay", "sell_move", "rent_out"];
-export const SCENARIO_SHORT = {
-	all: "All",
-	stay: "Stay",
-	sell_move: "Sell",
-	rent_out: "Rent",
-};
+// Color for an expense scenario tag id ("all" or a plan id).
+export function tagColor(S, id, plans) {
+	if (id === "all") return S.textMuted;
+	const plan = plans?.find((p) => p.id === id);
+	return plan ? S[plan.tone] || S.accent : S.textMuted;
+}
+
+// Short label for an expense scenario tag.
+export function tagLabel(id, plans) {
+	if (id === "all") return "All";
+	const plan = plans?.find((p) => p.id === id);
+	return plan ? plan.name : id;
+}

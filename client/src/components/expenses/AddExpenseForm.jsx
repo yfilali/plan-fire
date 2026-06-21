@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
+import { usePlanner } from "../../state/PlannerProvider.jsx";
 import { uid } from "../../engine.js";
 import { Card, Chip, TextInput, Select, Button } from "../ui.jsx";
-import { scenarioColor, SCENARIO_TAGS, SCENARIO_SHORT } from "../../lib/scenarioMeta.js";
+import { planColor } from "../../lib/scenarioMeta.js";
 
 const BLANK = {
 	cat: "other",
@@ -17,6 +18,7 @@ const BLANK = {
 
 export default function AddExpenseForm({ categories, onAdd }) {
 	const S = useTheme();
+	const { plans } = usePlanner();
 	const [draft, setDraft] = useState(BLANK);
 
 	const submit = () => {
@@ -50,48 +52,30 @@ export default function AddExpenseForm({ categories, onAdd }) {
 	return (
 		<Card style={{ marginBottom: 16 }}>
 			<div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-				<Select
-					value={draft.cat}
-					onChange={(e) => setDraft((p) => ({ ...p, cat: e.target.value }))}
-					style={{ width: 160 }}
-				>
+				<Select value={draft.cat} onChange={(e) => setDraft((p) => ({ ...p, cat: e.target.value }))} style={{ width: 160 }}>
 					{categories.map((c) => (
 						<option key={c.id} value={c.id}>
 							{c.icon} {c.label}
 						</option>
 					))}
 				</Select>
-				<TextInput
-					placeholder="Description"
-					value={draft.name}
-					onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))}
-					onKeyDown={(e) => e.key === "Enter" && submit()}
-					style={{ flex: 1, minWidth: 140 }}
-				/>
-				<TextInput
-					placeholder="$/mo"
-					type="number"
-					value={draft.amount}
-					onChange={(e) => setDraft((p) => ({ ...p, amount: e.target.value }))}
-					onKeyDown={(e) => e.key === "Enter" && submit()}
-					style={{ width: 96, fontFamily: S.mono }}
-				/>
+				<TextInput placeholder="Description" value={draft.name} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} onKeyDown={(e) => e.key === "Enter" && submit()} style={{ flex: 1, minWidth: 140 }} />
+				<TextInput placeholder="$/mo" type="number" value={draft.amount} onChange={(e) => setDraft((p) => ({ ...p, amount: e.target.value }))} onKeyDown={(e) => e.key === "Enter" && submit()} style={{ width: 96, fontFamily: S.mono }} />
 				<Button variant="primary" onClick={submit}>＋ Add</Button>
 			</div>
 
 			<div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap" }}>
 				<span style={{ fontSize: 11.5, color: S.textDim }}>Applies to</span>
-				{SCENARIO_TAGS.map((s) => (
-					<Chip key={s} active={draft.scenarios.includes(s)} color={scenarioColor(S, s)} onClick={() => toggleScenario(s)}>
-						{SCENARIO_SHORT[s]}
+				<Chip active={draft.scenarios.includes("all")} color={S.textMuted} onClick={() => toggleScenario("all")}>
+					All plans
+				</Chip>
+				{plans.map((pl) => (
+					<Chip key={pl.id} active={draft.scenarios.includes(pl.id)} color={planColor(S, pl)} onClick={() => toggleScenario(pl.id)}>
+						{pl.icon} {pl.name}
 					</Chip>
 				))}
 				<span style={{ fontSize: 11.5, color: S.textDim, marginLeft: 8 }}>Tier</span>
-				<Select
-					value={draft.tier}
-					onChange={(e) => setDraft((p) => ({ ...p, tier: e.target.value }))}
-					style={{ padding: "5px 8px", fontSize: 12, width: 120 }}
-				>
+				<Select value={draft.tier} onChange={(e) => setDraft((p) => ({ ...p, tier: e.target.value }))} style={{ padding: "5px 8px", fontSize: 12, width: 130 }}>
 					<option value="essential">🛡️ Essential</option>
 					<option value="discretionary">⚠️ Discretionary</option>
 					<option value="luxury">💎 Luxury</option>
@@ -102,7 +86,6 @@ export default function AddExpenseForm({ categories, onAdd }) {
 				<TextInput placeholder="to" type="number" value={draft.ageMax} onChange={(e) => setDraft((p) => ({ ...p, ageMax: e.target.value }))} style={{ ...numStyle, width: 54 }} />
 				<span style={{ fontSize: 11.5, color: S.textDim, marginLeft: 8 }}>Infl %</span>
 				<TextInput placeholder="CPI" type="number" step="0.5" value={draft.inflOverride} onChange={(e) => setDraft((p) => ({ ...p, inflOverride: e.target.value }))} style={numStyle} />
-				<span style={{ fontSize: 10.5, color: S.textDim }}>(blank = CPI, 0 = fixed)</span>
 			</div>
 		</Card>
 	);
