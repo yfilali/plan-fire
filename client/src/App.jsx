@@ -1,6 +1,5 @@
 import { useState, useMemo, useRef } from "react";
 import {
-	LineChart,
 	Line,
 	XAxis,
 	YAxis,
@@ -12,6 +11,7 @@ import {
 	ComposedChart,
 	BarChart,
 	Bar,
+	Cell,
 	Area,
 } from "recharts";
 import { AgeRangeSlider } from "./AgeRangeSlider";
@@ -33,6 +33,8 @@ import {
 	COLOR_OPTIONS,
 	SCENARIO_LABELS,
 	LOST_DECADE,
+	returnForYear,
+	deflate,
 } from "./engine";
 
 // ── Theme ────────────────────────────────────────────────────────────
@@ -145,22 +147,13 @@ function SliderRow({ label, value, onChange, min, max, step, format }) {
 				max={max}
 				step={step}
 				value={value}
-				onPointerDown={(e) => {
-					const rect = e.currentTarget.getBoundingClientRect();
-					const pct = (e.clientX - rect.left) / rect.width;
-					const newValue = Math.round((min + pct * (max - min)) / step) * step;
-					onChange(
-						Math.max(min, Math.min(max, parseFloat(newValue.toFixed(4)))),
-					);
-				}}
-				onInput={(e) => onChange(Number(e.target.value))}
 				onChange={(e) => onChange(Number(e.target.value))}
 				style={{ width: "100%" }}
 			/>
 		</div>
 	);
 }
-function ChartTip({ active, payload, label }) {
+function ChartTip({ active, payload, label, formatter = fmt }) {
 	if (!active || !payload?.length) return null;
 	return (
 		<div
@@ -183,9 +176,26 @@ function ChartTip({ active, payload, label }) {
 			</p>
 			{payload.map((p, i) => (
 				<p key={i} style={{ color: p.color, margin: "3px 0", fontSize: 12 }}>
-					{p.name}: {typeof p.value === "number" ? fmt(p.value) : p.value}
+					{p.name}: {typeof p.value === "number" ? formatter(p.value) : p.value}
 				</p>
 			))}
+		</div>
+	);
+}
+function CardTitle({ children, right }) {
+	return (
+		<div
+			style={{
+				display: "flex",
+				alignItems: "baseline",
+				justifyContent: "space-between",
+				flexWrap: "wrap",
+				gap: 8,
+				marginBottom: 8,
+			}}
+		>
+			<div style={{ fontSize: 13, fontWeight: 600 }}>{children}</div>
+			{right || null}
 		</div>
 	);
 }
@@ -490,6 +500,7 @@ function CategoryManager({
 // ── Main App ─────────────────────────────────────────────────────────
 export default function App() {
 	const [tab, setTab] = usePersistedState("tab", "dashboard");
+	const [realDollars, setRealDollars] = usePersistedState("realDollars", false);
 	const { loaded, serverOk } = useStoreStatus();
 	const fileInputRef = useRef(null);
 
@@ -507,15 +518,6 @@ export default function App() {
 		"marketMode",
 		"historical",
 	);
-
-	// Downturn spending cuts (0–1 range)
-	const [discretionaryCut, setDiscretionaryCut] = usePersistedState(
-		"discretionaryCut",
-		0.3,
-	);
-	const [luxuryCut, setLuxuryCut] = usePersistedState("luxuryCut", 0.7);
-	// cutMode: "down_recovery" = cuts during downturn + until recovery
-	const [cutMode, setCutMode] = usePersistedState("cutMode", "down_recovery");
 
 	// Housing
 	const [housingPlan, setHousingPlan] = usePersistedState(
@@ -567,7 +569,6 @@ export default function App() {
 		name: "",
 		amount: "",
 		scenarios: ["all"],
-		tier: "essential",
 		inflOverride: "",
 		ageMin: "",
 		ageMax: "",
@@ -586,24 +587,14 @@ export default function App() {
 	const endAge = 95;
 	const [viewFrom, setViewFrom] = useState(age);
 	const [viewTo, setViewTo] = useState(endAge);
+	// Clamp the zoom range so it stays valid when the Current Age slider moves
+	const effFrom = Math.min(Math.max(viewFrom, age), endAge - 1);
+	const effTo = Math.min(Math.max(viewTo, effFrom + 1), endAge);
 	const realRet = (1 + nomReturn) / (1 + inflation) - 1;
 
-	// Spending at key ages — passes market mode + cuts so they apply in bear markets
-	const avgReturns = buildReturns("avg", nomReturn);
-	const bearReturns = buildReturns("lost_decade", nomReturn);
+	// Spending at key ages for the active scenario (inflation-aware)
 	const spendAt = (a, scen) =>
-		monthlySpendAtAge(
-			expenses,
-			a,
-			scen || housingPlan,
-			age,
-			inflation,
-			marketMode === "lost_decade" ? "lost_decade" : null,
-			bearReturns,
-			discretionaryCut,
-			luxuryCut,
-			cutMode,
-		) * 12;
+		monthlySpendAtAge(expenses, a, scen || housingPlan, age, inflation) * 12;
 	const spendNow = spendAt(
 		age,
 		housingPlan === "stay"
@@ -614,6 +605,9 @@ export default function App() {
 	);
 	const spend65 = spendAt(65, housingPlan);
 	const spend70 = spendAt(70, housingPlan);
+	// Stat-card display values follow the Nominal/Today's $ toggle
+	const dispSpend65 = realDollars ? deflate(spend65, 65 - age, inflation) : spend65;
+	const dispSpend70 = realDollars ? deflate(spend70, 70 - age, inflation) : spend70;
 
 	// ── Projections ──
 	const projections = useMemo(() => {
@@ -660,9 +654,6 @@ export default function App() {
 			nomReturn: activeR,
 			rentalNet: rental,
 			transition: trans,
-			discretionaryCut,
-			luxuryCut,
-			cutMode,
 		});
 		const alt = project({
 			...common,
@@ -671,10 +662,10 @@ export default function App() {
 			nomReturn: altR,
 			rentalNet: rental,
 			transition: trans,
-			discretionaryCut,
-			luxuryCut,
-			cutMode,
 		});
+
+		const postTransAge = trans ? trans.moveAge : age;
+		const atPost = primary.find((d) => d.age === postTransAge);
 
 		return {
 			primary,
@@ -682,7 +673,7 @@ export default function App() {
 			primaryLabel:
 				marketMode === "lost_decade" ? "Lost Decade" : "Historical Avg",
 			altLabel: marketMode === "lost_decade" ? "Historical Avg" : "Lost Decade",
-			startPort,
+			startPort: atPost?.balance || startPort,
 		};
 	}, [
 		age,
@@ -722,74 +713,58 @@ export default function App() {
 			? (postData.netWithdrawal / postData.balance) * 100
 			: 0;
 
-	const chartData = useMemo(
+	const fullChartData = useMemo(
 		() =>
-			projections.primary
-				.filter((d) => d.age >= viewFrom && d.age <= viewTo)
-				.map((d) => {
-					const idx = projections.primary.findIndex((p) => p.age === d.age);
-					return {
-						age: d.age,
-						primary: d.balance,
-						alt: projections.alt[idx]?.balance || 0,
-						spending: d.annualSpend,
-						income: d.income,
-					};
-				}),
-		[projections, viewFrom, viewTo],
+			projections.primary.map((d, i) => {
+				const adj = (v) =>
+					realDollars ? deflate(v, d.age - age, inflation) : v;
+				return {
+					age: d.age,
+					primary: adj(d.balance),
+					alt: adj(projections.alt[i]?.balance || 0),
+					spending: adj(d.annualSpend),
+					income: adj(d.income),
+					netWithdrawal: adj(d.netWithdrawal),
+					// Rate is dimensionless — compute from nominal values
+					wdRate:
+						d.balance > 0 && d.netWithdrawal > 0
+							? (d.netWithdrawal / d.balance) * 100
+							: d.balance > 0
+								? 0
+								: null,
+				};
+			}),
+		[projections, realDollars, age, inflation],
+	);
+	const chartData = useMemo(
+		() => fullChartData.filter((d) => d.age >= effFrom && d.age <= effTo),
+		[fullChartData, effFrom, effTo],
 	);
 
-	// Spending timeline — with downturn cuts in Lost Decade mode
-	const spendTimeline = useMemo(() => {
-		const pts = [];
-		for (let a = viewFrom; a <= viewTo; a += 1) {
-			const scen =
-				housingPlan !== "stay" && a >= age + transitionYears
-					? housingPlan
-					: "stay";
-			const returnsToUse =
-				marketMode === "lost_decade" ? bearReturns : avgReturns;
-			const m = monthlySpendAtAge(
-				expenses,
-				a,
-				scen,
-				age,
-				inflation,
-				marketMode === "lost_decade" ? "lost_decade" : null,
-				returnsToUse,
-				discretionaryCut,
-				luxuryCut,
-				cutMode,
-			);
-			pts.push({ age: a, monthly: m, annual: m * 12 });
-		}
-		return pts;
-	}, [
-		expenses,
-		age,
-		housingPlan,
-		transitionYears,
-		viewFrom,
-		viewTo,
-		marketMode,
-		nomReturn,
-		discretionaryCut,
-		luxuryCut,
-		cutMode,
-	]);
-
 	// Market returns timeline - maps LOST_DECADE to actual ages
-	const returnsTimeline = useMemo(() => {
+	const fullReturnsTimeline = useMemo(() => {
 		const pts = [];
-		for (let a = viewFrom; a <= viewTo; a += 1) {
+		for (let a = age; a <= endAge; a += 1) {
 			const yearIdx = a - age; // 0-based year index
-			const lost =
-				yearIdx < LOST_DECADE.length ? LOST_DECADE[yearIdx] : nomReturn;
-			const hist = nomReturn;
-			pts.push({ age: a, lost, hist });
+			const lost = returnForYear("lost_decade", yearIdx, nomReturn);
+			pts.push({ age: a, lost });
 		}
 		return pts;
-	}, [age, nomReturn, viewFrom, viewTo]);
+	}, [age, nomReturn]);
+	const returnsTimeline = useMemo(
+		() => fullReturnsTimeline.filter((d) => d.age >= effFrom && d.age <= effTo),
+		[fullReturnsTimeline, effFrom, effTo],
+	);
+
+	// Shared X-axis config for the three age-domain charts
+	const ageAxisProps = {
+		dataKey: "age",
+		type: "number",
+		domain: [effFrom, effTo],
+		tick: { fontSize: 10, fill: S.textMuted },
+		tickLine: false,
+		axisLine: { stroke: S.border },
+	};
 
 	const status =
 		effWR <= 3.5
@@ -811,7 +786,6 @@ export default function App() {
 				name: newExpense.name,
 				amount: Number(newExpense.amount),
 				scenarios: newExpense.scenarios,
-				tier: newExpense.tier || "essential",
 				inflOverride:
 					newExpense.inflOverride !== ""
 						? Number(newExpense.inflOverride) / 100
@@ -1139,14 +1113,14 @@ export default function App() {
 							/>
 							<StatCard
 								label="Spend @65"
-								value={fmt(spend65)}
+								value={fmt(dispSpend65)}
 								sub="Medicare kicks in"
 								small
-								color={spend65 < spendNow ? S.accent : S.text}
+								color={dispSpend65 < spendNow ? S.accent : S.text}
 							/>
 							<StatCard
 								label="Spend @70"
-								value={fmt(spend70)}
+								value={fmt(dispSpend70)}
 								sub="SS starts"
 								small
 								color={S.accent}
@@ -1162,7 +1136,11 @@ export default function App() {
 							/>
 							<StatCard
 								label="At 90"
-								value={fmt(getD(90).balance || 0)}
+								value={fmt(
+									realDollars
+										? deflate(getD(90).balance || 0, 90 - age, inflation)
+										: getD(90).balance || 0,
+								)}
 								color={(getD(90).balance || 0) > 0 ? S.accent : S.danger}
 								small
 							/>
@@ -1182,33 +1160,35 @@ export default function App() {
 						>
 							<span
 								style={{
-									fontSize: 11,
-									color: S.textMuted,
+									fontSize: 10,
+									letterSpacing: 1,
+									textTransform: "uppercase",
+									color: S.textDim,
+									fontWeight: 600,
 									whiteSpace: "nowrap",
 								}}
 							>
-								🔍
+								Zoom
 							</span>
 							<AgeRangeSlider
-								from={viewFrom}
-								to={viewTo}
+								from={effFrom}
+								to={effTo}
 								min={age}
 								max={endAge}
 								onChangeFrom={setViewFrom}
 								onChangeTo={setViewTo}
 								bg={S.border}
 								active={S.accent}
+								mono={S.mono}
+								labelColor={S.text}
 							/>
-							{viewFrom !== age || viewTo !== endAge ? (
+							{effFrom !== age || effTo !== endAge ? (
 								<button
-									onClick={() => {
-										setViewFrom(age);
-										setViewTo(endAge);
-									}}
+									onClick={() => { setViewFrom(age); setViewTo(endAge); }}
 									style={{
 										...btnBase,
-										padding: "2px 8px",
-										borderRadius: 4,
+										padding: "3px 10px",
+										borderRadius: 6,
 										background: "transparent",
 										border: `1px solid ${S.border}`,
 										color: S.textMuted,
@@ -1219,9 +1199,34 @@ export default function App() {
 									Reset
 								</button>
 							) : null}
+							<div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+								{[
+									{ label: "Nominal $", val: false },
+									{ label: "Today's $", val: true },
+								].map((o) => (
+									<button
+										key={o.label}
+										onClick={() => setRealDollars(o.val)}
+										style={{
+											...btnBase,
+											padding: "3px 10px",
+											borderRadius: 6,
+											background: "transparent",
+											border: `1px solid ${
+												realDollars === o.val ? S.accent : S.border
+											}`,
+											color: realDollars === o.val ? S.accent : S.textMuted,
+											fontSize: 10,
+											whiteSpace: "nowrap",
+										}}
+									>
+										{o.label}
+									</button>
+								))}
+							</div>
 						</div>
 
-						{/* Portfolio chart */}
+						{/* Hero: portfolio + spending/income + returns strip */}
 						<div
 							style={{
 								background: S.card,
@@ -1231,31 +1236,69 @@ export default function App() {
 								marginBottom: 16,
 							}}
 						>
-							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
-								Portfolio Balance
+							<CardTitle
+								right={
+									<span style={{ fontSize: 11, color: S.textMuted }}>
+										Active:{" "}
+										<span
+											style={{
+												color:
+													marketMode === "lost_decade"
+														? S.danger
+														: S.accent,
+												fontWeight: 600,
+											}}
+										>
+											{marketMode === "lost_decade"
+												? "Lost Decade"
+												: "Historical Avg"}
+										</span>
+										{realDollars && (
+											<span style={{ color: S.textMuted }}>
+												{" "}
+												· today's $
+											</span>
+										)}
+									</span>
+								}
+							>
+								Portfolio Projection
+							</CardTitle>
+							<div
+								style={{ fontSize: 11, color: S.textMuted, marginBottom: 10 }}
+							>
+								Spending (purple) steps down at 65 (Medicare) and at housing
+								transitions; income (blue) is work + SS + rental. Right axis.
 							</div>
-							<ResponsiveContainer width="100%" height={280}>
-								<LineChart
+							<ResponsiveContainer width="100%" height={300}>
+								<ComposedChart
 									data={chartData}
+									syncId="dash"
 									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
 								>
 									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
-									<XAxis
-										dataKey="age"
-										domain={[viewFrom, viewTo]}
-										type="number"
-										tick={{ fontSize: 10, fill: S.textMuted }}
-										tickLine={false}
-										axisLine={{ stroke: S.border }}
-									/>
+									<XAxis {...ageAxisProps} />
 									<YAxis
+										yAxisId="bal"
 										tickFormatter={fmt}
 										tick={{ fontSize: 10, fill: S.textMuted }}
 										tickLine={false}
 										axisLine={false}
 										width={50}
 									/>
-									<Tooltip content={<ChartTip />} />
+									<YAxis
+										yAxisId="cash"
+										orientation="right"
+										tickFormatter={fmt}
+										tick={{ fontSize: 10, fill: S.textMuted }}
+										tickLine={false}
+										axisLine={false}
+										width={50}
+									/>
+									<Tooltip
+										content={<ChartTip />}
+										cursor={{ stroke: S.border }}
+									/>
 									<Legend
 										formatter={(v) => (
 											<span style={{ fontSize: 11, color: S.textMuted }}>
@@ -1263,14 +1306,9 @@ export default function App() {
 											</span>
 										)}
 									/>
-									<ReferenceLine
-										y={0}
-										stroke={S.danger}
-										strokeDasharray="4 4"
-										strokeWidth={1}
-									/>
 									{retireAge > age && (
 										<ReferenceLine
+											yAxisId="bal"
 											x={retireAge}
 											stroke={S.blue}
 											strokeDasharray="4 4"
@@ -1278,317 +1316,228 @@ export default function App() {
 										/>
 									)}
 									<ReferenceLine
+										yAxisId="bal"
 										x={65}
 										stroke={S.purple}
 										strokeDasharray="4 4"
 										label={{ value: "Medicare", fontSize: 10, fill: S.purple }}
 									/>
 									<ReferenceLine
+										yAxisId="bal"
 										x={ssAge}
 										stroke={S.accent}
 										strokeDasharray="4 4"
 										label={{ value: "SS", fontSize: 10, fill: S.accent }}
 									/>
+									{runsOut && (
+										<ReferenceLine
+											yAxisId="bal"
+											x={runsOut.age}
+											stroke={S.danger}
+											label={{
+												value: "Depleted",
+												fontSize: 10,
+												fill: S.danger,
+											}}
+										/>
+									)}
+									<Area
+										type="stepAfter"
+										yAxisId="cash"
+										dataKey="spending"
+										name="Annual Spending"
+										fill={S.purple + "26"}
+										stroke={S.purple}
+										strokeWidth={1.5}
+									/>
+									<Line
+										type="stepAfter"
+										yAxisId="cash"
+										dataKey="income"
+										name="Income (SS/rental/work)"
+										stroke={S.blue}
+										strokeWidth={1.5}
+										dot={false}
+										strokeDasharray="2 2"
+									/>
 									<Line
 										type="monotone"
+										yAxisId="bal"
 										dataKey="primary"
 										name={projections.primaryLabel}
 										stroke={S.accent}
-										strokeWidth={2.5}
+										strokeWidth={2}
 										dot={false}
 									/>
 									<Line
 										type="monotone"
+										yAxisId="bal"
 										dataKey="alt"
 										name={projections.altLabel}
 										stroke={S.textDim}
-										strokeWidth={1.5}
+										strokeWidth={2}
 										strokeDasharray="6 4"
 										dot={false}
 										opacity={0.5}
 									/>
-								</LineChart>
-							</ResponsiveContainer>
-						</div>
-
-						{/* Spending timeline */}
-						<div
-							style={{
-								background: S.card,
-								borderRadius: 12,
-								border: `1px solid ${S.border}`,
-								padding: "14px 14px 6px",
-								marginBottom: 16,
-							}}
-						>
-							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-								Annual Spending Over Time
-							</div>
-							<div
-								style={{ fontSize: 11, color: S.textMuted, marginBottom: 10 }}
-							>
-								Shows how costs change: healthcare drops at 65 (Medicare),
-								mortgage gone when selling, etc.
-							</div>
-							<ResponsiveContainer width="100%" height={200}>
-								<ComposedChart
-									data={spendTimeline}
-									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
-								>
-									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
-									<XAxis
-										dataKey="age"
-										domain={[viewFrom, viewTo]}
-										type="number"
-										tick={{ fontSize: 10, fill: S.textMuted }}
-										tickLine={false}
-										axisLine={{ stroke: S.border }}
-									/>
-									<YAxis
-										tickFormatter={fmt}
-										tick={{ fontSize: 10, fill: S.textMuted }}
-										tickLine={false}
-										axisLine={false}
-										width={50}
-									/>
-									<Tooltip content={<ChartTip />} />
-									<Area
-										type="stepAfter"
-										dataKey="annual"
-										name="Annual Spending"
-										fill={S.purple + "33"}
-										stroke={S.purple}
-										strokeWidth={2}
-									/>
-									<ReferenceLine
-										x={65}
-										stroke={S.accent}
-										strokeDasharray="3 3"
-									/>
 								</ComposedChart>
 							</ResponsiveContainer>
-						</div>
-
-						{/* Downturn Spending Controls */}
-						<div
-							style={{
-								background: S.card,
-								borderRadius: 12,
-								border: `1px solid ${S.border}`,
-								padding: 18,
-							}}
-						>
-							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-								📉 Downturn Spending Controls
-							</div>
-							<div
-								style={{ fontSize: 11, color: S.textMuted, marginBottom: 14 }}
-							>
-								When the market crashes, you cut spending — no brainer.
-							</div>
-
-							{/* Cut mode toggle */}
 							<div
 								style={{
 									display: "flex",
-									alignItems: "center",
-									gap: 10,
-									marginBottom: 14,
+									justifyContent: "space-between",
+									alignItems: "baseline",
 								}}
 							>
 								<span
-									style={{ fontSize: 11, color: S.textMuted, fontWeight: 600 }}
+									style={{
+										fontSize: 9,
+										letterSpacing: 1,
+										textTransform: "uppercase",
+										color: S.textDim,
+										fontWeight: 600,
+									}}
 								>
-									Apply cuts:
+									Market Returns
 								</span>
-								<button
-									onClick={() => setCutMode("down_recovery")}
-									style={{
-										...btnBase,
-										padding: "5px 12px",
-										borderRadius: 20,
-										border: `1.5px solid ${cutMode === "down_recovery" ? S.blue : S.border}`,
-										background:
-											cutMode === "down_recovery"
-												? S.blue + "18"
-												: "transparent",
-										color: cutMode === "down_recovery" ? S.blue : S.textMuted,
-										fontSize: 11,
-										fontWeight: 500,
-									}}
-								>
-									During downturn + recovery
-								</button>
-								<button
-									onClick={() => setCutMode("all")}
-									style={{
-										...btnBase,
-										padding: "5px 12px",
-										borderRadius: 20,
-										border: `1.5px solid ${cutMode === "all" ? S.accent : S.border}`,
-										background:
-											cutMode === "all" ? S.accent + "18" : "transparent",
-										color: cutMode === "all" ? S.accent : S.textMuted,
-										fontSize: 11,
-										fontWeight: 500,
-									}}
-								>
-									All years
-								</button>
+								<span style={{ fontSize: 10, color: S.textMuted }}>
+									Avg {Math.round(nomReturn * 100)}%/yr
+								</span>
 							</div>
-
-							<SliderRow
-								label="Discretionary Cut"
-								value={discretionaryCut}
-								onChange={setDiscretionaryCut}
-								min={0}
-								max={1}
-								step={0.05}
-								format={(v) => `${(v * 100).toFixed(0)}%`}
-							/>
-							<SliderRow
-								label="Luxury Cut"
-								value={luxuryCut}
-								onChange={setLuxuryCut}
-								min={0}
-								max={1}
-								step={0.05}
-								format={(v) => `${(v * 100).toFixed(0)}%`}
-							/>
-
-							<div
-								style={{
-									display: "flex",
-									gap: 8,
-									marginTop: 10,
-									padding: 10,
-									background: S.bg,
-									borderRadius: 8,
-								}}
-							>
-								<div style={{ flex: 1 }}>
-									<div style={{ fontSize: 10, color: S.textDim }}>
-										🛡️ Essential
-									</div>
-									<div
-										style={{ fontSize: 12, fontWeight: 600, color: S.accent }}
-									>
-										Never cut
-									</div>
-								</div>
-								<div style={{ flex: 1 }}>
-									<div style={{ fontSize: 10, color: S.textDim }}>
-										⚠️ Discretionary
-									</div>
-									<div
-										style={{ fontSize: 12, fontWeight: 600, color: S.warning }}
-									>
-										{(discretionaryCut * 100).toFixed(0)}% cut
-									</div>
-								</div>
-								<div style={{ flex: 1 }}>
-									<div style={{ fontSize: 10, color: S.textDim }}>
-										💎 Luxury
-									</div>
-									<div
-										style={{ fontSize: 12, fontWeight: 600, color: S.danger }}
-									>
-										{(luxuryCut * 100).toFixed(0)}% cut
-									</div>
-								</div>
-							</div>
-						</div>
-
-						{/* Market Returns - bar chart aligned with age axis */}
-						<div
-							style={{
-								background: S.card,
-								borderRadius: 12,
-								border: `1px solid ${S.border}`,
-								padding: "14px 14px 6px",
-								marginBottom: 16,
-							}}
-						>
-							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-								Market Returns (Nominal)
-							</div>
-							<ResponsiveContainer width="100%" height={180}>
+							<ResponsiveContainer width="100%" height={56}>
 								<BarChart
 									data={returnsTimeline}
+									syncId="dash"
 									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
 								>
-									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
-									<XAxis
-										dataKey="age"
-										domain={[viewFrom, viewTo]}
-										type="number"
-										tick={{ fontSize: 10, fill: S.textMuted }}
-										tickLine={false}
-										axisLine={{ stroke: S.border }}
-									/>
+									<XAxis {...ageAxisProps} hide />
+									<YAxis hide width={50} />
 									<YAxis
-										tickFormatter={(v) => `${Math.round(v * 100)}%`}
-										tick={{ fontSize: 10, fill: S.textMuted }}
-										tickLine={false}
-										axisLine={false}
-										width={40}
-										allowDataOverflow={false}
+										yAxisId="right"
+										orientation="right"
+										hide
+										width={50}
 									/>
 									<ReferenceLine y={0} stroke={S.border} />
 									<Tooltip
-										formatter={(v) => `${(v * 100).toFixed(1)}%`}
-										contentStyle={{
-											background: S.card,
-											border: `1px solid ${S.border}`,
-											borderRadius: 8,
-											fontSize: 12,
-											color: S.text,
-										}}
-									/>
-									<Legend
-										formatter={(v) => (
-											<span style={{ fontSize: 11, color: S.textMuted }}>
-												{v}
-											</span>
-										)}
+										content={<ChartTip formatter={(v) => `${(v * 100).toFixed(1)}%`} />}
+										cursor={{ fill: "rgba(255,255,255,0.04)" }}
 									/>
 									<Bar
 										dataKey="lost"
 										name="Lost Decade"
-										fill="#ef4444"
-										radius={[3, 3, 0, 0]}
-										fillOpacity={marketMode === "lost_decade" ? 0.9 : 0.3}
-									/>
-									<Bar
-										dataKey="hist"
-										name="Hist Avg"
-										fill="#22c55e"
-										radius={[3, 3, 0, 0]}
-										fillOpacity={marketMode === "historical" ? 0.9 : 0.3}
+										radius={[2, 2, 0, 0]}
+										fillOpacity={marketMode === "lost_decade" ? 0.9 : 0.35}
+									>
+										{returnsTimeline.map((d) => (
+											<Cell
+												key={d.age}
+												fill={d.lost < 0 ? S.danger : S.accent}
+											/>
+										))}
+									</Bar>
+									<ReferenceLine
+										y={nomReturn}
+										stroke={S.accent}
+										strokeDasharray="4 4"
+										strokeOpacity={marketMode === "historical" ? 1 : 0.5}
 									/>
 								</BarChart>
 							</ResponsiveContainer>
 						</div>
 
-						{/* Milestones */}
+						{/* Withdrawal rate */}
 						<div
 							style={{
 								background: S.card,
 								borderRadius: 12,
 								border: `1px solid ${S.border}`,
-								padding: 14,
+								padding: "14px 14px 6px",
+								marginBottom: 16,
 							}}
 						>
-							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
-								Key Milestones
+							<CardTitle
+								right={
+									<span
+										style={{
+											fontSize: 11,
+											fontWeight: 600,
+											color:
+												effWR <= 4
+													? S.accent
+													: effWR <= 5
+														? S.warning
+														: S.danger,
+										}}
+									>
+										{effWR.toFixed(1)}% now
+									</span>
+								}
+							>
+								Withdrawal Rate
+							</CardTitle>
+							<div
+								style={{ fontSize: 11, color: S.textMuted, marginBottom: 10 }}
+							>
+								Net withdrawal (spending minus income) as % of portfolio. Gaps
+								after depletion.
 							</div>
+							<ResponsiveContainer width="100%" height={180}>
+								<ComposedChart
+									data={chartData}
+									syncId="dash"
+									margin={{ top: 5, right: 10, bottom: 5, left: 5 }}
+								>
+									<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
+									<XAxis {...ageAxisProps} />
+									<YAxis
+										tickFormatter={(v) => `${v}%`}
+										tick={{ fontSize: 10, fill: S.textMuted }}
+										tickLine={false}
+										axisLine={false}
+										width={40}
+									/>
+									<Tooltip
+										content={<ChartTip formatter={(v) => `${v.toFixed(1)}%`} />}
+										cursor={{ stroke: S.border }}
+									/>
+									<ReferenceLine
+										y={4}
+										stroke={S.textDim}
+										strokeDasharray="4 4"
+										label={{
+											value: "4% rule",
+											position: "insideTopRight",
+											fontSize: 10,
+											fill: S.textMuted,
+										}}
+									/>
+									<Line
+										type="monotone"
+										dataKey="wdRate"
+										name="Withdrawal Rate"
+										stroke={S.warning}
+										strokeWidth={2}
+										dot={false}
+										connectNulls={false}
+									/>
+								</ComposedChart>
+							</ResponsiveContainer>
+						</div>
+
+												{/* Milestones */}
 							<div
 								style={{
-									display: "grid",
-									gridTemplateColumns: "1fr 1fr 1fr",
-									gap: 8,
+									background: S.card,
+									borderRadius: 12,
+									border: `1px solid ${S.border}`,
+									padding: 14,
 								}}
 							>
+								<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
+									Key Milestones
+								</div>
+								<div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
 								{[
 									...(housingPlan !== "stay"
 										? [
@@ -1613,57 +1562,36 @@ export default function App() {
 									},
 								]
 									.filter((m) => m.a >= age && m.a <= endAge)
-									.map((m, i) => {
-										const d = getD(Math.round(m.a));
-										return (
-											<div
-												key={i}
+									.map((m, i) => (
+										<div
+											key={i}
+											style={{
+												display: "inline-flex",
+												alignItems: "center",
+												gap: 6,
+												padding: "4px 10px",
+												borderRadius: 999,
+												border: `1px solid ${m.hl ? S.accent + "66" : S.border}`,
+												background: S.bg,
+												fontSize: 11,
+											}}
+										>
+											<span>{m.icon}</span>
+											<span
 												style={{
-													display: "flex",
-													justifyContent: "space-between",
-													alignItems: "center",
-													padding: "6px 10px",
-													borderRadius: 8,
-													background: S.bg,
+													fontWeight: m.hl ? 600 : 400,
+													color: m.hl ? S.accent : S.text,
 												}}
 											>
-												<div
-													style={{
-														display: "flex",
-														alignItems: "center",
-														gap: 6,
-													}}
-												>
-													<span style={{ fontSize: 14 }}>{m.icon}</span>
-													<div>
-														<div
-															style={{
-																fontSize: 12,
-																fontWeight: m.hl ? 600 : 400,
-																color: m.hl ? S.accent : S.text,
-															}}
-														>
-															{m.l}
-														</div>
-														<div style={{ fontSize: 10, color: S.textDim }}>
-															Age {m.a} · Spend {fmt(spendAt(m.a, housingPlan))}
-															/yr
-														</div>
-													</div>
-												</div>
-												<span
-													style={{
-														fontSize: 12,
-														fontWeight: 600,
-														fontFamily: S.mono,
-														color: (d.balance || 0) > 0 ? S.text : S.danger,
-													}}
-												>
-													{fmt(d.balance || 0)}
-												</span>
-											</div>
-										);
-									})}
+												{m.l}
+											</span>
+											<span
+												style={{ fontFamily: S.mono, color: S.textMuted }}
+											>
+												@{m.a}
+											</span>
+										</div>
+									))}
 							</div>
 						</div>
 					</>
@@ -1832,25 +1760,6 @@ export default function App() {
 									</Chip>
 								))}
 								<span style={{ fontSize: 11, color: S.textDim, marginLeft: 8 }}>
-									Tier:
-								</span>
-								<select
-									value={newExpense.tier || "essential"}
-									onChange={(e) =>
-										setNewExpense((p) => ({ ...p, tier: e.target.value }))
-									}
-									style={{
-										...inputBase,
-										padding: "4px 6px",
-										fontSize: 11,
-										width: 130,
-									}}
-								>
-									<option value="essential">🛡️ Essential</option>
-									<option value="discretionary">⚠️ Discretionary</option>
-									<option value="luxury">💎 Luxury</option>
-								</select>
-								<span style={{ fontSize: 11, color: S.textDim, marginLeft: 8 }}>
 									Ages:
 								</span>
 								<input
@@ -1993,24 +1902,6 @@ export default function App() {
 																	</option>
 																))}
 															</select>
-															<select
-																value={exp.tier || "essential"}
-																onChange={(e) =>
-																	updateExpense(exp.id, "tier", e.target.value)
-																}
-																style={{
-																	...inputBase,
-																	padding: "3px 6px",
-																	fontSize: 11,
-																	width: 120,
-																}}
-															>
-																<option value="essential">🛡️ Essential</option>
-																<option value="discretionary">
-																	⚠️ Discretionary
-																</option>
-																<option value="luxury">💎 Luxury</option>
-															</select>
 															<input
 																value={exp.name}
 																onChange={(e) =>
@@ -2046,20 +1937,12 @@ export default function App() {
 																placeholder="%"
 																type="number"
 																step="0.5"
-																value={
-																	exp.inflOverride != null
-																		? (exp.inflOverride * 100)
-																				.toString()
-																				.replace(/\.?0+$/, "")
-																		: ""
-																}
+																value={exp.inflOverride != null ? (exp.inflOverride * 100).toString().replace(/\.?0+$/, "") : ""}
 																onChange={(e) =>
 																	updateExpense(
 																		exp.id,
 																		"inflOverride",
-																		e.target.value === ""
-																			? null
-																			: Number(e.target.value) / 100,
+																		e.target.value === "" ? null : Number(e.target.value) / 100,
 																	)
 																}
 																style={{
@@ -2236,19 +2119,6 @@ export default function App() {
 																				: "Rent+CC"}
 																	</Tag>
 																))}
-															{exp.tier != null && exp.tier !== "essential" && (
-																<Tag
-																	color={
-																		exp.tier === "discretionary"
-																			? "#f59e0b"
-																			: "#ef4444"
-																	}
-																>
-																	{exp.tier === "discretionary"
-																		? "⚠️ Disc."
-																		: "💎 Lux"}
-																</Tag>
-															)}
 															{(exp.ageMin != null || exp.ageMax != null) && (
 																<Tag color={S.blue}>
 																	{exp.ageMin ?? ""}–{exp.ageMax ?? ""}
@@ -2542,122 +2412,27 @@ export default function App() {
 										📉 Lost Decade
 									</Chip>
 								</div>
-								<div
-									style={{ marginBottom: 12, fontSize: 10, fontFamily: S.mono }}
-								>
-									<div
-										style={{
-											display: "flex",
-											justifyContent: "space-between",
-											marginBottom: 4,
-										}}
-									>
-										{[
-											{
-												label: "Year",
-												years: [
-													"1",
-													"2",
-													"3",
-													"4",
-													"5",
-													"6",
-													"7",
-													"8",
-													"9",
-													"10",
-													"11+",
-												],
-											},
-										].map((row) =>
+								<div style={{ marginBottom: 12, fontSize: 10, fontFamily: S.mono }}>
+									<div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+										{[{ label: "Year", years: ["1","2","3","4","5","6","7","8","9","10","11+"] }].map((row) => (
 											row.years.map((y, i) => (
-												<div
-													key={i}
-													style={{
-														width: 28,
-														textAlign: "right",
-														color: S.textMuted,
-													}}
-												>
-													{y}
-												</div>
-											)),
-										)}
+												<div key={i} style={{ width: 28, textAlign: "right", color: S.textMuted }}>{y}</div>
+											))
+										))}
 									</div>
-									<div
-										style={{
-											display: "flex",
-											justifyContent: "space-between",
-											alignItems: "center",
-											gap: 4,
-											marginBottom: 2,
-										}}
-									>
-										<span
-											style={{
-												color:
-													marketMode === "lost_decade" ? S.danger : S.textMuted,
-												width: 28,
-											}}
-										>
-											{marketMode === "lost_decade" ? "Lost" : "Avg"}:
-										</span>
-										{(marketMode === "lost_decade"
-											? [...LOST_DECADE, null]
-											: Array(11).fill(null)
-										).map((r, i) => (
-											<div
-												key={i}
-												style={{
-													width: 28,
-													textAlign: "right",
-													color:
-														r !== null
-															? r < 0
-																? S.danger
-																: S.accent
-															: S.accent,
-													fontWeight: r !== null && r < 0 ? 700 : 500,
-												}}
-											>
-												{r !== null
-													? `${(r * 100).toFixed(0)}%`
-													: `${(nomReturn * 100).toFixed(0)}%`}
+									<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, marginBottom: 2 }}>
+										<span style={{ color: marketMode === "lost_decade" ? S.danger : S.textMuted, width: 28 }}>{marketMode === "lost_decade" ? "Lost" : "Avg"}:</span>
+										{(marketMode === "lost_decade" ? [...LOST_DECADE, null] : Array(11).fill(null)).map((r, i) => (
+											<div key={i} style={{ width: 28, textAlign: "right", color: r !== null ? (r < 0 ? S.danger : S.accent) : S.accent, fontWeight: r !== null && r < 0 ? 700 : 500 }}>
+												{r !== null ? `${(r * 100).toFixed(0)}%` : `${(nomReturn * 100).toFixed(0)}%`}
 											</div>
 										))}
 									</div>
-									<div
-										style={{
-											display: "flex",
-											justifyContent: "space-between",
-											alignItems: "center",
-											gap: 4,
-										}}
-									>
-										<span
-											style={{
-												color:
-													marketMode === "historical" ? S.accent : S.textMuted,
-												width: 28,
-											}}
-										>
-											Hist:
-										</span>
-										{Array(11)
-											.fill(nomReturn)
-											.map((r, i) => (
-												<div
-													key={i}
-													style={{
-														width: 28,
-														textAlign: "right",
-														color: S.accent,
-														opacity: marketMode === "historical" ? 1 : 0.4,
-													}}
-												>
-													{r ? `${(r * 100).toFixed(0)}%` : "—"}
-												</div>
-											))}
+									<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
+										<span style={{ color: marketMode === "historical" ? S.accent : S.textMuted, width: 28 }}>Hist:</span>
+										{Array(11).fill(nomReturn).map((r, i) => (
+											<div key={i} style={{ width: 28, textAlign: "right", color: S.accent, opacity: marketMode === "historical" ? 1 : 0.4 }}>{r ? `${(r * 100).toFixed(0)}%` : "—"}</div>
+										))}
 									</div>
 								</div>
 								<SliderRow
@@ -2717,7 +2492,7 @@ export default function App() {
 								</div>
 							</div>
 						</div>
-
+					
 						<div
 							style={{
 								background: S.card,
@@ -2727,142 +2502,33 @@ export default function App() {
 								marginTop: 16,
 							}}
 						>
-							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
-								🏘️ Property Values
-							</div>
-							<div
-								style={{
-									display: "grid",
-									gridTemplateColumns: "1fr 1fr 1fr",
-									gap: 14,
-									marginBottom: 16,
-								}}
-							>
-								<SliderRow
-									label="SJ House Value"
-									value={houseValue}
-									onChange={setHouseValue}
-									min={1e6}
-									max={3e6}
-									step={50000}
-									format={fmt}
-								/>
-								<SliderRow
-									label="Mortgage Owed"
-									value={mortgageOwed}
-									onChange={setMortgageOwed}
-									min={0}
-									max={1e6}
-									step={25000}
-									format={fmt}
-								/>
-								<SliderRow
-									label="Byers Value"
-									value={byersValue}
-									onChange={setByersValue}
-									min={200000}
-									max={1e6}
-									step={25000}
-									format={fmt}
-								/>
+							<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>🏘️ Property Values</div>
+							<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
+								<SliderRow label="SJ House Value" value={houseValue} onChange={setHouseValue} min={1e6} max={3e6} step={50000} format={fmt} />
+								<SliderRow label="Mortgage Owed" value={mortgageOwed} onChange={setMortgageOwed} min={0} max={1e6} step={25000} format={fmt} />
+								<SliderRow label="Byers Value" value={byersValue} onChange={setByersValue} min={200000} max={1e6} step={25000} format={fmt} />
 							</div>
 							{housingPlan !== "stay" && (
-								<div
-									style={{
-										background: S.bg,
-										borderRadius: 8,
-										padding: 14,
-										marginBottom: 16,
-									}}
-								>
-									<div
-										style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}
-									>
-										🌲 Crescent City
+								<div style={{ background: S.bg, borderRadius: 8, padding: 14, marginBottom: 16 }}>
+									<div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}>🌲 Crescent City</div>
+									<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+										<SliderRow label="CC Home Price" value={ccHomeCost} onChange={setCcHomeCost} min={200000} max={1500000} step={25000} format={fmt} />
+										{housingPlan === "sell_move" && <SliderRow label="Transition Years" value={transitionYears} onChange={setTransitionYears} min={0} max={3} step={1} format={(v) => `${v} yr`} />}
 									</div>
-									<div
-										style={{
-											display: "grid",
-											gridTemplateColumns: "1fr 1fr",
-											gap: 14,
-										}}
-									>
-										<SliderRow
-											label="CC Home Price"
-											value={ccHomeCost}
-											onChange={setCcHomeCost}
-											min={200000}
-											max={1500000}
-											step={25000}
-											format={fmt}
-										/>
-										{housingPlan === "sell_move" && (
-											<SliderRow
-												label="Transition Years"
-												value={transitionYears}
-												onChange={setTransitionYears}
-												min={0}
-												max={3}
-												step={1}
-												format={(v) => `${v} yr`}
-											/>
-										)}
-									</div>
-									<div
-										style={{
-											display: "grid",
-											gridTemplateColumns:
-												housingPlan === "sell_move"
-													? "repeat(4, 1fr)"
-													: "repeat(3, 1fr)",
-											gap: 8,
-											marginTop: 10,
-											padding: 10,
-											background: S.card,
-											borderRadius: 6,
-										}}
-									>
-										{(housingPlan === "sell_move"
-											? [
-													{ l: "House Net", v: fmt(houseNet), c: S.accent },
-													{ l: "Byers Net", v: fmt(byersNet), c: S.accent },
-													{
-														l: "CC Buy",
-														v: `-${fmt(ccHomeCost)}`,
-														c: S.danger,
-													},
-													{
-														l: "Proceeds to Portfolio",
-														v: fmt(totalRENet - ccHomeCost),
-														c:
-															totalRENet - ccHomeCost >= 0
-																? S.accent
-																: S.danger,
-													},
-												]
-											: [
-													{ l: "Byers Net", v: fmt(byersNet), c: S.accent },
-													{
-														l: "CC Buy",
-														v: `-${fmt(ccHomeCost)}`,
-														c: S.danger,
-													},
-													{
-														l: "From Portfolio",
-														v: fmt(byersNet - ccHomeCost),
-														c: byersNet - ccHomeCost >= 0 ? S.accent : S.danger,
-													},
-												]
-										).map((x, i) => (
+									<div style={{ display: "grid", gridTemplateColumns: housingPlan === "sell_move" ? "repeat(4, 1fr)" : "repeat(3, 1fr)", gap: 8, marginTop: 10, padding: 10, background: S.card, borderRadius: 6 }}>
+										{(housingPlan === "sell_move" ? [
+											{ l: "House Net", v: fmt(houseNet), c: S.accent },
+											{ l: "Byers Net", v: fmt(byersNet), c: S.accent },
+											{ l: "CC Buy", v: `-${fmt(ccHomeCost)}`, c: S.danger },
+											{ l: "Proceeds to Portfolio", v: fmt(totalRENet - ccHomeCost), c: totalRENet - ccHomeCost >= 0 ? S.accent : S.danger },
+										] : [
+											{ l: "Byers Net", v: fmt(byersNet), c: S.accent },
+											{ l: "CC Buy", v: `-${fmt(ccHomeCost)}`, c: S.danger },
+											{ l: "From Portfolio", v: fmt(byersNet - ccHomeCost), c: byersNet - ccHomeCost >= 0 ? S.accent : S.danger },
+										]).map((x, i) => (
 											<div key={i} style={{ textAlign: "center" }}>
-												<div style={{ fontSize: 10, color: S.textMuted }}>
-													{x.l}
-												</div>
-												<div
-													style={{ fontSize: 15, fontWeight: 700, color: x.c }}
-												>
-													{x.v}
-												</div>
+												<div style={{ fontSize: 10, color: S.textMuted }}>{x.l}</div>
+												<div style={{ fontSize: 15, fontWeight: 700, color: x.c }}>{x.v}</div>
 											</div>
 										))}
 									</div>
@@ -2870,91 +2536,29 @@ export default function App() {
 							)}
 							{housingPlan === "rent_out" && (
 								<div style={{ background: S.bg, borderRadius: 8, padding: 14 }}>
-									<div
-										style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}
-									>
-										🏠 SJ Rental P&L
+									<div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}>🏠 SJ Rental P&L</div>
+									<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+										<SliderRow label="Monthly Rent" value={monthlyRent} onChange={setMonthlyRent} min={3000} max={7000} step={100} format={(v) => `$${v.toLocaleString()}/mo`} />
+										<SliderRow label="Monthly Mortgage" value={monthlyMortgage} onChange={setMonthlyMortgage} min={1500} max={4000} step={100} format={(v) => `$${v.toLocaleString()}/mo`} />
+										<SliderRow label="Annual Property Tax" value={annualPropTax} onChange={setAnnualPropTax} min={5000} max={25000} step={500} format={(v) => `${fmt(v)}/yr`} />
+										<SliderRow label="Ins+Maint+Mgmt" value={annualLandlordCosts} onChange={setAnnualLandlordCosts} min={5000} max={25000} step={500} format={(v) => `${fmt(v)}/yr`} />
 									</div>
-									<div
-										style={{
-											display: "grid",
-											gridTemplateColumns: "1fr 1fr",
-											gap: 14,
-										}}
-									>
-										<SliderRow
-											label="Monthly Rent"
-											value={monthlyRent}
-											onChange={setMonthlyRent}
-											min={3000}
-											max={7000}
-											step={100}
-											format={(v) => `$${v.toLocaleString()}/mo`}
-										/>
-										<SliderRow
-											label="Monthly Mortgage"
-											value={monthlyMortgage}
-											onChange={setMonthlyMortgage}
-											min={1500}
-											max={4000}
-											step={100}
-											format={(v) => `$${v.toLocaleString()}/mo`}
-										/>
-										<SliderRow
-											label="Annual Property Tax"
-											value={annualPropTax}
-											onChange={setAnnualPropTax}
-											min={5000}
-											max={25000}
-											step={500}
-											format={(v) => `${fmt(v)}/yr`}
-										/>
-										<SliderRow
-											label="Ins+Maint+Mgmt"
-											value={annualLandlordCosts}
-											onChange={setAnnualLandlordCosts}
-											min={5000}
-											max={25000}
-											step={500}
-											format={(v) => `${fmt(v)}/yr`}
-										/>
-									</div>
-									<div
-										style={{
-											display: "grid",
-											gridTemplateColumns: "repeat(3, 1fr)",
-											gap: 8,
-											marginTop: 10,
-											padding: 10,
-											background: S.card,
-											borderRadius: 6,
-										}}
-									>
+									<div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 10, padding: 10, background: S.card, borderRadius: 6 }}>
 										{[
 											{ l: "Gross Rent", v: fmt(grossRent), c: S.accent },
 											{ l: "Expenses", v: fmt(landlordExp), c: S.danger },
-											{
-												l: "Net Flow",
-												v: `${netRental >= 0 ? "+" : ""}${fmt(netRental)}/yr`,
-												c: netRental >= 0 ? S.accent : S.danger,
-											},
+											{ l: "Net Flow", v: `${netRental >= 0 ? "+" : ""}${fmt(netRental)}/yr`, c: netRental >= 0 ? S.accent : S.danger },
 										].map((x, i) => (
 											<div key={i} style={{ textAlign: "center" }}>
-												<div style={{ fontSize: 10, color: S.textMuted }}>
-													{x.l}
-												</div>
-												<div
-													style={{ fontSize: 16, fontWeight: 700, color: x.c }}
-												>
-													{x.v}
-												</div>
+												<div style={{ fontSize: 10, color: S.textMuted }}>{x.l}</div>
+												<div style={{ fontSize: 16, fontWeight: 700, color: x.c }}>{x.v}</div>
 											</div>
 										))}
 									</div>
 								</div>
 							)}
 						</div>
-					</>
+</>
 				)}
 			</div>
 			<div

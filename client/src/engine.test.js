@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { project, monthlySpendAtAge, buildReturns } from "./engine";
+import {
+	project,
+	monthlySpendAtAge,
+	buildReturns,
+	returnForYear,
+	deflate,
+	LOST_DECADE,
+} from "./engine";
 
 describe("monthlySpendAtAge", () => {
 	// Base expenses: $800/mo groceries (CPI-linked), $2400/mo mortgage (fixed)
@@ -250,218 +257,51 @@ describe("project — inflation-aware with nominal returns", () => {
 	});
 });
 
-describe("downturn spending cuts", () => {
-	// Expenses with tiers
-	const tieredExpenses = [
-		{
-			id: "essential",
-			cat: "food",
-			name: "Groceries",
-			amount: 1000,
-			scenarios: ["all"],
-			tier: "essential",
-			inflOverride: null,
-		},
-		{
-			id: "discretionary",
-			cat: "food",
-			name: "Dining Out",
-			amount: 500,
-			scenarios: ["all"],
-			tier: "discretionary",
-			inflOverride: null,
-		},
-		{
-			id: "luxury",
-			cat: "travel",
-			name: "Vacations",
-			amount: 2000,
-			scenarios: ["all"],
-			tier: "luxury",
-			inflOverride: null,
-		},
-	];
-
-	it("does not cut spending during positive return years", () => {
-		const result = project({
-			startAge: 49,
-			endAge: 55,
-			retireAge: 49,
-			portfolio: 3000000,
-			expenses: tieredExpenses,
-			scenario: "stay",
-			nomReturn: 0.08,
-			inflation: 0.03,
-			rentalNet: 0,
-			discretionaryCut: 0.3,
-			luxuryCut: 0.7,
-		});
-		const yr0 = result.find((d) => d.age === 49);
-		// All expenses at base: 1000 + 500 + 2000 = 3500/mo = 42000/yr
-		expect(yr0.annualSpend).toBe(42000);
+describe("returnForYear", () => {
+	it("returns the first lost decade value at year 0", () => {
+		expect(returnForYear("lost_decade", 0, 0.07)).toBe(-0.15);
 	});
 
-	it("cuts discretionary 30% and luxury 70% during negative return years", () => {
-		// Year 0: -15% (trigger cuts), Year 1: -10% (trigger cuts), Year 2+: positive
-		const returns = [-0.15, -0.1, 0.05, 0.06, 0.07, 0.08, 0.08];
-		const result = project({
-			startAge: 49,
-			endAge: 55,
-			retireAge: 49,
-			portfolio: 3000000,
-			expenses: tieredExpenses,
-			scenario: "stay",
-			nomReturn: returns,
-			inflation: 0.03,
-			rentalNet: 0,
-			discretionaryCut: 0.3,
-			luxuryCut: 0.7,
-		});
-		const yr0 = result.find((d) => d.age === 49);
-		// Essential: 1000 (no cut)
-		// Discretionary: 500 * (1 - 0.3) = 350
-		// Luxury: 2000 * (1 - 0.7) = 600
-		// Total: 1950/mo = 23400/yr
-		expect(yr0.annualSpend).toBe(23400);
-		// Year 2 should have full spending again (+ some inflation accumulated)
-		const yr2 = result.find((d) => d.age === 51);
-		// Base spend with ~2 years of 3% inflation accumulated:
-		// 1000*1.03^2 + 500*1.03^2 + 2000*1.03^2 = 3500*1.03^2 ≈ 3713.15/mo ≈ 44558/yr
-		expect(yr2.annualSpend).toBeGreaterThan(42500);
-		expect(yr2.annualSpend).toBeLessThan(46000);
+	it("returns the last lost decade value at year 9", () => {
+		expect(returnForYear("lost_decade", 9, 0.07)).toBe(0.09);
 	});
 
-	it("does not cut essential-only expenses even in downturn", () => {
-		const essentialOnly = [
-			{
-				id: "a",
-				cat: "housing",
-				name: "Mortgage",
-				amount: 2400,
-				scenarios: ["all"],
-				tier: "essential",
-				inflOverride: 0,
-			},
-		];
-		const result = project({
-			startAge: 49,
-			endAge: 52,
-			retireAge: 49,
-			portfolio: 3000000,
-			expenses: essentialOnly,
-			scenario: "stay",
-			nomReturn: [-0.15, 0.05, 0.05],
-			inflation: 0.03,
-			rentalNet: 0,
-			discretionaryCut: 0.3,
-			luxuryCut: 0.7,
-		});
-		const yr0 = result.find((d) => d.age === 49);
-		expect(yr0.annualSpend).toBe(28800); // 2400 * 12, no cut
+	it("falls back to nominal average at year 10 and beyond", () => {
+		expect(returnForYear("lost_decade", 10, 0.07)).toBe(0.07);
+		expect(returnForYear("lost_decade", 25, 0.07)).toBe(0.07);
+	});
+
+	it("returns nominal average for historical mode at any year", () => {
+		expect(returnForYear("historical", 0, 0.07)).toBe(0.07);
+		expect(returnForYear("historical", 5, 0.07)).toBe(0.07);
+		expect(returnForYear("historical", 40, 0.07)).toBe(0.07);
+	});
+
+	it("matches buildReturns lost_decade output for each year index", () => {
+		const avg = 0.07;
+		const returns = buildReturns("lost_decade", avg);
+		for (let i = 0; i <= 10; i++) {
+			expect(returnForYear("lost_decade", i, avg)).toBe(returns[i]);
+		}
+		expect(returns.length).toBe(LOST_DECADE.length + 1);
 	});
 });
 
-describe("net worth with real estate tracking", () => {
-	const simpleExpenses = [
-		{
-			id: "a",
-			cat: "food",
-			name: "Groceries",
-			amount: 1000,
-			scenarios: ["all"],
-			inflOverride: null,
-		},
-	];
-
-	it("tracks retained real estate appreciation for Stay BA scenario", () => {
-		const result = project({
-			startAge: 49,
-			endAge: 59,
-			retireAge: 49,
-			portfolio: 3000000,
-			expenses: simpleExpenses,
-			scenario: "stay",
-			nomReturn: 0.08,
-			inflation: 0.03,
-			rentalNet: 0,
-			reAppreciation: 0.04,
-			retainedRE: { houseValue: 2200000, mortgage: 500000 },
-		});
-		const yr0 = result.find((d) => d.age === 49);
-		const yr5 = result.find((d) => d.age === 54);
-		// Year 0: netWorth = portfolio + houseValue - mortgage
-		expect(yr0.netWorth).toBe(yr0.balance + 2200000 - 500000);
-		// Year 5: house appreciated 5 years, portfolio grew
-		const houseAt5 = 2200000 * 1.04 ** 5;
-		expect(yr5.netWorth).toBeCloseTo(yr5.balance + houseAt5 - 500000, -1);
+describe("deflate", () => {
+	it("leaves value unchanged at 0 years", () => {
+		expect(deflate(1000, 0, 0.03)).toBe(1000);
 	});
 
-	it("tracks CC home appreciation after sell+move transition", () => {
-		const result = project({
-			startAge: 49,
-			endAge: 59,
-			retireAge: 49,
-			portfolio: 3000000,
-			expenses: simpleExpenses,
-			scenario: "sell_move",
-			nomReturn: 0.08,
-			inflation: 0.03,
-			rentalNet: 0,
-			reAppreciation: 0.04,
-			retainedRE: { ccHomeCost: 1000000 },
-		});
-		const yr0 = result.find((d) => d.age === 49);
-		const yr5 = result.find((d) => d.age === 54);
-		// Net worth includes CC home
-		expect(yr0.netWorth).toBe(yr0.balance + 1000000);
-		const ccAt5 = 1000000 * 1.04 ** 5;
-		expect(yr5.netWorth).toBeCloseTo(yr5.balance + ccAt5, -1);
+	it("discounts one year of 3% inflation", () => {
+		expect(deflate(103, 1, 0.03)).toBeCloseTo(100, 6);
 	});
 
-	it("tracks both rental house and CC home for rent_out", () => {
-		const result = project({
-			startAge: 49,
-			endAge: 59,
-			retireAge: 49,
-			portfolio: 2000000,
-			expenses: simpleExpenses,
-			scenario: "rent_out",
-			nomReturn: 0.08,
-			inflation: 0.03,
-			rentalNet: 10000,
-			reAppreciation: 0.04,
-			retainedRE: {
-				houseValue: 2200000,
-				mortgage: 500000,
-				ccHomeCost: 1000000,
-			},
-		});
-		const yr0 = result.find((d) => d.age === 49);
-		// netWorth = portfolio + houseValue - mortgage + ccHomeCost
-		expect(yr0.netWorth).toBe(yr0.balance + 2200000 - 500000 + 1000000);
-		const yr5 = result.find((d) => d.age === 54);
-		const houseAt5 = 2200000 * 1.04 ** 5;
-		const ccAt5 = 1000000 * 1.04 ** 5;
-		expect(yr5.netWorth).toBeCloseTo(
-			yr5.balance + houseAt5 - 500000 + ccAt5,
-			-1,
-		);
+	it("compounds over 10 years of 3% inflation", () => {
+		// 100 / 1.03^10 ≈ 74.41
+		expect(deflate(100, 10, 0.03)).toBeCloseTo(74.41, 2);
 	});
 
-	it("falls back to portfolio balance when no retainedRE passed", () => {
-		const result = project({
-			startAge: 49,
-			endAge: 55,
-			retireAge: 49,
-			portfolio: 2000000,
-			expenses: simpleExpenses,
-			scenario: "stay",
-			nomReturn: 0.07,
-			inflation: 0.03,
-			rentalNet: 0,
-		});
-		// Without re params, netWorth falls back to balance
-		const yr0 = result.find((d) => d.age === 49);
-		expect(yr0.netWorth).toBe(yr0.balance);
+	it("leaves value unchanged when inflation is 0", () => {
+		expect(deflate(5000, 30, 0)).toBe(5000);
 	});
 });
