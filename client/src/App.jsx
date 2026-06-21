@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "./theme/ThemeProvider.jsx";
 import { usePersistedState, useStoreStatus } from "./usePersistedState.jsx";
 import { usePlanner } from "./state/PlannerProvider.jsx";
@@ -54,6 +54,16 @@ export default function App() {
 	const [view, setView] = usePersistedState("view", "dashboard");
 	const [navOpen, setNavOpen] = useState(false);
 
+	// Close the mobile drawer automatically once we're back at desktop width,
+	// so a stale "open" state can't leave the sidebar stuck.
+	useEffect(() => {
+		if (!window.matchMedia) return;
+		const mq = window.matchMedia("(min-width: 861px)");
+		const onChange = (e) => e.matches && setNavOpen(false);
+		mq.addEventListener?.("change", onChange);
+		return () => mq.removeEventListener?.("change", onChange);
+	}, []);
+
 	if (!loaded) return <Loader label="Loading your plan…" />;
 	if (!ready) return <Loader label="Preparing scenarios…" />;
 
@@ -68,7 +78,7 @@ export default function App() {
 				onClose={() => setNavOpen(false)}
 			/>
 			<div className="main">
-				<TopBar view={view} onMenu={() => setNavOpen(true)} />
+				<TopBar view={view} onMenu={() => setNavOpen((o) => !o)} />
 				<div className="content">
 					<div className="content-inner">
 						<View />

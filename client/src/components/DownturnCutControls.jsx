@@ -58,6 +58,8 @@ export default function DownturnCutControls() {
 				min={0}
 				max={1}
 				step={0.05}
+				editScale={100}
+				editMax={1}
 				format={(v) => `${(v * 100).toFixed(0)}%`}
 			/>
 			<SliderRow
@@ -67,6 +69,8 @@ export default function DownturnCutControls() {
 				min={0}
 				max={1}
 				step={0.05}
+				editScale={100}
+				editMax={1}
 				format={(v) => `${(v * 100).toFixed(0)}%`}
 			/>
 

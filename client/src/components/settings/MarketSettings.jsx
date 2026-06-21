@@ -56,8 +56,8 @@ export default function MarketSettings() {
 			</div>
 
 			<div className="col-2">
-				<SliderRow label="Nominal return" value={nomReturn} onChange={setNomReturn} min={0.04} max={0.12} step={0.005} format={(v) => `${(v * 100).toFixed(1)}%`} />
-				<SliderRow label="Inflation" value={inflation} onChange={setInflation} min={0.01} max={0.06} step={0.005} format={(v) => `${(v * 100).toFixed(1)}%`} />
+				<SliderRow label="Nominal return" value={nomReturn} onChange={setNomReturn} min={0} max={0.15} step={0.0025} editScale={100} editMax={0.5} format={(v) => `${(v * 100).toFixed(2)}%`} />
+				<SliderRow label="Inflation" value={inflation} onChange={setInflation} min={0} max={0.1} step={0.0025} editScale={100} editMax={0.3} format={(v) => `${(v * 100).toFixed(2)}%`} />
 			</div>
 
 			<div style={{ display: "flex", gap: 24, padding: "12px 14px", background: S.bg, borderRadius: 12, marginTop: 6, flexWrap: "wrap" }}>
