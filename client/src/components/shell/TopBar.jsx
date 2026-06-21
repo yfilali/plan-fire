@@ -1,0 +1,51 @@
+import { useTheme } from "../../theme/ThemeProvider.jsx";
+import { usePlanner } from "../../state/PlannerProvider.jsx";
+import { statusTone } from "../../lib/status.js";
+import { Badge, IconButton } from "../ui.jsx";
+import { NAV } from "./Sidebar.jsx";
+import ScenarioSwitcher from "./ScenarioSwitcher.jsx";
+import ThemeToggle from "./ThemeToggle.jsx";
+
+export default function TopBar({ view, onMenu }) {
+	const S = useTheme();
+	const { effWR, runsOut } = usePlanner();
+	const tone = statusTone(S, effWR);
+	const title = NAV.find((n) => n.id === view)?.label || "";
+
+	return (
+		<header className="topbar">
+			<IconButton className="menu-btn" title="Menu" onClick={onMenu}>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+					<path d="M3 6h18M3 12h18M3 18h18" />
+				</svg>
+			</IconButton>
+
+			<div
+				className="hide-sm"
+				style={{ fontSize: 15, fontWeight: 700, color: S.text }}
+			>
+				{title}
+			</div>
+
+			<div style={{ flex: 1 }} />
+
+			<Badge color={tone.color}>
+				<span
+					style={{
+						width: 7,
+						height: 7,
+						borderRadius: 4,
+						background: tone.color,
+					}}
+				/>
+				<span className="hide-sm">
+					{runsOut ? `Depletes @ ${runsOut.age}` : "Money lasts"} ·{" "}
+				</span>
+				{effWR.toFixed(1)}% WR
+			</Badge>
+
+			<ScenarioSwitcher />
+			<ThemeToggle />
+		</header>
+	);
+}

@@ -1,0 +1,139 @@
+import { useTheme } from "../../theme/ThemeProvider.jsx";
+import { useStoreStatus } from "../../usePersistedState.jsx";
+import { usePlanner } from "../../state/PlannerProvider.jsx";
+import { statusTone } from "../../lib/status.js";
+import Brand from "./Brand.jsx";
+
+const icon = (d) => (
+	<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+		{d}
+	</svg>
+);
+
+export const NAV = [
+	{
+		id: "dashboard",
+		label: "Dashboard",
+		icon: icon(<><path d="M3 13h8V3H3zM13 21h8v-8h-8zM13 3v6h8V3zM3 21h8v-6H3z" /></>),
+	},
+	{
+		id: "expenses",
+		label: "Expenses",
+		icon: icon(<><path d="M3 6h18M3 12h18M3 18h12" /></>),
+	},
+	{
+		id: "plan",
+		label: "Housing Plan",
+		icon: icon(<><path d="M3 11l9-8 9 8M5 10v10h14V10" /></>),
+	},
+	{
+		id: "settings",
+		label: "Assumptions",
+		icon: icon(<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 2.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 7 2.6h.1A1.6 1.6 0 0 0 8 1.1V1a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 14.6 2.6a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V7a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z" /></>),
+	},
+];
+
+export default function Sidebar({ view, setView, open, onClose }) {
+	const S = useTheme();
+	const { serverOk } = useStoreStatus();
+	const { effWR } = usePlanner();
+	const tone = statusTone(S, effWR);
+
+	return (
+		<>
+			<div
+				className={`sidebar-scrim ${open ? "open" : ""}`}
+				onClick={onClose}
+			/>
+			<aside className={`sidebar ${open ? "open" : ""}`}>
+				<div style={{ padding: "18px 16px 14px" }}>
+					<Brand />
+				</div>
+
+				<nav style={{ padding: "4px 10px", display: "grid", gap: 3 }}>
+					{NAV.map((n) => (
+						<button
+							key={n.id}
+							className={`nav-item ${view === n.id ? "active" : ""}`}
+							onClick={() => {
+								setView(n.id);
+								onClose?.();
+							}}
+						>
+							<span className="nav-ico">{n.icon}</span>
+							{n.label}
+						</button>
+					))}
+				</nav>
+
+				<div style={{ flex: 1 }} />
+
+				{/* Health summary */}
+				<div style={{ padding: "12px 16px" }}>
+					<div
+						style={{
+							borderRadius: 12,
+							border: `1px solid ${tone.color}40`,
+							background: tone.color + "12",
+							padding: "11px 13px",
+						}}
+					>
+						<div
+							style={{
+								fontSize: 10.5,
+								color: S.textMuted,
+								fontWeight: 600,
+								textTransform: "uppercase",
+								letterSpacing: 0.5,
+							}}
+						>
+							Plan health
+						</div>
+						<div
+							style={{
+								display: "flex",
+								alignItems: "baseline",
+								gap: 7,
+								marginTop: 3,
+							}}
+						>
+							<span style={{ fontSize: 15, fontWeight: 700, color: tone.color }}>
+								{tone.label}
+							</span>
+							<span
+								style={{
+									fontSize: 12,
+									color: S.textMuted,
+									fontFamily: S.mono,
+								}}
+							>
+								{effWR.toFixed(1)}% WR
+							</span>
+						</div>
+					</div>
+					<div
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: 7,
+							marginTop: 11,
+							fontSize: 11,
+							color: S.textDim,
+						}}
+					>
+						<span
+							style={{
+								width: 7,
+								height: 7,
+								borderRadius: 4,
+								background: serverOk ? S.accent : S.warning,
+								boxShadow: `0 0 6px ${serverOk ? S.accent : S.warning}`,
+							}}
+						/>
+						{serverOk ? "Synced to server" : "Offline — saved locally"}
+					</div>
+				</div>
+			</aside>
+		</>
+	);
+}

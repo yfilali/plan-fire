@@ -130,6 +130,20 @@ export function useStoreStatus() {
 }
 
 /**
+ * Raw access to the whole key-value store. Used for one-time data migration
+ * (e.g. folding legacy top-level keys into a scenario object).
+ */
+export function useStore() {
+  const ctx = useContext(StoreContext);
+  return {
+    store: ctx?.store ?? {},
+    setValue: ctx?.setValue ?? (() => {}),
+    loaded: ctx?.loaded ?? false,
+    serverOk: ctx?.serverOk ?? false,
+  };
+}
+
+/**
  * Export all data (triggers download from server).
  */
 export async function exportData() {

@@ -1,80 +1,58 @@
+import { useTheme } from "../theme/ThemeProvider.jsx";
+import { usePlanner } from "../state/PlannerProvider.jsx";
+import { Card, CardHeader, Segmented } from "./ui.jsx";
 import SliderRow from "./SliderRow.jsx";
 
-// Spending-cut controls for market downturns.
-// Pure presentational — all state is owned by the parent and passed in.
-const TIER_LABELS = {
-	essential: { icon: "🛡️", color: "accent", note: "Never cut" },
-	discretionary: { icon: "⚠️", color: "warning", fmt: (v) => `${(v * 100).toFixed(0)}% cut` },
-	luxury: { icon: "💎", color: "danger", fmt: (v) => `${(v * 100).toFixed(0)}% cut` },
-};
+const TIERS = [
+	{ key: "essential", icon: "🛡️", label: "Essential", tone: "accent", note: "Never cut" },
+	{ key: "discretionary", icon: "⚠️", label: "Discretionary", tone: "warning" },
+	{ key: "luxury", icon: "💎", label: "Luxury", tone: "danger" },
+];
 
-export default function DownturnCutControls({
-	discretionaryCut,
-	setDiscretionaryCut,
-	luxuryCut,
-	setLuxuryCut,
-	cutMode,
-	setCutMode,
-	S,
-	btnBase,
-}) {
-	const modeBtn = (val, label, activeColor) => ({
-		...btnBase,
-		padding: "5px 12px",
-		borderRadius: 20,
-		border: `1.5px solid ${cutMode === val ? activeColor : S.border}`,
-		background: cutMode === val ? activeColor + "18" : "transparent",
-		color: cutMode === val ? activeColor : S.textMuted,
-		fontSize: 11,
-		fontWeight: 500,
-	});
+// Self-contained downturn spending controls, wired to the planner store.
+export default function DownturnCutControls() {
+	const S = useTheme();
+	const {
+		discretionaryCut,
+		setDiscretionaryCut,
+		luxuryCut,
+		setLuxuryCut,
+		cutMode,
+		setCutMode,
+	} = usePlanner();
 
 	return (
-		<div
-			style={{
-				background: S.card,
-				borderRadius: 12,
-				border: `1px solid ${S.border}`,
-				padding: 18,
-				marginBottom: 16,
-				marginTop: 16,
-			}}
-		>
-			<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-				📉 Downturn Spending Controls
-			</div>
-			<div style={{ fontSize: 11, color: S.textMuted, marginBottom: 14 }}>
-				When the market crashes, you cut spending — no brainer.
-			</div>
-
-			{/* Cut mode toggle */}
+		<Card>
+			<CardHeader
+				icon="📉"
+				title="Downturn spending controls"
+				subtitle="When markets crash you tighten the belt. Tier each expense, then model how deep the cuts go."
+			/>
 			<div
 				style={{
 					display: "flex",
 					alignItems: "center",
 					gap: 10,
-					marginBottom: 14,
+					marginBottom: 16,
+					flexWrap: "wrap",
 				}}
 			>
-				<span style={{ fontSize: 11, color: S.textMuted, fontWeight: 600 }}>
-					Apply cuts:
+				<span style={{ fontSize: 12, color: S.textMuted, fontWeight: 550 }}>
+					Apply cuts
 				</span>
-				<button
-					onClick={() => setCutMode("down_recovery")}
-					style={modeBtn("down_recovery", "During downturn + recovery", S.blue)}
-				>
-					During downturn + recovery
-				</button>
-				<button
-					onClick={() => setCutMode("all")}
-					style={modeBtn("all", "All years", S.accent)}
-				>
-					All years
-				</button>
+				<Segmented
+					size="sm"
+					value={cutMode}
+					onChange={setCutMode}
+					options={[
+						{ value: "down_recovery", label: "Downturn + recovery" },
+						{ value: "all", label: "All years" },
+					]}
+				/>
 			</div>
 
 			<SliderRow
-				label="Discretionary Cut"
+				label="Discretionary cut"
 				value={discretionaryCut}
 				onChange={setDiscretionaryCut}
 				min={0}
@@ -83,7 +61,7 @@ export default function DownturnCutControls({
 				format={(v) => `${(v * 100).toFixed(0)}%`}
 			/>
 			<SliderRow
-				label="Luxury Cut"
+				label="Luxury cut"
 				value={luxuryCut}
 				onChange={setLuxuryCut}
 				min={0}
@@ -94,27 +72,39 @@ export default function DownturnCutControls({
 
 			<div
 				style={{
-					display: "flex",
+					display: "grid",
+					gridTemplateColumns: "repeat(3, 1fr)",
 					gap: 8,
-					marginTop: 10,
-					padding: 10,
-					background: S.bg,
-					borderRadius: 8,
+					marginTop: 12,
 				}}
 			>
-				{(["essential", "discretionary", "luxury"]).map((tier) => {
-					const t = TIER_LABELS[tier];
-					const val = tier === "essential" ? null : tier === "discretionary" ? discretionaryCut : luxuryCut;
+				{TIERS.map((t) => {
+					const v =
+						t.key === "discretionary"
+							? discretionaryCut
+							: t.key === "luxury"
+								? luxuryCut
+								: null;
 					return (
-						<div key={tier} style={{ flex: 1 }}>
-							<div style={{ fontSize: 10, color: S.textDim }}>{t.icon} {tier[0].toUpperCase()}{tier.slice(1)}</div>
-							<div style={{ fontSize: 12, fontWeight: 600, color: S[t.color] }}>
-								{t.note ?? t.fmt(val)}
+						<div
+							key={t.key}
+							style={{
+								padding: "10px 12px",
+								background: S.bg,
+								borderRadius: 10,
+								border: `1px solid ${S.border}`,
+							}}
+						>
+							<div style={{ fontSize: 11, color: S.textMuted }}>
+								{t.icon} {t.label}
+							</div>
+							<div style={{ fontSize: 14, fontWeight: 700, color: S[t.tone], marginTop: 2 }}>
+								{t.note ?? `${(v * 100).toFixed(0)}% cut`}
 							</div>
 						</div>
 					);
 				})}
 			</div>
-		</div>
+		</Card>
 	);
 }

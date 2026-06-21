@@ -1,18 +1,20 @@
-import { S } from "../lib/styles.js";
+import { useTheme } from "../theme/ThemeProvider.jsx";
 
-// Range slider with click-to-jump. Self-contained, theme via lib/styles.
+// Labeled range slider with click-to-jump. Theme-aware via useTheme.
 export default function SliderRow({ label, value, onChange, min, max, step, format }) {
+	const S = useTheme();
 	return (
-		<div style={{ marginBottom: 12 }}>
+		<div style={{ marginBottom: 14 }}>
 			<div
 				style={{
 					display: "flex",
 					justifyContent: "space-between",
-					marginBottom: 3,
+					alignItems: "baseline",
+					marginBottom: 6,
 				}}
 			>
-				<label style={{ fontSize: 12, color: S.textMuted }}>{label}</label>
-				<span style={{ fontSize: 13, fontWeight: 600, fontFamily: S.mono }}>
+				<label style={{ fontSize: 12.5, color: S.textMuted }}>{label}</label>
+				<span style={{ fontSize: 13, fontWeight: 650, fontFamily: S.mono, color: S.text }}>
 					{format(value)}
 				</span>
 			</div>
@@ -26,9 +28,7 @@ export default function SliderRow({ label, value, onChange, min, max, step, form
 					const rect = e.currentTarget.getBoundingClientRect();
 					const pct = (e.clientX - rect.left) / rect.width;
 					const newValue = Math.round((min + pct * (max - min)) / step) * step;
-					onChange(
-						Math.max(min, Math.min(max, parseFloat(newValue.toFixed(4)))),
-					);
+					onChange(Math.max(min, Math.min(max, parseFloat(newValue.toFixed(4)))));
 				}}
 				onInput={(e) => onChange(Number(e.target.value))}
 				onChange={(e) => onChange(Number(e.target.value))}

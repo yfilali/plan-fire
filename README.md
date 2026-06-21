@@ -21,14 +21,37 @@ Personal retirement planning dashboard with server-side persistence.
 
 ## Features
 
-- Expense tracker with custom categories (add/remove/reorder)
+- **Multi-scenario planning** — create, duplicate, rename and switch between named plans; each is an independent snapshot of every input
+- **Light / dark / system theming** — follows the OS by default, with a manual toggle; persisted across sessions
+- **Fully responsive** — sidebar navigation collapses to a drawer on mobile; grids and charts reflow
+- Expense tracker with custom categories, per-expense scenario tags, age ranges, inflation overrides, and spend tiers
 - Housing scenario modeling (stay, sell & move, rent out)
 - Market simulation (historical avg vs "lost decade" stress test)
+- Downturn spending-cut modeling by expense tier
 - Landlord P&L calculator
 - Portfolio projection through age 95 with Social Security
 - Server-synced data — access from any device on your network
 - Export/Import as JSON for backups
-- Green/amber connection indicator in header
+
+## Client Architecture
+
+The React app is organized for maintainability — no monolithic files:
+
+```
+src/
+  theme/         ThemeProvider (palettes → CSS vars) + theme.css
+  state/         PlannerProvider — scenario-backed inputs + projection math
+  lib/           styles, status, scenario metadata helpers
+  components/
+    ui.jsx       design-system primitives (Card, Button, Chip, Modal, …)
+    shell/       Sidebar, TopBar, ScenarioSwitcher, ThemeToggle, Brand
+    expenses/    AddExpenseForm, ExpenseRow, CategoryManager
+    settings/    Profile / Market / Property / Data sections
+  views/         DashboardView, ExpensesView, PlanView, SettingsView
+  App.jsx        thin shell: navigation + view routing
+```
+
+State flows one way: `StateProvider` (persistence) → `ThemeProvider` + `PlannerProvider` → views via `usePlanner()` / `useTheme()`. The projection engine (`engine.js`) stays pure and unit-tested.
 
 ## Quick Start (Docker)
 

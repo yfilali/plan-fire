@@ -1,13 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Retirement Planner</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
-  </head>
-  <body style="margin:0; background:#0f1117;">
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Fathom · Retirement Planner</title>
+		<link
+			rel="icon"
+			type="image/svg+xml"
+			href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%2322c55e'/><path d='M4 19V11M9 19V5M14 19v-6M19 19V8' stroke='white' stroke-width='2.4' stroke-linecap='round'/></svg>"
+		/>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
+			rel="stylesheet"
+		/>
+		<script>
+			// Apply theme before first paint to avoid a flash of the wrong colors.
+			(function () {
+				try {
+					var t = JSON.parse(localStorage.getItem("rp_theme") || '"system"');
+					var dark =
+						t === "dark" ||
+						(t !== "light" &&
+							window.matchMedia("(prefers-color-scheme: dark)").matches);
+					var root = document.documentElement;
+					root.style.colorScheme = dark ? "dark" : "light";
+					root.setAttribute("data-theme", dark ? "dark" : "light");
+					root.style.setProperty("--bg", dark ? "#0e1015" : "#f5f6f8");
+					root.style.setProperty("--text", dark ? "#e7e8ee" : "#1a1d27");
+					root.style.background = dark ? "#0e1015" : "#f5f6f8";
+				} catch (e) {}
+			})();
+		</script>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="/src/main.jsx"></script>
+	</body>
 </html>
