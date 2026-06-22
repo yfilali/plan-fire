@@ -117,7 +117,7 @@ app.get('*', (req, res) => {
 // ── Start ───────────────────────────────────────────────────────────
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Retirement Planner running on http://0.0.0.0:${PORT}`);
+  console.log(`🔥 Firly running on http://0.0.0.0:${PORT}`);
   console.log(`📦 Data file: ${DATA_PATH}`);
 });
 

@@ -1,6 +1,6 @@
-# Retirement Planner
+# Firly
 
-Personal retirement planning dashboard with server-side persistence.
+Firly is a FIRE-native retirement planning dashboard — model your runway, compare housing plans, and stress-test against down markets, with server-side persistence.
 
 ## Architecture
 
