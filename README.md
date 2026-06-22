@@ -1,5 +1,7 @@
 # Firly
 
+> **Plan your escape.** Model your runway to financial independence.
+
 Firly is a FIRE-native retirement planning dashboard — model your runway, compare housing plans, and stress-test against down markets, with server-side persistence.
 
 ## Architecture

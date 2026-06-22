@@ -1,5 +1,10 @@
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 
+// Brand mark gradient. Swap to the "Verdant" green to match the UI accent:
+//   FLAME = "linear-gradient(135deg, #22c55e, #0d9488)"; GLOW = "rgba(34,197,94,0.4)"
+const FLAME = "linear-gradient(135deg, #f59e0b, #f43f5e)";
+const GLOW = "rgba(245,158,11,0.45)";
+
 // Firly wordmark — a warm flame (FIRE) in a rounded gradient tile.
 export default function Brand() {
 	const S = useTheme();
@@ -10,12 +15,12 @@ export default function Brand() {
 					width: 32,
 					height: 32,
 					borderRadius: 9,
-					background: "linear-gradient(135deg, #f59e0b, #f43f5e)",
+					background: FLAME,
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "center",
 					flexShrink: 0,
-					boxShadow: "0 2px 10px rgba(245,158,11,0.45)",
+					boxShadow: `0 2px 10px ${GLOW}`,
 				}}
 			>
 				<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
