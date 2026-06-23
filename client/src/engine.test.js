@@ -17,7 +17,7 @@ describe("monthlySpendAtAge", () => {
 			cat: "food",
 			name: "Groceries",
 			amount: 800,
-			scenarios: ["all"],
+			plans: ["all"],
 			inflOverride: null,
 		},
 		{
@@ -25,7 +25,7 @@ describe("monthlySpendAtAge", () => {
 			cat: "housing",
 			name: "Mortgage",
 			amount: 2400,
-			scenarios: ["stay"],
+			plans: ["stay"],
 			inflOverride: 0,
 		},
 	];
@@ -54,7 +54,7 @@ describe("monthlySpendAtAge", () => {
 				cat: "health",
 				name: "ACA",
 				amount: 1500,
-				scenarios: ["all"],
+				plans: ["all"],
 				inflOverride: 0.065,
 			}, // healthcare premium inflation
 			{
@@ -62,7 +62,7 @@ describe("monthlySpendAtAge", () => {
 				cat: "food",
 				name: "Groceries",
 				amount: 800,
-				scenarios: ["all"],
+				plans: ["all"],
 				inflOverride: null,
 			},
 		];
@@ -71,7 +71,7 @@ describe("monthlySpendAtAge", () => {
 		expect(result).toBeCloseTo(3890.84, 1);
 	});
 
-	it("excludes expenses that do not match scenario", () => {
+	it("excludes expenses that do not match plan", () => {
 		const result = monthlySpendAtAge(baseExpenses, 49, "sell_move"); // mortgage is stay-only
 		expect(result).toBe(800);
 	});
@@ -84,7 +84,7 @@ describe("project — inflation-aware with nominal returns", () => {
 			cat: "food",
 			name: "Groceries",
 			amount: 800,
-			scenarios: ["all"],
+			plans: ["all"],
 			inflOverride: null,
 		},
 		{
@@ -92,7 +92,7 @@ describe("project — inflation-aware with nominal returns", () => {
 			cat: "housing",
 			name: "Mortgage BA",
 			amount: 2400,
-			scenarios: ["stay"],
+			plans: ["stay"],
 			inflOverride: 0,
 		},
 		{
@@ -100,7 +100,7 @@ describe("project — inflation-aware with nominal returns", () => {
 			cat: "health",
 			name: "ACA",
 			amount: 1500,
-			scenarios: ["all"],
+			plans: ["all"],
 			inflOverride: 0.065,
 		},
 	];
@@ -115,7 +115,7 @@ describe("project — inflation-aware with nominal returns", () => {
 			ssAnnual: 0,
 			portfolio: 3000000,
 			expenses: baseExpenses,
-			scenario: "stay",
+			planId: "stay",
 			nomReturn: 0.07,
 			inflation: 0.03,
 			rentalNet: 0,
@@ -137,7 +137,7 @@ describe("project — inflation-aware with nominal returns", () => {
 			ssAnnual: 0,
 			portfolio: 3000000,
 			expenses: baseExpenses,
-			scenario: "stay",
+			planId: "stay",
 			nomReturn: 0.07,
 			inflation: 0.03,
 			rentalNet: 0,
@@ -165,7 +165,7 @@ describe("project — inflation-aware with nominal returns", () => {
 			ssAnnual: 0,
 			portfolio: 3000000,
 			expenses: baseExpenses,
-			scenario: "stay",
+			planId: "stay",
 			nomReturn: buildReturns("lost_decade", 0.07),
 			inflation: 0.03,
 			rentalNet: 0,
@@ -177,14 +177,14 @@ describe("project — inflation-aware with nominal returns", () => {
 	});
 
 	it("retirement age stops deductions from portfolio when income covers expenses", () => {
-		// Extreme scenario: low portfolio + high expenses so depletion is visible
+		// Extreme case: low portfolio + high expenses so depletion is visible
 		const expenses = [
 			{
 				id: "a",
 				cat: "food",
 				name: "Groceries",
 				amount: 8000,
-				scenarios: ["all"],
+				plans: ["all"],
 				inflOverride: null,
 			},
 			{
@@ -192,7 +192,7 @@ describe("project — inflation-aware with nominal returns", () => {
 				cat: "health",
 				name: "ACA",
 				amount: 5000,
-				scenarios: ["all"],
+				plans: ["all"],
 				inflOverride: 0.065,
 			},
 		];
@@ -204,7 +204,7 @@ describe("project — inflation-aware with nominal returns", () => {
 			ssAnnual: 0,
 			portfolio: 1500000,
 			expenses,
-			scenario: "stay",
+			planId: "stay",
 			nomReturn: 0.07,
 			inflation: 0.03,
 			rentalNet: 0,
@@ -225,7 +225,7 @@ describe("project — inflation-aware with nominal returns", () => {
 				cat: "food",
 				name: "Groceries",
 				amount: 8000,
-				scenarios: ["all"],
+				plans: ["all"],
 				inflOverride: null,
 			},
 		];
@@ -235,7 +235,7 @@ describe("project — inflation-aware with nominal returns", () => {
 			retireAge: 49,
 			portfolio: 1000000,
 			expenses,
-			scenario: "rent_out",
+			planId: "rent_out",
 			nomReturn: 0.1,
 			inflation: 0.03,
 			rentalNet: -5000, // net loss of $5K/yr
@@ -246,7 +246,7 @@ describe("project — inflation-aware with nominal returns", () => {
 			retireAge: 49,
 			portfolio: 1000000,
 			expenses,
-			scenario: "rent_out",
+			planId: "rent_out",
 			nomReturn: 0.1,
 			inflation: 0.03,
 			rentalNet: 0, // zero rental flow
@@ -315,7 +315,7 @@ describe("downturn spending cuts", () => {
 			cat: "food",
 			name: "Groceries",
 			amount: 1000,
-			scenarios: ["all"],
+			plans: ["all"],
 			tier: "essential",
 			inflOverride: null,
 		},
@@ -324,7 +324,7 @@ describe("downturn spending cuts", () => {
 			cat: "food",
 			name: "Dining Out",
 			amount: 500,
-			scenarios: ["all"],
+			plans: ["all"],
 			tier: "discretionary",
 			inflOverride: null,
 		},
@@ -333,7 +333,7 @@ describe("downturn spending cuts", () => {
 			cat: "travel",
 			name: "Vacations",
 			amount: 2000,
-			scenarios: ["all"],
+			plans: ["all"],
 			tier: "luxury",
 			inflOverride: null,
 		},
@@ -346,7 +346,7 @@ describe("downturn spending cuts", () => {
 			retireAge: 49,
 			portfolio: 3000000,
 			expenses: tieredExpenses,
-			scenario: "stay",
+			planId: "stay",
 			nomReturn: 0.08,
 			inflation: 0.03,
 			rentalNet: 0,
@@ -367,7 +367,7 @@ describe("downturn spending cuts", () => {
 			retireAge: 49,
 			portfolio: 3000000,
 			expenses: tieredExpenses,
-			scenario: "stay",
+			planId: "stay",
 			nomReturn: returns,
 			inflation: 0.03,
 			rentalNet: 0,
@@ -395,7 +395,7 @@ describe("downturn spending cuts", () => {
 				cat: "housing",
 				name: "Mortgage",
 				amount: 2400,
-				scenarios: ["all"],
+				plans: ["all"],
 				tier: "essential",
 				inflOverride: 0,
 			},
@@ -406,7 +406,7 @@ describe("downturn spending cuts", () => {
 			retireAge: 49,
 			portfolio: 3000000,
 			expenses: essentialOnly,
-			scenario: "stay",
+			planId: "stay",
 			nomReturn: [-0.15, 0.05, 0.05],
 			inflation: 0.03,
 			rentalNet: 0,
@@ -425,19 +425,19 @@ describe("net worth with real estate tracking", () => {
 			cat: "food",
 			name: "Groceries",
 			amount: 1000,
-			scenarios: ["all"],
+			plans: ["all"],
 			inflOverride: null,
 		},
 	];
 
-	it("tracks retained real estate appreciation for Stay BA scenario", () => {
+	it("tracks retained real estate appreciation for Stay BA plan", () => {
 		const result = project({
 			startAge: 49,
 			endAge: 59,
 			retireAge: 49,
 			portfolio: 3000000,
 			expenses: simpleExpenses,
-			scenario: "stay",
+			planId: "stay",
 			nomReturn: 0.08,
 			inflation: 0.03,
 			rentalNet: 0,
@@ -460,7 +460,7 @@ describe("net worth with real estate tracking", () => {
 			retireAge: 49,
 			portfolio: 3000000,
 			expenses: simpleExpenses,
-			scenario: "sell_move",
+			planId: "sell_move",
 			nomReturn: 0.08,
 			inflation: 0.03,
 			rentalNet: 0,
@@ -475,14 +475,14 @@ describe("net worth with real estate tracking", () => {
 		expect(yr5.netWorth).toBeCloseTo(yr5.balance + ccAt5, -1);
 	});
 
-	it("tracks both rental house and CC home for rent_out", () => {
+	it("tracks both rental house and CC home for rent_out plan", () => {
 		const result = project({
 			startAge: 49,
 			endAge: 59,
 			retireAge: 49,
 			portfolio: 2000000,
 			expenses: simpleExpenses,
-			scenario: "rent_out",
+			planId: "rent_out",
 			nomReturn: 0.08,
 			inflation: 0.03,
 			rentalNet: 10000,
@@ -512,7 +512,7 @@ describe("net worth with real estate tracking", () => {
 			retireAge: 49,
 			portfolio: 2000000,
 			expenses: simpleExpenses,
-			scenario: "stay",
+			planId: "stay",
 			nomReturn: 0.07,
 			inflation: 0.03,
 			rentalNet: 0,

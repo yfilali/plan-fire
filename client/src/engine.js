@@ -40,15 +40,15 @@ export function shouldApplyCut(yearIdx, returnsArr, cutMode) {
 }
 
 /**
- * Calculate active monthly expenses for a given age + housing scenario.
- * Each expense can specify which scenarios it applies to, an age range,
+ * Calculate active monthly expenses for a given age + housing plan.
+ * Each expense can specify which plans it applies to, an age range,
  * and an optional inflation override (null = use global inflation, 0 = fixed).
  * Optionally apply spending cuts based on cutMode ('all' or 'down_recovery').
  */
 export function monthlySpendAtAge(
 	expenses,
 	age,
-	scenario,
+	planId,
 	startAge = null,
 	globalInflation = null,
 
@@ -59,14 +59,14 @@ export function monthlySpendAtAge(
 ) {
 	return expenses
 		.filter((e) => {
-			const scenarioMatch =
-				!e.scenarios ||
-				e.scenarios.includes("all") ||
-				e.scenarios.includes(scenario);
+			const planMatch =
+				!e.plans ||
+				e.plans.includes("all") ||
+				e.plans.includes(planId);
 			const ageMatch =
 				(e.ageMin == null || age >= e.ageMin) &&
 				(e.ageMax == null || age <= e.ageMax);
-			return scenarioMatch && ageMatch;
+			return planMatch && ageMatch;
 		})
 		.reduce((sum, e) => {
 			let amount;
@@ -105,7 +105,7 @@ export function project({
 	retireAge,
 	portfolio,
 	expenses,
-	scenario,
+	planId,
 	nomReturn,
 	inflation,
 	ssAge,
@@ -119,13 +119,15 @@ export function project({
 	reAppreciation = 0.04,
 	retainedRE = null,
 	// Plan id whose expenses apply before a relocation completes. Defaults to
-	// "stay" for backward compatibility; the app passes the user's baseline plan.
-	baselineScenario = "stay",
+	// "stay" for back-compat; the app passes the user's baseline plan id.
+	// Legacy string special-cases ("sell_move" / "stay" / "rent_out") and
+	// retainedRE tracking are kept for back-compat so existing RE tests pass.
+	baselinePlanId = "stay",
 }) {
 	const data = [];
 	let b = portfolio;
 
-	// Real estate tracking
+	// Real estate tracking (legacy/back-compat path; app does not pass retainedRE)
 	const hasRE = retainedRE != null;
 	let reHouse = hasRE ? retainedRE.houseValue || 0 : 0;
 	let reMortgage = hasRE ? retainedRE.mortgage || 0 : 0;
@@ -153,31 +155,31 @@ export function project({
 		if (transition && a === transition.moveAge) {
 			b += transition.netProceeds - transition.newHomeCost;
 			transitionHappened = true;
-			if (scenario === "sell_move") {
+			if (planId === "sell_move") {
 				reHouse = 0;
 				reMortgage = 0;
 				reCC = retainedRE?.ccHomeCost || 0;
 			}
 		}
 
-		const activeScenario =
-			transition && a < transition.moveAge ? baselineScenario : scenario;
+		const activePlanId =
+			transition && a < transition.moveAge ? baselinePlanId : planId;
 
 		// Dynamic spending with per-expense inflation + downturn tier cuts
 		let monthlySpend = 0;
 		expenses.forEach((e, i) => {
-			const scenarioMatch =
-				!e.scenarios ||
-				e.scenarios.includes("all") ||
-				e.scenarios.includes(activeScenario);
+			const planMatch =
+				!e.plans ||
+				e.plans.includes("all") ||
+				e.plans.includes(activePlanId);
 			const ageMatch =
 				(e.ageMin == null || a >= e.ageMin) &&
 				(e.ageMax == null || a <= e.ageMax);
-			if (scenarioMatch && ageMatch) {
+			if (planMatch && ageMatch) {
 				let amount = e.amount * inflAccum[i];
 				// Apply spending cuts — cutMode controls whether cuts apply.
 				// "all" mode applies cuts every year regardless of returns array.
-				// "down_recovery" requires a returns array to determine downtime/recovery.
+				// "down_recovery" requires a returns array to determine downturn/recovery.
 				if (cutMode === "all" || Array.isArray(nomReturn)) {
 					const yearIdx = yi;
 					if (
@@ -203,7 +205,7 @@ export function project({
 		const isRetired = a >= retireAge;
 		const ssIncome = a >= ssAge ? ssAnnual : 0;
 		// Rental income applies once you're living the active plan (post-move).
-		const rental = activeScenario === scenario ? rentalNet : 0;
+		const rental = activePlanId === planId ? rentalNet : 0;
 		const income = (isRetired ? 0 : workIncome) + ssIncome + rental;
 
 		// Net withdrawal
@@ -229,14 +231,14 @@ export function project({
 			netWithdrawal: Math.round(
 				isRetired ? Math.max(0, annualSpend - income) : 0,
 			),
-			activeScenario,
+			activePlanId,
 			netWorth,
 		});
 
-		// Appreciate retained RE for next year
+		// Appreciate retained RE for next year (legacy/back-compat)
 		if (hasRE) {
 			const houseRetained =
-				scenario === "stay" || scenario === "rent_out" || !transitionHappened;
+				planId === "stay" || planId === "rent_out" || !transitionHappened;
 			if (houseRetained && reHouse > 0) reHouse *= 1 + reAppreciation;
 			if (reCC > 0) reCC *= 1 + reAppreciation;
 		}
@@ -303,13 +305,6 @@ export const DEFAULT_CATEGORIES = [
 	{ id: "other", label: "Other", icon: "📦", color: "#6b7280" },
 ];
 
-export const SCENARIO_LABELS = {
-	all: "All Plans",
-	stay: "Stay BA Only",
-	sell_move: "Sell+CC Only",
-	rent_out: "Rent+CC Only",
-};
-
 export const DEFAULT_EXPENSES = [
 	// Bay Area housing — only when staying
 	{
@@ -317,7 +312,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "housing_ba",
 		name: "Mortgage",
 		amount: 2400,
-		scenarios: ["stay"],
+		plans: ["stay"],
 		inflOverride: 0,
 		tier: "essential",
 	},
@@ -326,7 +321,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "housing_ba",
 		name: "Property Tax",
 		amount: 1200,
-		scenarios: ["stay"],
+		plans: ["stay"],
 		inflOverride: 0.02,
 		tier: "essential",
 	},
@@ -335,7 +330,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "housing_ba",
 		name: "Home Insurance",
 		amount: 250,
-		scenarios: ["stay"],
+		plans: ["stay"],
 		tier: "essential",
 	},
 	{
@@ -343,7 +338,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "housing_ba",
 		name: "Maintenance",
 		amount: 400,
-		scenarios: ["stay"],
+		plans: ["stay"],
 		tier: "essential",
 	},
 
@@ -353,7 +348,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "housing_cc",
 		name: "CC Property Tax",
 		amount: 850,
-		scenarios: ["sell_move", "rent_out"],
+		plans: ["sell_move", "rent_out"],
 		inflOverride: 0.02,
 		tier: "essential",
 	},
@@ -362,7 +357,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "housing_cc",
 		name: "CC Home Insurance",
 		amount: 200,
-		scenarios: ["sell_move", "rent_out"],
+		plans: ["sell_move", "rent_out"],
 		tier: "essential",
 	},
 	{
@@ -370,7 +365,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "housing_cc",
 		name: "CC Maintenance",
 		amount: 300,
-		scenarios: ["sell_move", "rent_out"],
+		plans: ["sell_move", "rent_out"],
 		tier: "essential",
 	},
 
@@ -380,7 +375,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "health",
 		name: "ACA Health Insurance (pre-Medicare)",
 		amount: 1500,
-		scenarios: ["all"],
+		plans: ["all"],
 		ageMax: 64,
 		inflOverride: 0.065,
 		tier: "essential",
@@ -390,7 +385,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "health",
 		name: "Medicare + Medigap",
 		amount: 400,
-		scenarios: ["all"],
+		plans: ["all"],
 		ageMin: 65,
 		tier: "essential",
 	},
@@ -399,17 +394,17 @@ export const DEFAULT_EXPENSES = [
 		cat: "health",
 		name: "Medical/Dental OOP",
 		amount: 200,
-		scenarios: ["all"],
+		plans: ["all"],
 		tier: "essential",
 	},
 
-	// Core living — all scenarios, all ages
+	// Core living — all plans, all ages
 	{
 		id: uid(),
 		cat: "transport",
 		name: "Car Insurance & Gas",
 		amount: 400,
-		scenarios: ["all"],
+		plans: ["all"],
 		inflOverride: 0,
 		tier: "essential",
 	},
@@ -418,7 +413,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "food",
 		name: "Groceries",
 		amount: 800,
-		scenarios: ["all"],
+		plans: ["all"],
 		tier: "essential",
 	},
 	{
@@ -426,7 +421,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "food",
 		name: "Dining Out",
 		amount: 600,
-		scenarios: ["all"],
+		plans: ["all"],
 		tier: "discretionary",
 	},
 	{
@@ -434,7 +429,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "plane",
 		name: "Hangar",
 		amount: 800,
-		scenarios: ["all"],
+		plans: ["all"],
 		inflOverride: 0,
 		tier: "discretionary",
 	},
@@ -443,7 +438,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "plane",
 		name: "Fuel & Maintenance",
 		amount: 1000,
-		scenarios: ["all"],
+		plans: ["all"],
 		tier: "discretionary",
 	},
 	{
@@ -451,7 +446,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "plane",
 		name: "Plane Insurance",
 		amount: 400,
-		scenarios: ["all"],
+		plans: ["all"],
 		inflOverride: 0,
 		tier: "essential",
 	},
@@ -460,7 +455,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "insurance",
 		name: "Umbrella / Life",
 		amount: 200,
-		scenarios: ["all"],
+		plans: ["all"],
 		inflOverride: 0,
 		tier: "essential",
 	},
@@ -469,7 +464,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "utils",
 		name: "Electric, Water, Internet",
 		amount: 350,
-		scenarios: ["all"],
+		plans: ["all"],
 		tier: "essential",
 	},
 	{
@@ -477,7 +472,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "personal",
 		name: "Subscriptions & Shopping",
 		amount: 500,
-		scenarios: ["all"],
+		plans: ["all"],
 		tier: "discretionary",
 	},
 	{
@@ -485,7 +480,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "travel",
 		name: "Vacations / Trips",
 		amount: 1000,
-		scenarios: ["all"],
+		plans: ["all"],
 		tier: "luxury",
 	},
 	{
@@ -493,7 +488,7 @@ export const DEFAULT_EXPENSES = [
 		cat: "other",
 		name: "Misc / Buffer",
 		amount: 500,
-		scenarios: ["all"],
+		plans: ["all"],
 		tier: "discretionary",
 	},
 ];

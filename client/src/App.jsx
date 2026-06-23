@@ -65,7 +65,7 @@ export default function App() {
 	}, []);
 
 	if (!loaded) return <Loader label="Loading your plan…" />;
-	if (!ready) return <Loader label="Preparing scenarios…" />;
+	if (!ready) return <Loader label="Preparing plans…" />;
 
 	const View = VIEWS[view] || DashboardView;
 

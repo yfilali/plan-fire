@@ -1,7 +1,7 @@
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { btnBase } from "../../lib/styles.js";
 import { Badge } from "../ui.jsx";
-import { planColor } from "../../lib/scenarioMeta.js";
+import { planColor } from "../../lib/planMeta.js";
 
 export default function PlanCard({ plan, active, summary, onSelect, onEdit, onDelete, canDelete }) {
 	const S = useTheme();

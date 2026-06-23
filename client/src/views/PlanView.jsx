@@ -46,10 +46,10 @@ export default function PlanView() {
 	return (
 		<div className="fade-in">
 			<SectionTitle
-				sub="Define the strategies you want to compare. Select one to drive the dashboard; tag expenses to each on the Expenses tab."
+				sub="Each plan is a full alternative you can compare: its own housing configuration, profile inputs, and the expenses/assets tagged to it. Select one to drive the dashboard."
 				right={<Button variant="primary" onClick={() => { const id = addPlan(); setEditing(id); }}>＋ New plan</Button>}
 			>
-				Housing Plans
+				Plans
 			</SectionTitle>
 
 			<div className="col-3" style={{ marginBottom: 20 }}>
@@ -62,7 +62,7 @@ export default function PlanView() {
 						onSelect={() => setActivePlanId(plan.id)}
 						onEdit={() => setEditing(plan.id)}
 						onDelete={() => {
-							if (confirm(`Delete plan "${plan.name}"? Expenses tagged to it will revert to All plans.`)) removePlan(plan.id);
+							if (confirm(`Delete plan "${plan.name}"? Expenses and assets tagged to it will revert to All plans.`)) removePlan(plan.id);
 						}}
 						canDelete={plans.length > 1}
 					/>

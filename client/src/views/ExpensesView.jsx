@@ -95,10 +95,10 @@ export default function ExpensesView() {
 							</span>
 						</div>
 						{catExps.map((exp) => {
-							const scenarioActive =
-								!exp.scenarios ||
-								exp.scenarios.includes("all") ||
-								exp.scenarios.includes(activePlanId);
+							const planActive =
+								!exp.plans ||
+								exp.plans.includes("all") ||
+								exp.plans.includes(activePlanId);
 							const ageActive =
 								(exp.ageMin == null || age >= exp.ageMin) &&
 								(exp.ageMax == null || age <= exp.ageMax);
@@ -108,7 +108,7 @@ export default function ExpensesView() {
 									exp={exp}
 									categories={categories}
 									plans={plans}
-									active={scenarioActive && ageActive}
+									active={planActive && ageActive}
 									editing={editingId === exp.id}
 									onEdit={setEditingId}
 									onDone={() => setEditingId(null)}

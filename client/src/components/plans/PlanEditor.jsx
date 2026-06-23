@@ -3,7 +3,7 @@ import { usePlanner, PLAN_TONES, PLAN_ICONS } from "../../state/PlannerProvider.
 import { fmt } from "../../engine.js";
 import { btnBase } from "../../lib/styles.js";
 import { Modal, Field, TextInput, Segmented, Button } from "../ui.jsx";
-import { planColor } from "../../lib/scenarioMeta.js";
+import { planColor } from "../../lib/planMeta.js";
 
 const ACTIONS = [
 	{ value: "keep", label: "Keep" },
@@ -99,6 +99,9 @@ export default function PlanEditor({ planId, onClose }) {
 					<span style={{ fontSize: 12, color: S.textMuted }}>
 						Tag expenses to this plan from the Expenses tab to model plan-specific costs.
 					</span>
+				</div>
+				<div style={{ fontSize: 12, color: S.textDim }}>
+					Profile and market inputs for this plan are edited under <strong style={{ color: S.textMuted }}>Assumptions</strong> while it is the active plan.
 				</div>
 			</div>
 		</Modal>

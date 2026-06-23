@@ -3,7 +3,7 @@ import { usePlanner } from "../../state/PlannerProvider.jsx";
 import { statusTone } from "../../lib/status.js";
 import { Badge, IconButton } from "../ui.jsx";
 import { NAV } from "./Sidebar.jsx";
-import ScenarioSwitcher from "./ScenarioSwitcher.jsx";
+import PlanSwitcher from "./PlanSwitcher.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 
 export default function TopBar({ view, onMenu }) {
@@ -46,7 +46,7 @@ export default function TopBar({ view, onMenu }) {
 				{effWR.toFixed(1)}% WR
 			</Badge>
 
-			<ScenarioSwitcher />
+			<PlanSwitcher />
 			<ThemeToggle />
 		</header>
 	);

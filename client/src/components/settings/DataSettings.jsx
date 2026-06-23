@@ -27,7 +27,7 @@ export default function DataSettings() {
 	};
 
 	const handleReset = async () => {
-		if (!confirm("Reset ALL data and scenarios to defaults? This cannot be undone.")) return;
+		if (!confirm("Reset ALL data and plans to defaults? This cannot be undone.")) return;
 		await clearAllData();
 		window.location.reload();
 	};
@@ -57,12 +57,12 @@ export default function DataSettings() {
 			<CardHeader icon="⚙️" title="Appearance & data" subtitle="Theme preference and backup tools. Data is saved to your server and mirrored locally." />
 
 			{row("Theme", "Light, dark, or follow your system.", <ThemeToggle />)}
-			{row("Export backup", "Download every scenario as a JSON file.", <Button onClick={exportData}>⤓ Export</Button>)}
+			{row("Export backup", "Download every plan as a JSON file.", <Button onClick={exportData}>⤓ Export</Button>)}
 			{row("Import backup", "Replace current data from a JSON file.", <Button onClick={() => fileRef.current?.click()}>⤒ Import</Button>)}
 			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "13px 0", flexWrap: "wrap" }}>
 				<div>
 					<div style={{ fontSize: 13.5, fontWeight: 600, color: S.danger }}>Reset everything</div>
-					<div style={{ fontSize: 12, color: S.textMuted, marginTop: 2 }}>Wipe all scenarios and restore defaults.</div>
+					<div style={{ fontSize: 12, color: S.textMuted, marginTop: 2 }}>Wipe all plans and restore defaults.</div>
 				</div>
 				<Button variant="danger" onClick={handleReset}>Reset all data</Button>
 			</div>

@@ -7,7 +7,7 @@ import DataSettings from "../components/settings/DataSettings.jsx";
 export default function SettingsView() {
 	return (
 		<div className="fade-in" style={{ display: "grid", gap: 16 }}>
-			<SectionTitle sub="Everything that drives the projection. Changes apply to the active scenario.">
+			<SectionTitle sub="Everything that drives the projection. Changes apply to the active plan.">
 				Assumptions
 			</SectionTitle>
 			<ProfileSettings />

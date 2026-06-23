@@ -1,7 +1,7 @@
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { btnBase } from "../../lib/styles.js";
 import { Tag, Select, TextInput } from "../ui.jsx";
-import { planColor, tagColor, tagLabel } from "../../lib/scenarioMeta.js";
+import { planColor, tagColor, tagLabel } from "../../lib/planMeta.js";
 
 const TIER_META = {
 	essential: { tone: "accent", icon: "🛡️" },
@@ -13,9 +13,9 @@ export default function ExpenseRow({ exp, categories, plans, active, editing, on
 	const S = useTheme();
 	const tier = TIER_META[exp.tier || "essential"];
 
-	const toggleScenario = (s) => {
-		const curr = exp.scenarios || ["all"];
-		if (s === "all") return onUpdate(exp.id, "scenarios", ["all"]);
+	const togglePlan = (s) => {
+		const curr = exp.plans || ["all"];
+		if (s === "all") return onUpdate(exp.id, "plans", ["all"]);
 		const hasAll = curr.includes("all");
 		const hasS = curr.includes(s);
 		let next;
@@ -25,7 +25,7 @@ export default function ExpenseRow({ exp, categories, plans, active, editing, on
 		} else {
 			next = hasAll ? [s] : [...curr.filter((x) => x !== "all"), s];
 		}
-		onUpdate(exp.id, "scenarios", next);
+		onUpdate(exp.id, "plans", next);
 	};
 
 	const rowStyle = {
@@ -60,13 +60,13 @@ export default function ExpenseRow({ exp, categories, plans, active, editing, on
 				<TextInput placeholder="CPI" title="Inflation override (%)" type="number" step="0.5" value={exp.inflOverride != null ? +(exp.inflOverride * 100).toFixed(2) : ""} onChange={(e) => onUpdate(exp.id, "inflOverride", e.target.value === "" ? undefined : Number(e.target.value) / 100)} style={{ width: 52, padding: "4px 6px", fontFamily: S.mono, fontSize: 11 }} />
 				<div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
 					{tagBtns.map((pl) => {
-						const on = (exp.scenarios || ["all"]).includes(pl.id);
+						const on = (exp.plans || ["all"]).includes(pl.id);
 						const c = pl.id === "all" ? S.textMuted : planColor(S, pl);
 						return (
 							<button
 								key={pl.id}
 								type="button"
-								onClick={() => toggleScenario(pl.id)}
+								onClick={() => togglePlan(pl.id)}
 								title={pl.id === "all" ? "All plans" : pl.name}
 								style={{ ...btnBase, padding: "2px 7px", borderRadius: 10, fontSize: 9.5, fontWeight: 600, border: `1.5px solid ${on ? c : S.border}`, background: on ? c + "22" : "transparent", color: on ? c : S.textMuted }}
 							>
@@ -87,8 +87,8 @@ export default function ExpenseRow({ exp, categories, plans, active, editing, on
 		<div style={rowStyle}>
 			<span style={{ fontSize: 12.5, color: S.text, flex: 1, minWidth: 110 }}>{exp.name}</span>
 			<Tag color={tagTone}>{tier.icon}</Tag>
-			{exp.scenarios && !exp.scenarios.includes("all") &&
-				exp.scenarios.map((s) => (
+			{exp.plans && !exp.plans.includes("all") &&
+				exp.plans.map((s) => (
 					<Tag key={s} color={tagColor(S, s, plans)}>{tagLabel(s, plans)}</Tag>
 				))}
 			{(exp.ageMin != null || exp.ageMax != null) && (

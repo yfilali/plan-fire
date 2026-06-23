@@ -10,20 +10,20 @@ const Chevron = (
 	</svg>
 );
 
-export default function ScenarioSwitcher() {
+export default function PlanSwitcher() {
 	const S = useTheme();
 	const {
-		scenarios,
-		activeId,
-		activeScenario,
-		switchScenario,
-		createScenario,
-		renameScenario,
-		deleteScenario,
+		plans,
+		activePlanId,
+		activePlan,
+		setActivePlanId,
+		addPlan,
+		updatePlan,
+		removePlan,
 	} = usePlanner();
 
 	const [open, setOpen] = useState(false);
-	const [dialog, setDialog] = useState(null); // {mode:'new'|'rename', name}
+	const [dialog, setDialog] = useState(null); // {mode:'new'|'rename'|'duplicate', name}
 	const ref = useRef(null);
 
 	useEffect(() => {
@@ -38,10 +38,10 @@ export default function ScenarioSwitcher() {
 	const submitDialog = () => {
 		const name = dialog.name.trim();
 		if (!name) return;
-		if (dialog.mode === "new") createScenario(name);
+		if (dialog.mode === "new") addPlan(name);
 		else if (dialog.mode === "duplicate")
-			createScenario(name, { duplicateFrom: activeId });
-		else renameScenario(activeId, name);
+			addPlan(name, { duplicateFrom: activePlanId });
+		else updatePlan(activePlanId, { name });
 		setDialog(null);
 		setOpen(false);
 	};
@@ -81,7 +81,7 @@ export default function ScenarioSwitcher() {
 						whiteSpace: "nowrap",
 					}}
 				>
-					{activeScenario?.name || "Scenario"}
+					{activePlan?.name || "Plan"}
 				</span>
 				<span style={{ color: S.textMuted, display: "inline-flex" }}>
 					{Chevron}
@@ -114,16 +114,16 @@ export default function ScenarioSwitcher() {
 							padding: "6px 10px 4px",
 						}}
 					>
-						Your scenarios
+						Your plans
 					</div>
 					<div style={{ maxHeight: 240, overflowY: "auto" }}>
-						{scenarios.map((sc) => {
-							const on = sc.id === activeId;
+						{plans.map((p) => {
+							const on = p.id === activePlanId;
 							return (
 								<button
-									key={sc.id}
+									key={p.id}
 									onClick={() => {
-										switchScenario(sc.id);
+										setActivePlanId(p.id);
 										setOpen(false);
 									}}
 									style={{
@@ -141,15 +141,7 @@ export default function ScenarioSwitcher() {
 										textAlign: "left",
 									}}
 								>
-									<span
-										style={{
-											width: 7,
-											height: 7,
-											borderRadius: 4,
-											background: on ? S.accent : S.border,
-											flexShrink: 0,
-										}}
-									/>
+									<span style={{ fontSize: 15, flexShrink: 0 }}>{p.icon}</span>
 									<span
 										style={{
 											flex: 1,
@@ -158,7 +150,7 @@ export default function ScenarioSwitcher() {
 											whiteSpace: "nowrap",
 										}}
 									>
-										{sc.name}
+										{p.name}
 									</span>
 									{on && (
 										<span style={{ color: S.accent, fontSize: 13 }}>✓</span>
@@ -181,13 +173,13 @@ export default function ScenarioSwitcher() {
 							fn: () =>
 								setDialog({
 									mode: "duplicate",
-									name: `${activeScenario?.name} copy`,
+									name: `${activePlan?.name} copy`,
 								}),
 						},
 						{
 							label: "✎  Rename current",
 							fn: () =>
-								setDialog({ mode: "rename", name: activeScenario?.name || "" }),
+								setDialog({ mode: "rename", name: activePlan?.name || "" }),
 						},
 					].map((a) => (
 						<button
@@ -209,11 +201,11 @@ export default function ScenarioSwitcher() {
 							{a.label}
 						</button>
 					))}
-					{scenarios.length > 1 && (
+					{plans.length > 1 && (
 						<button
 							onClick={() => {
-								if (confirm(`Delete scenario "${activeScenario?.name}"?`))
-									deleteScenario(activeId);
+								if (confirm(`Delete plan "${activePlan?.name}"?`))
+									removePlan(activePlanId);
 								setOpen(false);
 							}}
 							style={{
@@ -239,10 +231,10 @@ export default function ScenarioSwitcher() {
 				<Modal
 					title={
 						dialog.mode === "new"
-							? "New scenario"
+							? "New plan"
 							: dialog.mode === "duplicate"
-								? "Duplicate scenario"
-								: "Rename scenario"
+								? "Duplicate plan"
+								: "Rename plan"
 					}
 					width={420}
 					onClose={() => setDialog(null)}
@@ -257,7 +249,7 @@ export default function ScenarioSwitcher() {
 						</>
 					}
 				>
-					<Field label="Scenario name">
+					<Field label="Plan name">
 						<TextInput
 							autoFocus
 							value={dialog.name}

@@ -3,13 +3,13 @@ import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { usePlanner } from "../../state/PlannerProvider.jsx";
 import { uid } from "../../engine.js";
 import { Card, Chip, TextInput, Select, Button } from "../ui.jsx";
-import { planColor } from "../../lib/scenarioMeta.js";
+import { planColor } from "../../lib/planMeta.js";
 
 const BLANK = {
 	cat: "other",
 	name: "",
 	amount: "",
-	scenarios: ["all"],
+	plans: ["all"],
 	tier: "essential",
 	inflOverride: "",
 	ageMin: "",
@@ -28,7 +28,7 @@ export default function AddExpenseForm({ categories, onAdd }) {
 			cat: draft.cat,
 			name: draft.name,
 			amount: Number(draft.amount),
-			scenarios: draft.scenarios,
+			plans: draft.plans,
 			tier: draft.tier || "essential",
 			inflOverride: draft.inflOverride !== "" ? Number(draft.inflOverride) / 100 : undefined,
 			...(draft.ageMin !== "" ? { ageMin: Number(draft.ageMin) } : {}),
@@ -37,14 +37,14 @@ export default function AddExpenseForm({ categories, onAdd }) {
 		setDraft((p) => ({ ...p, name: "", amount: "" }));
 	};
 
-	const toggleScenario = (s) =>
+	const togglePlan = (s) =>
 		setDraft((p) => {
-			if (s === "all") return { ...p, scenarios: ["all"] };
-			const has = p.scenarios.includes(s);
+			if (s === "all") return { ...p, plans: ["all"] };
+			const has = p.plans.includes(s);
 			const next = has
-				? p.scenarios.filter((x) => x !== s)
-				: [...p.scenarios.filter((x) => x !== "all"), s];
-			return { ...p, scenarios: next.length ? next : ["all"] };
+				? p.plans.filter((x) => x !== s)
+				: [...p.plans.filter((x) => x !== "all"), s];
+			return { ...p, plans: next.length ? next : ["all"] };
 		});
 
 	const numStyle = { width: 64, fontFamily: S.mono, padding: "5px 8px", fontSize: 12 };
@@ -66,11 +66,11 @@ export default function AddExpenseForm({ categories, onAdd }) {
 
 			<div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap" }}>
 				<span style={{ fontSize: 11.5, color: S.textDim }}>Applies to</span>
-				<Chip active={draft.scenarios.includes("all")} color={S.textMuted} onClick={() => toggleScenario("all")}>
+				<Chip active={draft.plans.includes("all")} color={S.textMuted} onClick={() => togglePlan("all")}>
 					All plans
 				</Chip>
 				{plans.map((pl) => (
-					<Chip key={pl.id} active={draft.scenarios.includes(pl.id)} color={planColor(S, pl)} onClick={() => toggleScenario(pl.id)}>
+					<Chip key={pl.id} active={draft.plans.includes(pl.id)} color={planColor(S, pl)} onClick={() => togglePlan(pl.id)}>
 						{pl.icon} {pl.name}
 					</Chip>
 				))}

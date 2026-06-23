@@ -131,7 +131,7 @@ export function useStoreStatus() {
 
 /**
  * Raw access to the whole key-value store. Used for one-time data migration
- * (e.g. folding legacy top-level keys into a scenario object).
+ * (e.g. folding legacy top-level keys into the unified plan model).
  */
 export function useStore() {
   const ctx = useContext(StoreContext);

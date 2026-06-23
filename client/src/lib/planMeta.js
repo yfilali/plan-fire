@@ -13,14 +13,14 @@ export function planColor(S, plan) {
 	return S[plan.tone] || S.accent;
 }
 
-// Color for an expense scenario tag id ("all" or a plan id).
+// Color for an expense plan tag id ("all" or a plan id).
 export function tagColor(S, id, plans) {
 	if (id === "all") return S.textMuted;
 	const plan = plans?.find((p) => p.id === id);
 	return plan ? S[plan.tone] || S.accent : S.textMuted;
 }
 
-// Short label for an expense scenario tag.
+// Short label for an expense plan tag.
 export function tagLabel(id, plans) {
 	if (id === "all") return "All";
 	const plan = plans?.find((p) => p.id === id);
