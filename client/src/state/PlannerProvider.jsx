@@ -279,13 +279,21 @@ function migrateToV2(store) {
 			const oldActivePlanId = activeEntryData.activePlanId || "sell_move";
 			const activePlanId = activeHpMap[oldActivePlanId] || newPlans[0]?.id;
 
+			// Normalize baseline: each v1 entry contributed its own baseline housing
+			// plan, so a multi-entry store would otherwise end up with several
+			// baseline:true plans. Keep exactly one — the active entry's baseline.
+			const activeBaselineHp = (activeEntryData.plans || []).find((hp) => hp.baseline);
+			const baselineId =
+				(activeBaselineHp && activeHpMap[activeBaselineHp.id]) || newPlans[0]?.id;
+			const normalizedPlans = newPlans.map((p) => ({ ...p, baseline: p.id === baselineId }));
+
 			// Categories from the active entry (or first)
 			const categories = Array.isArray(activeEntryData.categories)
 				? activeEntryData.categories
 				: DEFAULT_CATEGORIES;
 
 			return {
-				plans: newPlans,
+				plans: normalizedPlans,
 				activePlanId,
 				expenses: Array.from(expenseMap.values()),
 				properties: Array.from(propertyMap.values()),
@@ -384,6 +392,13 @@ export function PlannerProvider({ children }) {
 		setValue("properties", result.properties);
 		setValue("categories", result.categories);
 		setValue("schemaVersion", 2);
+
+		// Clear the stale v1 root keys so they aren't carried into exports or
+		// re-read later. Setting them null (vs. the old object/id) is safe: the
+		// schemaVersion guard above already prevents this effect from re-running,
+		// and Branch A treats a null map as absent.
+		if (store[V1_KEY_PLANS_MAP] != null) setValue(V1_KEY_PLANS_MAP, null);
+		if (store[V1_KEY_ACTIVE_ID] != null) setValue(V1_KEY_ACTIVE_ID, null);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [loaded, store.schemaVersion]);
 
