@@ -6,12 +6,14 @@ import Sidebar from "./components/shell/Sidebar.jsx";
 import TopBar from "./components/shell/TopBar.jsx";
 import DashboardView from "./views/DashboardView.jsx";
 import ExpensesView from "./views/ExpensesView.jsx";
+import AssetsView from "./views/AssetsView.jsx";
 import PlanView from "./views/PlanView.jsx";
 import SettingsView from "./views/SettingsView.jsx";
 
 const VIEWS = {
 	dashboard: DashboardView,
 	expenses: ExpensesView,
+	assets: AssetsView,
 	plan: PlanView,
 	settings: SettingsView,
 };

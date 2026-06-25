@@ -16,6 +16,7 @@ import {
 	DEFAULT_CATEGORIES,
 	DEFAULT_EXPENSES,
 } from "../engine.js";
+import { isLiquid, assetInPlan } from "../lib/assetMeta.js";
 
 /* ──────────────────────────────────────────────────────────────────────
    Planner state — unified flat Plan model.
@@ -106,12 +107,65 @@ const PLAN_INPUT_DEFAULTS = {
 const PLAN_INPUT_KEYS = Object.keys(PLAN_INPUT_DEFAULTS);
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
 
+// Seed asset pool: the starting investable portfolio plus the seeded
+// properties, all in the unified `assets` model (tagged like expenses).
+const SEED_ASSETS = [
+	{
+		id: "portfolio",
+		type: "investment",
+		name: "Investment portfolio",
+		value: PLAN_INPUT_DEFAULTS.portfolio,
+		plans: ["all"],
+	},
+	...SEED_HOUSING.properties.map((p) => ({ ...p, type: "property", plans: ["all"] })),
+];
+
 // Shared (root-level) defaults.
 const SHARED_DEFAULTS = {
 	categories: DEFAULT_CATEGORIES,
 	expenses: DEFAULT_EXPENSES.map((e) => ({ ...e, plans: e.plans || ["all"] })),
-	properties: SEED_HOUSING.properties.map((p) => ({ ...p, plans: ["all"] })),
+	assets: SEED_ASSETS,
 };
+
+// Build the unified asset pool from a v2-shaped base ({ plans, properties }).
+// Properties become type:"property"; each distinct per-plan portfolio value
+// becomes an investment asset, tagged "all" when every plan shares it.
+function buildAssetsFromV2({ plans = [], properties = [] }) {
+	const propertyAssets = properties.map((p) => ({
+		...p,
+		type: p.type || "property",
+		plans: p.plans || ["all"],
+	}));
+
+	const allIds = plans.map((p) => p.id);
+	const byValue = new Map();
+	for (const p of plans) {
+		const v = p.portfolio ?? PLAN_INPUT_DEFAULTS.portfolio;
+		if (!byValue.has(v)) byValue.set(v, []);
+		byValue.get(v).push(p.id);
+	}
+	const entries = [...byValue.entries()];
+	const liquidAssets =
+		entries.length <= 1
+			? [
+					{
+						id: "portfolio",
+						type: "investment",
+						name: "Investment portfolio",
+						value: entries[0]?.[0] ?? PLAN_INPUT_DEFAULTS.portfolio,
+						plans: ["all"],
+					},
+				]
+			: entries.map(([v, ids], i) => ({
+					id: i === 0 ? "portfolio" : uid(),
+					type: "investment",
+					name: "Investment portfolio",
+					value: v,
+					plans: ids.length === allIds.length ? ["all"] : ids,
+				}));
+
+	return [...liquidAssets, ...propertyAssets];
+}
 
 // Build the three seed plans carrying the per-plan defaults + housing config.
 function buildSeedPlans() {
@@ -327,7 +381,7 @@ function migrateToV2(store) {
 	});
 
 	// Properties with default membership tag
-	const properties = (Array.isArray(upgraded.properties) ? upgraded.properties : SHARED_DEFAULTS.properties)
+	const properties = (Array.isArray(upgraded.properties) ? upgraded.properties : SEED_HOUSING.properties)
 		.map((p) => ({ ...p, plans: p.plans || ["all"] }));
 
 	// Build plans from upgraded housing-plan list, each carrying per-plan inputs
@@ -370,33 +424,46 @@ export function PlannerProvider({ children }) {
 	const [plans, setPlans] = usePersistedState("plans", null);
 	const [activePlanId, setActivePlanId] = usePersistedState("activePlanId", null);
 	const [expenses, setExpenses] = usePersistedState("expenses", null);
-	const [properties, setProperties] = usePersistedState("properties", null);
+	const [assets, setAssets] = usePersistedState("assets", null);
 	const [categories, setCategories] = usePersistedState("categories", null);
 	const [schemaVersion, setSchemaVersion] = usePersistedState("schemaVersion", null);
 	const [realDollars, setRealDollars] = usePersistedState("realDollars", false);
 
-	// One-time migration/seed: runs once when store is loaded and schemaVersion !== 2
+	// One-time migration/seed: runs once when store is loaded and schemaVersion !== 3.
+	// Chained: v1/legacy → v2 (flat plan model) → v3 (unified `assets` pool).
 	useEffect(() => {
 		if (!loaded) return;
-		if (store.schemaVersion === 2) return;
+		if (store.schemaVersion === 3) return;
 
-		// Run migration
-		const result = migrateToV2(store);
-		if (!result) return; // already v2, shouldn't happen given the guard above
+		// Step 1 — ensure a v2-shaped base (plans / expenses / properties / categories).
+		let base;
+		if (store.schemaVersion === 2) {
+			base = {
+				plans: store.plans,
+				activePlanId: store.activePlanId,
+				expenses: store.expenses,
+				properties: store.properties,
+				categories: store.categories,
+			};
+		} else {
+			base = migrateToV2(store);
+		}
+		if (!base) return;
 
-		// Write all new root keys. Each setValue targets a separate KV slot, so
-		// there is no functional-updater clobber risk here (unlike within one slice).
-		setValue("plans", result.plans);
-		setValue("activePlanId", result.activePlanId);
-		setValue("expenses", result.expenses);
-		setValue("properties", result.properties);
-		setValue("categories", result.categories);
-		setValue("schemaVersion", 2);
+		// Step 2 — fold per-plan portfolio + properties into the unified asset pool.
+		const nextAssets = buildAssetsFromV2(base);
 
-		// Clear the stale v1 root keys so they aren't carried into exports or
-		// re-read later. Setting them null (vs. the old object/id) is safe: the
-		// schemaVersion guard above already prevents this effect from re-running,
-		// and Branch A treats a null map as absent.
+		// Write all root keys. Each setValue targets a separate KV slot, so there
+		// is no functional-updater clobber risk here.
+		setValue("plans", base.plans);
+		setValue("activePlanId", base.activePlanId);
+		setValue("expenses", base.expenses);
+		setValue("assets", nextAssets);
+		setValue("categories", base.categories);
+		setValue("schemaVersion", 3);
+
+		// Clear stale keys so they aren't carried into exports or re-read later.
+		if (store.properties != null) setValue("properties", null);
 		if (store[V1_KEY_PLANS_MAP] != null) setValue(V1_KEY_PLANS_MAP, null);
 		if (store[V1_KEY_ACTIVE_ID] != null) setValue(V1_KEY_ACTIVE_ID, null);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -405,8 +472,15 @@ export function PlannerProvider({ children }) {
 	// Derive effective state (fall back to defaults while migration runs)
 	const effectivePlans = plans || buildSeedPlans();
 	const effectiveExpenses = expenses || SHARED_DEFAULTS.expenses;
-	const effectiveProperties = properties || SHARED_DEFAULTS.properties;
+	const effectiveAssets = assets || SHARED_DEFAULTS.assets;
 	const effectiveCategories = categories || SHARED_DEFAULTS.categories;
+
+	// Split the unified pool into real estate (per-plan keep/sell/rent) and
+	// liquid assets (sum into the investable portfolio).
+	const propertyAssets = useMemo(
+		() => effectiveAssets.filter((a) => a.type === "property"),
+		[effectiveAssets],
+	);
 
 	const activePlan =
 		effectivePlans.find((p) => p.id === activePlanId) ||
@@ -522,12 +596,12 @@ export function PlannerProvider({ children }) {
 				}),
 			);
 
-			// Strip id from property.plans (fall back to ["all"] if the list empties)
-			setProperties((prev) =>
-				(prev || effectiveProperties).map((p) => {
-					if (!p.plans?.includes(id)) return p;
-					const left = p.plans.filter((t) => t !== id);
-					return { ...p, plans: left.length ? left : ["all"] };
+			// Strip id from asset.plans (fall back to ["all"] if the list empties)
+			setAssets((prev) =>
+				(prev || effectiveAssets).map((a) => {
+					if (!a.plans?.includes(id)) return a;
+					const left = a.plans.filter((t) => t !== id);
+					return { ...a, plans: left.length ? left : ["all"] };
 				}),
 			);
 
@@ -538,7 +612,7 @@ export function PlannerProvider({ children }) {
 			}
 		},
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[plans, expenses, properties, activePlanId, setPlans, setExpenses, setProperties, setActivePlanId],
+		[plans, expenses, assets, activePlanId, setPlans, setExpenses, setAssets, setActivePlanId],
 	);
 
 	const setPlanAction = useCallback(
@@ -553,43 +627,37 @@ export function PlannerProvider({ children }) {
 		[mutatePlans],
 	);
 
-	// ── Properties ──
-	const addProperty = useCallback(
-		() =>
-			setProperties((prev) => {
-				const arr = prev || effectiveProperties;
-				return [
-					...arr,
-					{
-						id: uid(),
-						name: `Property ${arr.length + 1}`,
-						value: 0,
-						mortgage: 0,
-						rentMonthly: 0,
-						rentCostsAnnual: 0,
-						plans: ["all"],
-					},
-				];
-			}),
+	// ── Assets ──
+	// Create a typed asset in a single atomic write. `init` overrides the
+	// type's blank defaults (id/type stay authoritative). Returns the new id.
+	const addAsset = useCallback(
+		(type = "investment", init = {}) => {
+			const id = uid();
+			const blank =
+				type === "property"
+					? { name: "New property", value: 0, mortgage: 0, rentMonthly: 0, rentCostsAnnual: 0, plans: ["all"] }
+					: { name: "New account", value: 0, plans: ["all"] };
+			const asset = { ...blank, ...init, id, type };
+			setAssets((prev) => [...(prev || effectiveAssets), asset]);
+			return id;
+		},
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[setProperties],
+		[setAssets],
 	);
 
-	const updateProperty = useCallback(
+	const updateAsset = useCallback(
 		(id, patch) =>
-			setProperties((prev) =>
-				(prev || effectiveProperties).map((p) => (p.id === id ? { ...p, ...patch } : p)),
+			setAssets((prev) =>
+				(prev || effectiveAssets).map((a) => (a.id === id ? { ...a, ...patch } : a)),
 			),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[setProperties],
+		[setAssets],
 	);
 
-	const removeProperty = useCallback(
+	const removeAsset = useCallback(
 		(id) => {
-			// Two separate root keys: properties array and plans.actions maps
-			setProperties((prev) =>
-				(prev || effectiveProperties).filter((p) => p.id !== id),
-			);
+			// Two separate root keys: assets array and plans.actions maps.
+			setAssets((prev) => (prev || effectiveAssets).filter((a) => a.id !== id));
 			mutatePlans((prev) =>
 				prev.map((pl) => {
 					if (!pl.actions?.[id]) return pl;
@@ -600,7 +668,7 @@ export function PlannerProvider({ children }) {
 			);
 		},
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[setProperties, mutatePlans],
+		[setAssets, mutatePlans],
 	);
 
 	// ── Categories ──
@@ -626,11 +694,26 @@ export function PlannerProvider({ children }) {
 
 	const realRet = (1 + data.nomReturn) / (1 + data.inflation) - 1;
 
+	// Investable portfolio for a plan = sum of liquid assets tagged to it.
+	// Replaces the old per-plan `portfolio` scalar.
+	const liquidValueForPlan = useCallback(
+		(planId) =>
+			effectiveAssets.reduce(
+				(sum, a) =>
+					isLiquid(a.type) && assetInPlan(a, planId)
+						? sum + (Number(a.value) || 0)
+						: sum,
+				0,
+			),
+		[effectiveAssets],
+	);
+	const portfolio = liquidValueForPlan(activePlan?.id);
+
 	// ── Active-plan economics ──
 	const activeEcon = useMemo(() => {
-		const e = planEconomics(activePlan, effectiveProperties);
+		const e = planEconomics(activePlan, propertyAssets);
 		return { ...e, moveAge: data.age + e.transitionYears };
-	}, [activePlan, effectiveProperties, data.age]);
+	}, [activePlan, propertyAssets, data.age]);
 
 	// ── Spending helpers ──
 	const avgReturns = useMemo(() => buildReturns("avg", data.nomReturn), [data.nomReturn]);
@@ -675,14 +758,14 @@ export function PlannerProvider({ children }) {
 			inflation: data.inflation,
 			expenses: effectiveExpenses,
 		};
-		const econ = planEconomics(activePlan, effectiveProperties);
+		const econ = planEconomics(activePlan, propertyAssets);
 		const moveAge = data.age + econ.transitionYears;
 		let trans = null;
-		let startPort = data.portfolio;
+		let startPort = portfolio;
 		if (econ.transitionYears > 0 && (econ.soldNet !== 0 || econ.newHomeCost > 0)) {
 			trans = { moveAge, netProceeds: econ.soldNet, newHomeCost: econ.newHomeCost };
 		} else {
-			startPort = data.portfolio + econ.soldNet - econ.newHomeCost;
+			startPort = portfolio + econ.soldNet - econ.newHomeCost;
 		}
 		const cuts = { discretionaryCut: data.discretionaryCut, luxuryCut: data.luxuryCut, cutMode: data.cutMode };
 		const shared = {
@@ -705,7 +788,7 @@ export function PlannerProvider({ children }) {
 			altLabel: data.marketMode === "lost_decade" ? "Historical Avg" : "Lost Decade",
 			startPort: atPost?.balance || startPort,
 		};
-	}, [data, effectiveProperties, effectiveExpenses, activePlan, baselinePlan]);
+	}, [data, portfolio, propertyAssets, effectiveExpenses, activePlan, baselinePlan]);
 
 	const runsOut = projections.primary.find((d) => d.balance <= 0 && d.age >= data.retireAge);
 	const altRunsOut = projections.alt.find((d) => d.balance <= 0 && d.age >= data.retireAge);
@@ -736,8 +819,8 @@ export function PlannerProvider({ children }) {
 		return pts;
 	}, [data.age, data.nomReturn]);
 
-	// ready = migration has completed and v2 root keys are populated
-	const ready = schemaVersion === 2 && Array.isArray(plans);
+	// ready = migration has completed and v3 root keys are populated
+	const ready = schemaVersion === 3 && Array.isArray(plans) && Array.isArray(assets);
 
 	const value = {
 		ready,
@@ -746,6 +829,10 @@ export function PlannerProvider({ children }) {
 		setRealDollars,
 		// Per-plan inputs (from active plan)
 		...data,
+		// Portfolio is derived from liquid assets tagged to the active plan,
+		// so it must override the (now-unused) per-plan scalar from ...data.
+		portfolio,
+		liquidValueForPlan,
 		// Per-plan input setters
 		...setters,
 		realRet,
@@ -755,10 +842,14 @@ export function PlannerProvider({ children }) {
 		removeCategory,
 		expenses: effectiveExpenses,
 		setExpenses,
-		properties: effectiveProperties,
-		addProperty,
-		updateProperty,
-		removeProperty,
+		// Assets (unified pool, tagged like expenses)
+		assets: effectiveAssets,
+		propertyAssets,
+		addAsset,
+		updateAsset,
+		removeAsset,
+		// Back-compat alias: property-type assets feed the plan keep/sell/rent UI.
+		properties: propertyAssets,
 		propSaleNet,
 		propRentalNet,
 		// Plans

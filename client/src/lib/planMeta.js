@@ -26,3 +26,16 @@ export function tagLabel(id, plans) {
 	const plan = plans?.find((p) => p.id === id);
 	return plan ? plan.name : id;
 }
+
+// Pure toggle for a plan-tag array (shared by expenses + assets). Selecting
+// "all" collapses to ["all"]; selecting a specific plan drops "all"; emptying
+// the list falls back to ["all"].
+export function togglePlanTag(tags, id) {
+	const curr = tags && tags.length ? tags : ["all"];
+	if (id === "all") return ["all"];
+	const hasId = curr.includes(id);
+	let next;
+	if (hasId) next = curr.filter((x) => x !== id);
+	else next = [...curr.filter((x) => x !== "all"), id];
+	return next.length ? next : ["all"];
+}
