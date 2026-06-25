@@ -322,6 +322,28 @@ button {
 	border-color: var(--border-strong);
 }
 
+/* Modal entrance */
+.modal-scrim {
+	animation: scrimIn 0.18s ease both;
+}
+@keyframes scrimIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+.modal-pop {
+	animation: modalPop 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes modalPop {
+	from {
+		opacity: 0;
+		transform: translateY(10px) scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
 /* Interactive list rows (expenses, etc.) */
 .row-hover {
 	transition: background 0.14s ease, border-color 0.14s ease,

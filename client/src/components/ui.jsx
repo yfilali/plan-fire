@@ -383,11 +383,12 @@ export function Modal({ title, onClose, children, width = 520, footer }) {
 	return (
 		<div
 			onClick={onClose}
+			className="modal-scrim"
 			style={{
 				position: "fixed",
 				inset: 0,
-				background: "rgba(0,0,0,0.55)",
-				backdropFilter: "blur(2px)",
+				background: "rgba(5,7,12,0.62)",
+				backdropFilter: "blur(6px)",
 				display: "flex",
 				alignItems: "center",
 				justifyContent: "center",
@@ -397,12 +398,12 @@ export function Modal({ title, onClose, children, width = 520, footer }) {
 		>
 			<div
 				onClick={(e) => e.stopPropagation()}
-				className="fade-in"
+				className="modal-pop"
 				style={{
 					background: S.surface,
-					borderRadius: 16,
-					border: `1px solid ${S.border}`,
-					boxShadow: S.shadow,
+					borderRadius: 18,
+					border: `1px solid ${S.borderStrong}`,
+					boxShadow: S.shadowLg,
 					width,
 					maxWidth: "100%",
 					maxHeight: "85vh",
