@@ -9,12 +9,16 @@ export default function PlanCard({ plan, active, summary, onSelect, onEdit, onDe
 	return (
 		<div
 			onClick={onSelect}
+			className="lift"
 			style={{
 				cursor: "pointer",
 				padding: "15px 16px",
-				borderRadius: 14,
-				border: `2px solid ${active ? c : S.border}`,
-				background: active ? c + "10" : S.card,
+				borderRadius: 16,
+				border: `1.5px solid ${active ? c : S.border}`,
+				background: active
+					? `linear-gradient(160deg, ${c}1c, ${c}08)`
+					: S.card,
+				boxShadow: active ? `0 8px 26px -10px ${c}55` : S.shadowSm,
 				display: "flex",
 				flexDirection: "column",
 				gap: 8,

@@ -20,11 +20,13 @@ body,
 
 body {
 	margin: 0;
-	background: var(--bg);
+	background: var(--app-bg, var(--bg));
+	background-attachment: fixed;
 	color: var(--text);
 	font-family: var(--font);
 	-webkit-font-smoothing: antialiased;
 	text-rendering: optimizeLegibility;
+	letter-spacing: -0.01em;
 	transition: background 0.2s ease, color 0.2s ease;
 }
 
@@ -82,7 +84,8 @@ a {
 .sidebar {
 	display: flex;
 	flex-direction: column;
-	background: var(--surface);
+	background: color-mix(in srgb, var(--surface) 72%, transparent);
+	backdrop-filter: saturate(140%) blur(14px);
 	border-right: 1px solid var(--border);
 	min-height: 0;
 	overflow-y: auto;
@@ -103,10 +106,10 @@ a {
 	align-items: center;
 	gap: 12px;
 	padding: 0 24px;
-	height: 60px;
+	height: 62px;
 	border-bottom: 1px solid var(--border);
-	background: color-mix(in srgb, var(--surface) 80%, transparent);
-	backdrop-filter: saturate(140%) blur(8px);
+	background: color-mix(in srgb, var(--surface) 72%, transparent);
+	backdrop-filter: saturate(150%) blur(12px);
 	position: sticky;
 	top: 0;
 }
@@ -125,12 +128,13 @@ a {
 
 /* ── Sidebar nav ─────────────────────────────────────────────────────── */
 .nav-item {
+	position: relative;
 	display: flex;
 	align-items: center;
 	gap: 11px;
 	width: 100%;
 	padding: 9px 12px;
-	border-radius: 9px;
+	border-radius: 10px;
 	border: none;
 	background: transparent;
 	color: var(--text-muted);
@@ -139,22 +143,41 @@ a {
 	font-weight: 500;
 	cursor: pointer;
 	text-align: left;
-	transition: background 0.13s ease, color 0.13s ease;
+	transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 .nav-item:hover {
 	background: var(--card-hover);
 	color: var(--text);
 }
+.nav-item:active {
+	transform: translateY(0.5px);
+}
 .nav-item.active {
-	background: color-mix(in srgb, var(--accent) 14%, transparent);
+	background: color-mix(in srgb, var(--accent) 13%, transparent);
 	color: var(--accent);
 	font-weight: 600;
+}
+.nav-item.active::before {
+	content: "";
+	position: absolute;
+	left: -10px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 3px;
+	height: 18px;
+	border-radius: 0 3px 3px 0;
+	background: var(--accent);
+	box-shadow: 0 0 10px var(--ring);
 }
 .nav-item .nav-ico {
 	width: 18px;
 	display: inline-flex;
 	justify-content: center;
 	flex-shrink: 0;
+	transition: transform 0.16s ease;
+}
+.nav-item.active .nav-ico {
+	transform: scale(1.05);
 }
 
 /* ── Responsive grids ────────────────────────────────────────────────── */
@@ -193,11 +216,12 @@ input[type="range"]::-webkit-slider-thumb {
 	border-radius: 50%;
 	background: var(--accent);
 	border: 2px solid var(--surface);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-	transition: transform 0.12s ease;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 0 0 var(--ring);
+	transition: transform 0.12s ease, box-shadow 0.15s ease;
 }
 input[type="range"]::-webkit-slider-thumb:hover {
-	transform: scale(1.12);
+	transform: scale(1.14);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 0 5px var(--ring);
 }
 input[type="range"]::-moz-range-thumb {
 	width: 17px;
@@ -274,15 +298,46 @@ button {
 }
 
 .fade-in {
-	animation: fadeIn 0.22s ease;
+	animation: fadeIn 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 @keyframes fadeIn {
 	from {
 		opacity: 0;
-		transform: translateY(4px);
+		transform: translateY(6px);
 	}
 	to {
 		opacity: 1;
 		transform: translateY(0);
+	}
+}
+
+/* ── Elevation / interaction utilities ───────────────────────────────── */
+.lift {
+	transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+		box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.lift:hover {
+	transform: translateY(-2px);
+	box-shadow: var(--shadow-lg);
+	border-color: var(--border-strong);
+}
+
+/* Staggered entrance for grid children */
+.stagger > * {
+	animation: fadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger > *:nth-child(3) { animation-delay: 0.1s; }
+.stagger > *:nth-child(4) { animation-delay: 0.14s; }
+.stagger > *:nth-child(5) { animation-delay: 0.18s; }
+.stagger > *:nth-child(6) { animation-delay: 0.22s; }
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.001ms !important;
+		transition-duration: 0.001ms !important;
 	}
 }

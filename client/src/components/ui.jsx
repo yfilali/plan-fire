@@ -4,15 +4,16 @@ import { fmt } from "../engine.js";
 
 /* ── Surfaces ────────────────────────────────────────────────────────── */
 
-export function Card({ children, style, pad = 16, className = "" }) {
+export function Card({ children, style, pad = 16, className = "", lift = false }) {
 	const S = useTheme();
 	return (
 		<div
-			className={className}
+			className={`${lift ? "lift" : ""} ${className}`.trim()}
 			style={{
 				background: S.card,
-				borderRadius: 14,
+				borderRadius: 16,
 				border: `1px solid ${S.border}`,
+				boxShadow: S.shadowSm,
 				padding: pad,
 				...style,
 			}}
@@ -89,19 +90,35 @@ export function StatCard({ label, value, sub, color, accent }) {
 	const S = useTheme();
 	return (
 		<div
+			className="lift"
 			style={{
-				padding: "13px 15px",
+				position: "relative",
+				overflow: "hidden",
+				padding: "14px 16px",
 				background: S.card,
-				borderRadius: 12,
+				borderRadius: 14,
 				border: `1px solid ${S.border}`,
-				borderLeft: accent ? `3px solid ${accent}` : `1px solid ${S.border}`,
+				boxShadow: S.shadowSm,
 			}}
 		>
+			{accent && (
+				<span
+					style={{
+						position: "absolute",
+						left: 0,
+						top: 0,
+						bottom: 0,
+						width: 3,
+						background: accent,
+						boxShadow: `0 0 12px ${accent}99`,
+					}}
+				/>
+			)}
 			<div
 				style={{
 					fontSize: 10.5,
 					color: S.textMuted,
-					marginBottom: 4,
+					marginBottom: 5,
 					textTransform: "uppercase",
 					letterSpacing: 0.6,
 					fontWeight: 600,
@@ -111,17 +128,18 @@ export function StatCard({ label, value, sub, color, accent }) {
 			</div>
 			<div
 				style={{
-					fontSize: 22,
+					fontSize: 23,
 					fontWeight: 750,
 					color: color || S.text,
 					fontFamily: S.mono,
 					lineHeight: 1.1,
+					letterSpacing: "-0.5px",
 				}}
 			>
 				{value}
 			</div>
 			{sub && (
-				<div style={{ fontSize: 11, color: S.textDim, marginTop: 3 }}>{sub}</div>
+				<div style={{ fontSize: 11, color: S.textDim, marginTop: 4 }}>{sub}</div>
 			)}
 		</div>
 	);
@@ -144,14 +162,26 @@ export function Button({
 		lg: { padding: "11px 20px", fontSize: 14, borderRadius: 10 },
 	};
 	const variants = {
-		primary: { background: S.accent, color: "#fff", border: `1px solid ${S.accent}`, fontWeight: 650 },
-		secondary: { background: S.card, color: S.text, border: `1px solid ${S.border}`, fontWeight: 550 },
+		primary: {
+			background: S.accentGradient,
+			color: "#fff",
+			border: `1px solid ${S.accent}`,
+			fontWeight: 650,
+			boxShadow: `0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2)`,
+		},
+		secondary: { background: S.card, color: S.text, border: `1px solid ${S.border}`, fontWeight: 550, boxShadow: S.shadowSm },
 		ghost: { background: "transparent", color: S.textMuted, border: "1px solid transparent", fontWeight: 550 },
 		danger: { background: "transparent", color: S.danger, border: `1px solid ${S.border}`, fontWeight: 550 },
+	};
+	const hoverLift = (e, on) => {
+		e.currentTarget.style.transform = on ? "translateY(-1px)" : "translateY(0)";
+		e.currentTarget.style.filter = on ? "brightness(1.05)" : "brightness(1)";
 	};
 	return (
 		<button
 			{...rest}
+			onMouseEnter={(e) => { hoverLift(e, true); rest.onMouseEnter?.(e); }}
+			onMouseLeave={(e) => { hoverLift(e, false); rest.onMouseLeave?.(e); }}
 			style={{
 				...btnBase,
 				...sizes[size],
@@ -162,6 +192,7 @@ export function Button({
 				justifyContent: "center",
 				gap: 7,
 				whiteSpace: "nowrap",
+				transition: "transform .14s ease, filter .14s ease, background .14s ease",
 				...style,
 			}}
 		>

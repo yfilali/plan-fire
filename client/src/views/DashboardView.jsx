@@ -87,7 +87,7 @@ export default function DashboardView() {
 	return (
 		<div style={{ display: "grid", gap: 16 }} className="fade-in">
 			{/* Headline status */}
-			<Card pad={0}>
+			<Card pad={0} style={{ overflow: "hidden", border: `1px solid ${tone.color}33` }}>
 				<div
 					style={{
 						display: "flex",
@@ -95,9 +95,9 @@ export default function DashboardView() {
 						alignItems: "center",
 						gap: 16,
 						flexWrap: "wrap",
-						padding: "16px 18px",
-						borderRadius: 14,
-						background: tone.color + "10",
+						padding: "18px 20px",
+						borderRadius: 16,
+						background: `linear-gradient(110deg, ${tone.color}1c 0%, ${tone.color}0a 45%, transparent 100%)`,
 						borderLeft: `4px solid ${tone.color}`,
 					}}
 				>
@@ -131,7 +131,7 @@ export default function DashboardView() {
 			</Card>
 
 			{/* Stats */}
-			<div className="stat-grid">
+			<div className="stat-grid stagger">
 				<StatCard label="Portfolio" value={fmt(projections.startPort)} sub="Post-transition" accent={S.blue} />
 				<StatCard label={`Spend @ ${age}`} value={fmt(spendNow)} sub="Current / yr" />
 				<StatCard
@@ -200,7 +200,17 @@ export default function DashboardView() {
 				/>
 				<ResponsiveContainer width="100%" height={300}>
 					<ComposedChart data={chartData} syncId="dash" margin={{ top: 5, right: 8, bottom: 5, left: 5 }}>
-						<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
+						<defs>
+							<linearGradient id="gradSpend" x1="0" y1="0" x2="0" y2="1">
+								<stop offset="0%" stopColor={S.purple} stopOpacity={0.32} />
+								<stop offset="100%" stopColor={S.purple} stopOpacity={0.02} />
+							</linearGradient>
+							<linearGradient id="gradPrimary" x1="0" y1="0" x2="0" y2="1">
+								<stop offset="0%" stopColor={S.accent} stopOpacity={0.18} />
+								<stop offset="100%" stopColor={S.accent} stopOpacity={0} />
+							</linearGradient>
+						</defs>
+						<CartesianGrid strokeDasharray="3 3" stroke={S.border} vertical={false} />
 						<XAxis {...ageAxisProps} />
 						<YAxis yAxisId="bal" tickFormatter={fmt} tick={{ fontSize: 10, fill: S.textMuted }} tickLine={false} axisLine={false} width={50} />
 						<YAxis yAxisId="cash" orientation="right" tickFormatter={fmt} tick={{ fontSize: 10, fill: S.textMuted }} tickLine={false} axisLine={false} width={50} />
@@ -214,9 +224,9 @@ export default function DashboardView() {
 						{runsOut && (
 							<ReferenceLine yAxisId="bal" x={runsOut.age} stroke={S.danger} label={{ value: "Depleted", fontSize: 10, fill: S.danger }} />
 						)}
-						<Area type="stepAfter" yAxisId="cash" dataKey="spending" name="Annual spending" fill={S.purple + "26"} stroke={S.purple} strokeWidth={1.5} />
+						<Area type="stepAfter" yAxisId="cash" dataKey="spending" name="Annual spending" fill="url(#gradSpend)" stroke={S.purple} strokeWidth={1.5} />
 						<Line type="stepAfter" yAxisId="cash" dataKey="income" name="Income" stroke={S.blue} strokeWidth={1.5} dot={false} strokeDasharray="2 2" />
-						<Line type="monotone" yAxisId="bal" dataKey="primary" name={projections.primaryLabel} stroke={S.accent} strokeWidth={2.4} dot={false} />
+						<Area type="monotone" yAxisId="bal" dataKey="primary" name={projections.primaryLabel} stroke={S.accent} strokeWidth={2.6} fill="url(#gradPrimary)" dot={false} />
 						<Line type="monotone" yAxisId="bal" dataKey="alt" name={projections.altLabel} stroke={S.textDim} strokeWidth={2} strokeDasharray="6 4" dot={false} opacity={0.6} />
 					</ComposedChart>
 				</ResponsiveContainer>

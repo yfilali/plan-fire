@@ -1,40 +1,53 @@
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 
-// Brand mark gradient. Swap to the "Verdant" green to match the UI accent:
-//   FLAME = "linear-gradient(135deg, #22c55e, #0d9488)"; GLOW = "rgba(34,197,94,0.4)"
-const FLAME = "linear-gradient(135deg, #f59e0b, #f43f5e)";
-const GLOW = "rgba(245,158,11,0.45)";
+// Firly wordmark — a flame (FIRE) in a rounded tile, tuned to the verdant
+// accent so the brand and the UI read as one system.
+const GLOW = "rgba(16,185,129,0.42)";
 
-// Firly wordmark — a warm flame (FIRE) in a rounded gradient tile.
 export default function Brand() {
 	const S = useTheme();
 	return (
-		<div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+		<div style={{ display: "flex", alignItems: "center", gap: 11 }}>
 			<div
 				style={{
-					width: 32,
-					height: 32,
-					borderRadius: 9,
-					background: FLAME,
+					width: 34,
+					height: 34,
+					borderRadius: 10,
+					background: S.accentGradient,
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "center",
 					flexShrink: 0,
-					boxShadow: `0 2px 10px ${GLOW}`,
+					boxShadow: `inset 0 1px 0 rgba(255,255,255,0.22), 0 4px 14px ${GLOW}`,
 				}}
 			>
-				<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+				<svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
 					<path
 						d="M12 2.5C12 6.5 16 8 16 12.6A4 4 0 1 1 8 12.6C8 10.3 9.4 9.6 10 8.3C10.9 9.8 10.6 6 12 2.5Z"
 						fill="#fff"
 					/>
 				</svg>
 			</div>
-			<div style={{ lineHeight: 1.05 }}>
-				<div style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.3px", color: S.text }}>
+			<div style={{ lineHeight: 1.08 }}>
+				<div
+					style={{
+						fontSize: 16.5,
+						fontWeight: 800,
+						letterSpacing: "-0.4px",
+						color: S.text,
+					}}
+				>
 					Firly
 				</div>
-				<div style={{ fontSize: 10, color: S.textMuted, letterSpacing: 0.3 }}>
+				<div
+					style={{
+						fontSize: 10,
+						color: S.textDim,
+						letterSpacing: 0.4,
+						textTransform: "uppercase",
+						fontWeight: 600,
+					}}
+				>
 					Retirement Planner
 				</div>
 			</div>
