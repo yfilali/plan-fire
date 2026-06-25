@@ -33,6 +33,7 @@ export default function TopBar({ view, onMenu }) {
 
 			<Badge color={tone.color}>
 				<span
+					className="pulse-dot"
 					style={{
 						width: 7,
 						height: 7,

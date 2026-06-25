@@ -122,6 +122,7 @@ export default function Sidebar({ view, setView, open, onClose }) {
 						}}
 					>
 						<span
+							className="pulse-dot"
 							style={{
 								width: 7,
 								height: 7,
