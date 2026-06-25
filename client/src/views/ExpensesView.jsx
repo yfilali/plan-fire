@@ -77,21 +77,41 @@ export default function ExpensesView() {
 				const catExps = expenses.filter((e) => e.cat === cat.id);
 				const activeMonthly = monthlySpendAtAge(catExps, age, activePlanId, age, inflation);
 				return (
-					<div key={cat.id} style={{ marginBottom: 16 }}>
+					<div key={cat.id} style={{ marginBottom: 18 }}>
 						<div
 							style={{
-								fontSize: 11,
-								fontWeight: 700,
-								color: cat.color,
-								textTransform: "uppercase",
-								letterSpacing: 0.6,
-								padding: "4px 0",
-								marginBottom: 4,
+								display: "flex",
+								alignItems: "center",
+								gap: 9,
+								padding: "4px 0 8px",
+								marginBottom: 8,
+								borderBottom: `1px solid ${S.border}`,
 							}}
 						>
-							{cat.icon} {cat.label}
-							<span style={{ color: S.textDim, fontWeight: 500, marginLeft: 8, textTransform: "none", letterSpacing: 0 }}>
-								${activeMonthly.toLocaleString()}/mo active
+							<span
+								style={{
+									width: 7,
+									height: 7,
+									borderRadius: 3,
+									background: cat.color,
+									boxShadow: `0 0 8px ${cat.color}88`,
+									flexShrink: 0,
+								}}
+							/>
+							<span
+								style={{
+									fontSize: 11,
+									fontWeight: 700,
+									color: cat.color,
+									textTransform: "uppercase",
+									letterSpacing: 0.6,
+								}}
+							>
+								{cat.icon} {cat.label}
+							</span>
+							<span style={{ flex: 1 }} />
+							<span style={{ fontSize: 11.5, color: S.textDim, fontFamily: S.mono }}>
+								${activeMonthly.toLocaleString()}<span style={{ fontFamily: S.font }}>/mo active</span>
 							</span>
 						</div>
 						{catExps.map((exp) => {

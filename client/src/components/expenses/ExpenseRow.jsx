@@ -84,7 +84,7 @@ export default function ExpenseRow({ exp, categories, plans, active, editing, on
 
 	const tagTone = tier.tone === "accent" ? S.accent : tier.tone === "warning" ? S.warning : S.danger;
 	return (
-		<div style={rowStyle}>
+		<div className={active ? "row-hover" : ""} style={rowStyle}>
 			<span style={{ fontSize: 12.5, color: S.text, flex: 1, minWidth: 110 }}>{exp.name}</span>
 			<Tag color={tagTone}>{tier.icon}</Tag>
 			{exp.plans && !exp.plans.includes("all") &&

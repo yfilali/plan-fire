@@ -37,6 +37,9 @@ export default function SliderRow({
 	// The thumb can only render within [min,max]; the stored value may exceed it.
 	const sliderVal = Math.min(max, Math.max(min, value));
 	const beyond = value > max;
+	const pct = Math.round(((sliderVal - min) / (max - min)) * 100);
+	const fillColor = beyond ? S.warning : S.accent;
+	const trackBg = `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${pct}%, ${S.border} ${pct}%, ${S.border} 100%)`;
 
 	return (
 		<div style={{ marginBottom: 14 }}>
@@ -101,7 +104,7 @@ export default function SliderRow({
 				}}
 				onInput={(e) => onChange(Number(e.target.value))}
 				onChange={(e) => onChange(Number(e.target.value))}
-				style={{ width: "100%", opacity: beyond ? 0.6 : 1 }}
+				style={{ width: "100%", background: trackBg }}
 			/>
 		</div>
 	);
