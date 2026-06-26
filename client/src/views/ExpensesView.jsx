@@ -52,7 +52,7 @@ export default function ExpensesView() {
 			{showCatManager && <CategoryManager onClose={() => setShowCatManager(false)} />}
 
 			<SectionTitle
-				sub={`Tag each expense by plan, age range, and tier. Greyed-out rows don't apply to "${activePlan?.name}".`}
+				sub={`Add what you spend each month, then tag it to the plans it belongs to and how essential it is. Greyed-out rows don't apply to "${activePlan?.name}".`}
 				right={
 					<div style={{ display: "flex", gap: 10, alignItems: "center" }}>
 						<Button variant="secondary" onClick={() => setShowCatManager(true)}>🏷️ Categories</Button>
@@ -72,6 +72,28 @@ export default function ExpensesView() {
 			</SectionTitle>
 
 			<AddExpenseForm categories={categories} onAdd={addExpense} />
+
+			{expenses.length === 0 && (
+				<div
+					style={{
+						textAlign: "center",
+						padding: "44px 20px",
+						border: `1px dashed ${S.border}`,
+						borderRadius: 14,
+						color: S.textMuted,
+					}}
+				>
+					<div style={{ fontSize: 30, marginBottom: 10 }}>🧾</div>
+					<div style={{ fontSize: 14, fontWeight: 600, color: S.text, marginBottom: 6 }}>
+						No expenses yet
+					</div>
+					<div style={{ fontSize: 12.5, color: S.textMuted, maxWidth: 380, margin: "0 auto", lineHeight: 1.5 }}>
+						Use the form above to add your first one. Start with the big essentials —
+						housing, food, healthcare — then layer in the extras. Everything tagged
+						“All plans” is shared; tag a plan to make it plan-specific.
+					</div>
+				</div>
+			)}
 
 			{usedCategories.map((cat) => {
 				const catExps = expenses.filter((e) => e.cat === cat.id);

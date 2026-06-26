@@ -112,9 +112,10 @@ a {
 	backdrop-filter: saturate(150%) blur(12px);
 	position: sticky;
 	top: 0;
-	/* Sit above main content so the plan dropdown isn't covered by the stat
-	   tiles, which create their own stacking contexts via the entrance
-	   animation's lingering transform. */
+	/* Own stacking context so the header's dropdowns (e.g. the plan switcher)
+	   overlay page content — including the dashboard stat tiles, which create
+	   their own stacking contexts via the entrance animation's lingering
+	   transform. Sits above the mobile sidebar drawer (40) / scrim (35). */
 	z-index: 50;
 }
 
