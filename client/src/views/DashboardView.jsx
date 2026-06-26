@@ -108,8 +108,7 @@ export default function DashboardView() {
 								: `⚠ Portfolio depletes at age ${runsOut.age}`}
 						</div>
 						<div style={{ fontSize: 12.5, color: S.textMuted, marginTop: 3 }}>
-							{housingLabel} ·{" "}
-							{marketMode === "lost_decade" ? "Lost-decade stress test" : "Historical average"}
+							{housingLabel} · {projections.primaryLabel}
 							{retireAge > age && ` · Working until ${retireAge}`}
 						</div>
 					</div>

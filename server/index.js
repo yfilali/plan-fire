@@ -2,6 +2,7 @@ import express from 'express';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { MARKET_HISTORY } from './data/marketHistory.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -59,6 +60,14 @@ app.use(express.json({ limit: '5mb' }));
 // Serve static client build
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
+
+// GET /api/market-history — premium historical dataset (read-only reference
+// data shipped with the server; not part of the mutable user store, so a
+// "reset all data" never touches it).
+app.get('/api/market-history', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.json(MARKET_HISTORY);
+});
 
 // GET /api/state — return all state
 app.get('/api/state', (req, res) => {
