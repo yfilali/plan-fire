@@ -16,6 +16,8 @@ import {
 	DEFAULT_CATEGORIES,
 	DEFAULT_EXPENSES,
 } from "../engine.js";
+import { useMarketHistory, DEFAULT_ALLOC } from "../lib/marketHistory.js";
+import { sliceSeries, blendedReturns, padReturns } from "../lib/backtest.js";
 
 /* ──────────────────────────────────────────────────────────────────────
    Planner state — unified flat Plan model.
@@ -93,6 +95,11 @@ const PLAN_INPUT_DEFAULTS = {
 	nomReturn: 0.1,
 	inflation: 0.03,
 	marketMode: "historical",
+	// Premium "Time Machine" backtest config (per-plan).
+	backtestStart: 2000,
+	backtestEnd: 2009,
+	backtestAlloc: DEFAULT_ALLOC,
+	backtestRepeat: false,
 	discretionaryCut: 0.3,
 	luxuryCut: 0.7,
 	cutMode: "down_recovery",
@@ -635,6 +642,30 @@ export function PlannerProvider({ children }) {
 	// ── Spending helpers ──
 	const avgReturns = useMemo(() => buildReturns("avg", data.nomReturn), [data.nomReturn]);
 	const bearReturns = useMemo(() => buildReturns("lost_decade", data.nomReturn), [data.nomReturn]);
+
+	// ── Premium historical backtest ("Time Machine") ──
+	// When marketMode is "historical_period", replay a real era's blended
+	// returns. We build a full-length nominal-return array (real window years,
+	// then either the era looped or a steady fallback) and feed it to project()
+	// and the spend-cut logic exactly like any other returns sequence.
+	const { data: marketHistory } = useMarketHistory();
+	const backtest = useMemo(() => {
+		if (data.marketMode !== "historical_period" || !marketHistory) return null;
+		const recs = sliceSeries(marketHistory.series, data.backtestStart, data.backtestEnd);
+		if (!recs.length) return null;
+		const windowR = blendedReturns(recs, data.backtestAlloc || {});
+		const full = padReturns(windowR, data.nomReturn, END_AGE - data.age + 1, data.backtestRepeat);
+		return { full, startYear: recs[0].year, endYear: recs[recs.length - 1].year };
+	}, [data, marketHistory]);
+
+	// Returns sequence that downturn spend-cuts key off of, by mode.
+	const spendReturns =
+		data.marketMode === "lost_decade"
+			? bearReturns
+			: data.marketMode === "historical_period" && backtest
+				? backtest.full
+				: avgReturns;
+
 	const spendAt = useCallback(
 		(a, planId) =>
 			monthlySpendAtAge(
@@ -643,13 +674,13 @@ export function PlannerProvider({ children }) {
 				planId || activePlan?.id,
 				data.age,
 				data.inflation,
-				data.marketMode === "lost_decade" ? bearReturns : avgReturns,
+				spendReturns,
 				data.discretionaryCut,
 				data.luxuryCut,
 				data.cutMode,
 			) * 12,
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[effectiveExpenses, activePlan, data, avgReturns, bearReturns],
+		[effectiveExpenses, activePlan, data, spendReturns],
 	);
 
 	// Before a future relocation, spending reflects the baseline plan's expenses.
@@ -664,8 +695,11 @@ export function PlannerProvider({ children }) {
 	const projections = useMemo(() => {
 		const avgR = buildReturns("avg", data.nomReturn);
 		const bearR = buildReturns("lost_decade", data.nomReturn);
-		const activeR = data.marketMode === "lost_decade" ? bearR : avgR;
-		const altR = data.marketMode === "lost_decade" ? avgR : bearR;
+		const isPeriod = data.marketMode === "historical_period" && backtest;
+		// primary = the regime under test; alt = a steady-average baseline to
+		// compare against (for the dashed comparison line and survival readout).
+		const activeR = isPeriod ? backtest.full : data.marketMode === "lost_decade" ? bearR : avgR;
+		const altR = isPeriod ? avgR : data.marketMode === "lost_decade" ? avgR : bearR;
 		const common = {
 			startAge: data.age,
 			endAge: END_AGE,
@@ -701,11 +735,15 @@ export function PlannerProvider({ children }) {
 		return {
 			primary,
 			alt,
-			primaryLabel: data.marketMode === "lost_decade" ? "Lost Decade" : "Historical Avg",
-			altLabel: data.marketMode === "lost_decade" ? "Historical Avg" : "Lost Decade",
+			primaryLabel: isPeriod
+				? `${backtest.startYear}–${backtest.endYear} replay`
+				: data.marketMode === "lost_decade"
+					? "Lost Decade"
+					: "Historical Avg",
+			altLabel: isPeriod ? "Steady average" : data.marketMode === "lost_decade" ? "Historical Avg" : "Lost Decade",
 			startPort: atPost?.balance || startPort,
 		};
-	}, [data, effectiveProperties, effectiveExpenses, activePlan, baselinePlan]);
+	}, [data, backtest, effectiveProperties, effectiveExpenses, activePlan, baselinePlan]);
 
 	const runsOut = projections.primary.find((d) => d.balance <= 0 && d.age >= data.retireAge);
 	const altRunsOut = projections.alt.find((d) => d.balance <= 0 && d.age >= data.retireAge);

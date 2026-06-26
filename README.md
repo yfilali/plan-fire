@@ -30,6 +30,7 @@ Firly is a FIRE-native retirement planning dashboard — model your runway, comp
 - **Flexible properties** — model zero, one, or many properties with arbitrary values, mortgages, and rental economics
 - Expense tracker with custom categories; tag each expense to whichever of *your* plans it applies to, plus age ranges, inflation overrides, and spend tiers
 - Market simulation (historical avg vs "lost decade" stress test)
+- **⏳ Time Machine (Firly Pro)** — replay any real market era since 1928 on your actual portfolio. Allocate across stocks, Treasury bonds, corporate bonds, real estate, gold and cash, then watch real year-by-year returns drive your projection. Famous-era presets (Stagflation, the Long Bull, the Lost Decade, the GFC, …) or a custom window. Backed by a server-shipped historical dataset.
 - Downturn spending-cut modeling by expense tier
 - Landlord P&L calculator
 - Portfolio projection through age 95 with Social Security
@@ -134,6 +135,28 @@ docker restart retirement-planner
 | DELETE | `/api/state` | Reset all data |
 | GET | `/api/export` | Download state as JSON |
 | POST | `/api/import` | Upload JSON to replace state |
+| GET | `/api/market-history` | Historical asset-class returns dataset (read-only; powers the Time Machine) |
+
+## Historical Market Dataset
+
+The Time Machine is backed by `server/data/marketHistory.js` — annual **nominal**
+total returns by asset class, **1928–2025**, served read-only at
+`/api/market-history`. It ships with the server as code (not in the mutable
+`/data` store), so a user "reset" never touches it and it survives every rebuild.
+
+Asset classes: US stocks (S&P 500, dividends reinvested), 10-year Treasury
+bonds, Baa corporate bonds, US residential real estate (Case-Shiller), gold,
+and 3-month T-bills (cash), plus annual CPI for real-return math.
+
+**Sources** (public, free, widely cited):
+
+- Aswath Damodaran, NYU Stern — *Historical Returns on Stocks, Bonds, Bills,
+  Real Estate and Gold* (stocks/bills/bonds/corp/real-estate/gold).
+- Robert Shiller / S&P CoreLogic Case-Shiller — residential real estate.
+- U.S. Bureau of Labor Statistics — CPI-U inflation.
+
+To refresh, replace the `RAW` rows in `server/data/marketHistory.js` with the
+latest published years.
 
 ## Stack
 
