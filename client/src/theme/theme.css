@@ -112,6 +112,10 @@ a {
 	backdrop-filter: saturate(150%) blur(12px);
 	position: sticky;
 	top: 0;
+	/* Sit above main content so the plan dropdown isn't covered by the stat
+	   tiles, which create their own stacking contexts via the entrance
+	   animation's lingering transform. */
+	z-index: 50;
 }
 
 .content {
