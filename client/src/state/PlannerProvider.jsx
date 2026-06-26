@@ -473,7 +473,16 @@ export function PlannerProvider({ children }) {
 	const effectivePlans = plans || buildSeedPlans();
 	const effectiveExpenses = expenses || SHARED_DEFAULTS.expenses;
 	const effectiveAssets = assets || SHARED_DEFAULTS.assets;
-	const effectiveCategories = categories || SHARED_DEFAULTS.categories;
+	// Categories are always presented alphabetically by label so the picker,
+	// edit dropdown, manager list, and grouped sections share one stable order
+	// regardless of insertion order.
+	const effectiveCategories = useMemo(
+		() =>
+			[...(categories || SHARED_DEFAULTS.categories)].sort((a, b) =>
+				a.label.localeCompare(b.label),
+			),
+		[categories],
+	);
 
 	// Split the unified pool into real estate (per-plan keep/sell/rent) and
 	// liquid assets (sum into the investable portfolio).

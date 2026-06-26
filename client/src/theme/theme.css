@@ -112,6 +112,11 @@ a {
 	backdrop-filter: saturate(150%) blur(12px);
 	position: sticky;
 	top: 0;
+	/* Elevate the sticky header into its own stacking context so its dropdowns
+	   (e.g. the plan switcher) always overlay page content — including any
+	   position:relative elements in views. Stays below the sidebar drawer (40)
+	   and its scrim (35) so the mobile menu still covers the header. */
+	z-index: 30;
 }
 
 .content {

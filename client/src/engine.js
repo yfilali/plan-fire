@@ -291,25 +291,26 @@ export const COLOR_OPTIONS = [
 	"#d946ef",
 ];
 
+// Generic, broadly-applicable expense categories. Kept alphabetical by label so
+// the seed list matches the always-sorted ordering the UI enforces at render.
 export const DEFAULT_CATEGORIES = [
-	{ id: "housing_ba", label: "Bay Area Housing", icon: "🏙️", color: "#6366f1" },
-	{ id: "housing_cc", label: "CC Housing", icon: "🌲", color: "#22c55e" },
-	{ id: "transport", label: "Transport", icon: "🚗", color: "#f59e0b" },
-	{ id: "food", label: "Food & Dining", icon: "🍽️", color: "#84cc16" },
+	{ id: "food", label: "Food", icon: "🍽️", color: "#84cc16" },
 	{ id: "health", label: "Healthcare", icon: "🏥", color: "#ef4444" },
-	{ id: "plane", label: "Aviation", icon: "✈️", color: "#3b82f6" },
+	{ id: "hobbies", label: "Hobbies", icon: "🎸", color: "#3b82f6" },
+	{ id: "housing", label: "Housing", icon: "🏠", color: "#6366f1" },
 	{ id: "insurance", label: "Insurance", icon: "🛡️", color: "#8b5cf6" },
-	{ id: "utils", label: "Utilities", icon: "⚡", color: "#f97316" },
-	{ id: "personal", label: "Personal", icon: "👤", color: "#ec4899" },
-	{ id: "travel", label: "Travel", icon: "🌎", color: "#14b8a6" },
 	{ id: "other", label: "Other", icon: "📦", color: "#6b7280" },
+	{ id: "personal", label: "Personal", icon: "👤", color: "#ec4899" },
+	{ id: "transport", label: "Transportation", icon: "🚗", color: "#f59e0b" },
+	{ id: "travel", label: "Travel", icon: "✈️", color: "#14b8a6" },
+	{ id: "utils", label: "Utilities", icon: "⚡", color: "#f97316" },
 ];
 
 export const DEFAULT_EXPENSES = [
-	// Bay Area housing — only when staying
+	// Current-home housing — only when staying put
 	{
 		id: uid(),
-		cat: "housing_ba",
+		cat: "housing",
 		name: "Mortgage",
 		amount: 2400,
 		plans: ["stay"],
@@ -318,7 +319,7 @@ export const DEFAULT_EXPENSES = [
 	},
 	{
 		id: uid(),
-		cat: "housing_ba",
+		cat: "housing",
 		name: "Property Tax",
 		amount: 1200,
 		plans: ["stay"],
@@ -327,7 +328,7 @@ export const DEFAULT_EXPENSES = [
 	},
 	{
 		id: uid(),
-		cat: "housing_ba",
+		cat: "housing",
 		name: "Home Insurance",
 		amount: 250,
 		plans: ["stay"],
@@ -335,18 +336,18 @@ export const DEFAULT_EXPENSES = [
 	},
 	{
 		id: uid(),
-		cat: "housing_ba",
+		cat: "housing",
 		name: "Maintenance",
 		amount: 400,
 		plans: ["stay"],
 		tier: "essential",
 	},
 
-	// Crescent City housing — when moving (sell or rent out SJ)
+	// New-location housing — only when you relocate (sell or rent out current home)
 	{
 		id: uid(),
-		cat: "housing_cc",
-		name: "CC Property Tax",
+		cat: "housing",
+		name: "New Home Property Tax",
 		amount: 850,
 		plans: ["sell_move", "rent_out"],
 		inflOverride: 0.02,
@@ -354,16 +355,16 @@ export const DEFAULT_EXPENSES = [
 	},
 	{
 		id: uid(),
-		cat: "housing_cc",
-		name: "CC Home Insurance",
+		cat: "housing",
+		name: "New Home Insurance",
 		amount: 200,
 		plans: ["sell_move", "rent_out"],
 		tier: "essential",
 	},
 	{
 		id: uid(),
-		cat: "housing_cc",
-		name: "CC Maintenance",
+		cat: "housing",
+		name: "New Home Maintenance",
 		amount: 300,
 		plans: ["sell_move", "rent_out"],
 		tier: "essential",
@@ -426,7 +427,7 @@ export const DEFAULT_EXPENSES = [
 	},
 	{
 		id: uid(),
-		cat: "plane",
+		cat: "hobbies",
 		name: "Hangar",
 		amount: 800,
 		plans: ["all"],
@@ -435,7 +436,7 @@ export const DEFAULT_EXPENSES = [
 	},
 	{
 		id: uid(),
-		cat: "plane",
+		cat: "hobbies",
 		name: "Fuel & Maintenance",
 		amount: 1000,
 		plans: ["all"],
@@ -443,7 +444,7 @@ export const DEFAULT_EXPENSES = [
 	},
 	{
 		id: uid(),
-		cat: "plane",
+		cat: "hobbies",
 		name: "Plane Insurance",
 		amount: 400,
 		plans: ["all"],
