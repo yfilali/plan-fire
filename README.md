@@ -30,7 +30,13 @@ Firly is a FIRE-native retirement planning dashboard — model your runway, comp
 - **Flexible properties** — model zero, one, or many properties with arbitrary values, mortgages, and rental economics
 - Expense tracker with custom categories; tag each expense to whichever of *your* plans it applies to, plus age ranges, inflation overrides, and spend tiers
 - Market simulation (historical avg vs "lost decade" stress test)
+- **🎲 Monte Carlo success probability (Firly Pro)** — thousands of randomized return paths report the share in which your portfolio outlives you, with a terminal-wealth band (10th/50th/90th percentile). Free users see the card blurred behind an upsell.
+- **🏁 FIRE milestones** — the ages your plan crosses Coast-FIRE, financial independence, $500k/$1M/$2M net worth, and (worst case) depletion — derived live from the projection.
+- **✦ AI Co-pilot (Firly Pro)** — a chat assistant grounded in a minimal numeric snapshot of *your* plan. It answers with your real figures and can propose one-tap changes (e.g. "Retire at 57") applied straight to your plan. Powered by Claude; degrades to a deterministic offline reply when no API key is set.
 - **⏳ Time Machine (Firly Pro)** — replay any real market era since 1928 on your actual portfolio. Allocate across stocks, Treasury bonds, corporate bonds, real estate, gold and cash, then watch real year-by-year returns drive your projection. Famous-era presets (Stagflation, the Long Bull, the Lost Decade, the GFC, …) or a custom window. Backed by a server-shipped historical dataset.
+- **🔐 Accounts** — passwordless magic-link sign-in (+ guest mode that migrates your anonymous data on first login). Per-user, cookie-scoped server storage.
+- **💳 Billing** — Stripe Checkout + webhook-verified entitlement (monthly / yearly / lifetime). The server is the single source of truth for Pro; the client never grants entitlement. Demo builds activate instantly when Stripe isn't configured.
+- **⚙️ Settings** — tabbed: Assumptions · Account · Billing · Notifications · Privacy & Data · Appearance · Labs.
 - Downturn spending-cut modeling by expense tier
 - Landlord P&L calculator
 - Portfolio projection through age 95 with Social Security
@@ -136,6 +142,32 @@ docker restart retirement-planner
 | GET | `/api/export` | Download state as JSON |
 | POST | `/api/import` | Upload JSON to replace state |
 | GET | `/api/market-history` | Historical asset-class returns dataset (read-only; powers the Time Machine) |
+| GET | `/api/me` | Current user, entitlement, and guest flag |
+| POST | `/api/auth/start` | Begin passwordless sign-in (`{email}` → magic link) |
+| GET | `/api/auth/verify?token=` | Consume a magic link, set the session cookie |
+| POST | `/api/auth/signout` | End the session |
+| POST | `/api/billing/checkout` | Start Stripe Checkout (or a dev-activate URL) |
+| POST | `/api/billing/webhook` | Stripe webhook → sets verified entitlement |
+| POST | `/api/billing/portal` | Stripe customer-portal link |
+| POST | `/api/ai/chat` | Grounded co-pilot: `{messages, snapshot}` → `{reply, actions}` |
+
+> `/api/state*`, `/api/export`, and `/api/import` are namespaced per user/guest by
+> the session cookie — no client change was needed, the cookie rides along.
+
+## Configuration
+
+All optional — Firly runs fully in **demo mode** with none of these set (magic
+links are returned/logged instead of emailed, billing activates instantly, and
+the AI co-pilot uses a deterministic offline reply).
+
+| Variable | Purpose |
+|----------|---------|
+| `DATA_PATH` | JSON store location (default `/data/state.json`) |
+| `ANTHROPIC_API_KEY` | Enables the live AI co-pilot (Claude `claude-opus-4-8`) |
+| `STRIPE_SECRET_KEY` | Enables real Stripe Checkout / portal / webhooks |
+| `STRIPE_PRICE_MONTHLY` / `_YEARLY` / `_LIFETIME` | Stripe price IDs per plan |
+| `STRIPE_WEBHOOK_SECRET` | Verifies incoming Stripe webhook signatures |
+| `FIRLY_SMTP` | When set, magic links are emailed instead of returned in the response |
 
 ## Historical Market Dataset
 
@@ -161,6 +193,6 @@ latest published years.
 ## Stack
 
 - React 18 + Vite + Recharts
-- Express + better-sqlite3
+- Express + JSON file KV store (per-user namespaced)
+- Passwordless magic-link auth · Stripe billing · Claude AI co-pilot — all optional, demo-mode by default
 - Docker (multi-stage build)
-- No external services, no tracking, no accounts

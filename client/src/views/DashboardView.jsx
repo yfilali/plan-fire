@@ -21,6 +21,8 @@ import { statusTone, wrColor } from "../lib/status.js";
 import { Card, CardHeader, StatCard, Segmented, ChartTip } from "../components/ui.jsx";
 import { AgeRangeSlider } from "../AgeRangeSlider.jsx";
 import DownturnCutControls from "../components/DownturnCutControls.jsx";
+import SuccessProbability from "../components/dashboard/SuccessProbability.jsx";
+import MilestonesCard from "../components/dashboard/Milestones.jsx";
 
 export default function DashboardView() {
 	const S = useTheme();
@@ -144,6 +146,9 @@ export default function DashboardView() {
 				<StatCard label="Balance @ 90" value={fmt(at90)} sub={realDollars ? "Today's $" : "Nominal"} color={at90 > 0 ? S.accent : S.danger} />
 			</div>
 
+			{/* Success probability (leaf) */}
+			<SuccessProbability />
+
 			{/* Controls bar */}
 			<div
 				style={{
@@ -251,6 +256,9 @@ export default function DashboardView() {
 					</BarChart>
 				</ResponsiveContainer>
 			</Card>
+
+			{/* Milestones (leaf) — below the main chart */}
+			<MilestonesCard />
 
 			{/* Withdrawal rate */}
 			<Card>

@@ -73,13 +73,13 @@ export function SectionTitle({ children, sub, right }) {
 				flexWrap: "wrap",
 			}}
 		>
-			<div>
+			<div style={{ flex: "1 1 260px", minWidth: 0 }}>
 				<h2 style={{ fontSize: 20, fontWeight: 700, color: S.text }}>{children}</h2>
 				{sub && (
 					<p style={{ fontSize: 13, color: S.textMuted, marginTop: 4 }}>{sub}</p>
 				)}
 			</div>
-			{right}
+			{right && <div style={{ flexShrink: 0 }}>{right}</div>}
 		</div>
 	);
 }
