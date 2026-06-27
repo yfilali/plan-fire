@@ -643,6 +643,22 @@ export function PlannerProvider({ children }) {
 		[mutatePlans],
 	);
 
+	// Set both backtest window bounds in ONE plan write. Calling the generic
+	// setBacktestStart then setBacktestEnd separately clobbers the first, because
+	// usePersistedState applies functional updates against a stale closure value
+	// within the same tick — so era presets must update both fields together.
+	const setBacktestWindow = useCallback(
+		(start, end) =>
+			mutatePlans((prev) =>
+				prev.map((pl) =>
+					pl.id === activePlanId
+						? { ...pl, backtestStart: start, backtestEnd: end }
+						: pl,
+				),
+			),
+		[mutatePlans, activePlanId],
+	);
+
 	// ── Assets ──
 	// Create a typed asset in a single atomic write. `init` overrides the
 	// type's blank defaults (id/type stay authoritative). Returns the new id.
@@ -860,11 +876,21 @@ export function PlannerProvider({ children }) {
 			}),
 		[projections, realDollars, data.age, data.inflation],
 	);
+	// Per-year returns bars for the dashboard. Reflects the active regime: the
+	// chosen historical era under "Time Machine", otherwise the lost-decade
+	// sequence (shown faded in steady "historical" mode as a stress preview).
 	const fullReturnsTimeline = useMemo(() => {
+		const isPeriod = data.marketMode === "historical_period" && backtest;
 		const pts = [];
-		for (let a = data.age; a <= END_AGE; a += 1) pts.push({ age: a, lost: returnForYear("lost_decade", a - data.age, data.nomReturn) });
+		for (let a = data.age; a <= END_AGE; a += 1) {
+			const yi = a - data.age;
+			const ret = isPeriod
+				? backtest.full[yi] ?? data.nomReturn
+				: returnForYear("lost_decade", yi, data.nomReturn);
+			pts.push({ age: a, ret });
+		}
 		return pts;
-	}, [data.age, data.nomReturn]);
+	}, [data.age, data.nomReturn, data.marketMode, backtest]);
 
 	// ready = migration has completed and v3 root keys are populated
 	const ready = schemaVersion === 3 && Array.isArray(plans) && Array.isArray(assets);
@@ -910,6 +936,7 @@ export function PlannerProvider({ children }) {
 		updatePlan,
 		removePlan,
 		setPlanAction,
+		setBacktestWindow,
 		// Spending
 		spendAt,
 		spendNow,

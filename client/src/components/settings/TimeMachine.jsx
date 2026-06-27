@@ -152,6 +152,7 @@ export default function TimeMachine() {
 	const {
 		backtestStart, setBacktestStart,
 		backtestEnd, setBacktestEnd,
+		setBacktestWindow,
 		backtestAlloc, setBacktestAlloc,
 		backtestRepeat, setBacktestRepeat,
 		assets, activePlanId,
@@ -187,10 +188,8 @@ export default function TimeMachine() {
 
 	const { meta, eras } = hist;
 	const span = Math.abs(backtestEnd - backtestStart) + 1;
-	const setYears = ([a, b]) => {
-		setBacktestStart(a);
-		setBacktestEnd(b);
-	};
+	// One atomic write — two separate setters would clobber each other.
+	const setYears = ([a, b]) => setBacktestWindow(a, b);
 	const clampStart = (y) => setBacktestStart(Math.min(Math.max(meta.minYear, y), backtestEnd));
 	const clampEnd = (y) => setBacktestEnd(Math.max(Math.min(meta.maxYear, y), backtestStart));
 	const matchAssets = () => {

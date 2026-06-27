@@ -192,7 +192,7 @@ export default function DashboardView() {
 						<span style={{ fontSize: 12, color: S.textMuted }}>
 							Active:{" "}
 							<span style={{ color: marketMode === "lost_decade" ? S.danger : S.accent, fontWeight: 650 }}>
-								{marketMode === "lost_decade" ? "Lost Decade" : "Historical Avg"}
+								{projections.primaryLabel}
 							</span>
 						</span>
 					}
@@ -242,9 +242,9 @@ export default function DashboardView() {
 						<YAxis hide width={50} />
 						<ReferenceLine y={0} stroke={S.border} />
 						<Tooltip content={<ChartTip formatter={(v) => `${(v * 100).toFixed(1)}%`} />} cursor={{ fill: S.textMuted + "10" }} />
-						<Bar dataKey="lost" name="Lost Decade" radius={[2, 2, 0, 0]} fillOpacity={marketMode === "lost_decade" ? 0.9 : 0.35}>
+						<Bar dataKey="ret" name={projections.primaryLabel} radius={[2, 2, 0, 0]} fillOpacity={marketMode === "historical" ? 0.35 : 0.9}>
 							{returnsTimeline.map((d) => (
-								<Cell key={d.age} fill={d.lost < 0 ? S.danger : S.accent} />
+								<Cell key={d.age} fill={d.ret < 0 ? S.danger : S.accent} />
 							))}
 						</Bar>
 						<ReferenceLine y={nomReturn} stroke={S.accent} strokeDasharray="4 4" strokeOpacity={marketMode === "historical" ? 1 : 0.5} />
