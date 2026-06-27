@@ -23,6 +23,7 @@ import { AgeRangeSlider } from "../AgeRangeSlider.jsx";
 import DownturnCutControls from "../components/DownturnCutControls.jsx";
 import SuccessProbability from "../components/dashboard/SuccessProbability.jsx";
 import MilestonesCard from "../components/dashboard/Milestones.jsx";
+import RegimeSelector from "../components/dashboard/RegimeSelector.jsx";
 
 export default function DashboardView() {
 	const S = useTheme();
@@ -193,14 +194,7 @@ export default function DashboardView() {
 				<CardHeader
 					title="Portfolio projection"
 					subtitle="Balance (left axis) under two market regimes. Spending (purple) steps down at Medicare and housing transitions; income (blue) is work + Social Security + rental — right axis."
-					right={
-						<span style={{ fontSize: 12, color: S.textMuted }}>
-							Active:{" "}
-							<span style={{ color: marketMode === "lost_decade" ? S.danger : S.accent, fontWeight: 650 }}>
-								{projections.primaryLabel}
-							</span>
-						</span>
-					}
+					right={<RegimeSelector />}
 				/>
 				<ResponsiveContainer width="100%" height={300}>
 					<ComposedChart data={chartData} syncId="dash" margin={{ top: 5, right: 8, bottom: 5, left: 5 }}>
