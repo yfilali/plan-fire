@@ -10,6 +10,10 @@ services:
     environment:
       - NODE_ENV=production
       - DATA_PATH=/data/state.json
+      # AI co-pilot live link. Set ANTHROPIC_API_KEY in a local .env file
+      # (auto-loaded by Compose, gitignored). Unset → co-pilot stays in
+      # offline demo mode; the app still runs fine.
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
 
 volumes:
   planner-data:
