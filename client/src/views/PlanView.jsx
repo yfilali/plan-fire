@@ -1,16 +1,26 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTheme } from "../theme/ThemeProvider.jsx";
 import { usePlanner } from "../state/PlannerProvider.jsx";
+import { usePro } from "../lib/pro.js";
 import { fmt } from "../engine.js";
 import { SectionTitle, Card, CardHeader, StatCard, Button } from "../components/ui.jsx";
 import PlanCard from "../components/plans/PlanCard.jsx";
 import PlanEditor from "../components/plans/PlanEditor.jsx";
+import { computePlanOutcome, computePlanMonteCarlo } from "../lib/planOutcomes.js";
+import PlanComparisonMatrix from "../components/plans/PlanComparisonMatrix.jsx";
+import PlanTrajectoryChart from "../components/plans/PlanTrajectoryChart.jsx";
+import PlanHeadToHead from "../components/plans/PlanHeadToHead.jsx";
 
 export default function PlanView() {
 	const S = useTheme();
 	const {
 		plans,
 		properties,
+		expenses,
+		propertyAssets,
+		liquidValueForPlan,
+		baselinePlan,
+		endAge,
 		activePlanId,
 		setActivePlanId,
 		activePlan,
@@ -19,10 +29,34 @@ export default function PlanView() {
 		removePlan,
 		propSaleNet,
 		propRentalNet,
+		realDollars,
 		age,
+		inflation,
 	} = usePlanner();
 
+	const [isPro] = usePro();
 	const [editing, setEditing] = useState(null);
+
+	const ctx = useMemo(
+		() => ({
+			expenses,
+			propertyAssets,
+			liquidValueForPlan,
+			baselinePlanId: baselinePlan.id,
+			endAge,
+		}),
+		[expenses, propertyAssets, liquidValueForPlan, baselinePlan, endAge],
+	);
+
+	const outcomes = useMemo(
+		() => plans.map((p) => computePlanOutcome(p, ctx)),
+		[plans, ctx],
+	);
+
+	const mcByPlan = useMemo(() => {
+		if (!isPro) return null;
+		return Object.fromEntries(plans.map((p) => [p.id, computePlanMonteCarlo(p, ctx)]));
+	}, [isPro, plans, ctx]);
 
 	const summarize = (plan) => {
 		if (plan.baseline && Object.values(plan.actions || {}).every((a) => a === "keep") && !plan.newHomeCost) {
@@ -59,6 +93,7 @@ export default function PlanView() {
 						plan={plan}
 						active={plan.id === activePlanId}
 						summary={summarize(plan)}
+						outcome={outcomes.find((o) => o.planId === plan.id)}
 						onSelect={() => setActivePlanId(plan.id)}
 						onEdit={() => setEditing(plan.id)}
 						onDelete={() => {
@@ -67,6 +102,32 @@ export default function PlanView() {
 						canDelete={plans.length > 1}
 					/>
 				))}
+			</div>
+
+			{/* Side-by-side comparison of every plan */}
+			<SectionTitle sub="Every plan run through the same engine, side by side.">
+				Compare plans
+			</SectionTitle>
+			<div style={{ marginBottom: 20 }}>
+				<PlanComparisonMatrix
+					outcomes={outcomes}
+					mcByPlan={mcByPlan}
+					isPro={isPro}
+					activePlanId={activePlanId}
+					onSelect={setActivePlanId}
+				/>
+			</div>
+			<div style={{ marginBottom: 20 }}>
+				<PlanTrajectoryChart
+					outcomes={outcomes}
+					realDollars={realDollars}
+					age={age}
+					inflation={inflation}
+					activePlanId={activePlanId}
+				/>
+			</div>
+			<div style={{ marginBottom: 20 }}>
+				<PlanHeadToHead outcomes={outcomes} plans={plans} />
 			</div>
 
 			{/* Impact of the selected plan */}
