@@ -140,6 +140,11 @@ export function project({
 		inflAccum[i] = 1;
 	});
 
+	// Social Security COLA accumulator, in lockstep with expenses (year 0 = base).
+	// SS benefits are indexed to inflation, so ssAnnual (today's dollars) must
+	// grow each year to keep pace with the inflating expense stream above.
+	let ssInflAccum = 1;
+
 	for (let a = startAge; a <= endAge; a++) {
 		const yi = a - startAge;
 		const thisNom = Array.isArray(nomReturn)
@@ -195,15 +200,17 @@ export function project({
 		});
 		const annualSpend = monthlySpend * 12;
 
-		// Accumulate inflation for next year
+		// Income sources — SS uses the COLA accumulator at this year's value,
+		// matching how expenses above read inflAccum before it advances.
+		const isRetired = a >= retireAge;
+		const ssIncome = a >= ssAge ? ssAnnual * ssInflAccum : 0;
+
+		// Accumulate inflation for next year (expenses + SS COLA, in lockstep)
 		expenses.forEach((e, i) => {
 			const rate = e.inflOverride != null ? e.inflOverride : inflation;
 			inflAccum[i] *= 1 + rate;
 		});
-
-		// Income sources
-		const isRetired = a >= retireAge;
-		const ssIncome = a >= ssAge ? ssAnnual : 0;
+		ssInflAccum *= 1 + inflation;
 		// Rental income applies once you're living the active plan (post-move).
 		const rental = activePlanId === planId ? rentalNet : 0;
 		const income = (isRetired ? 0 : workIncome) + ssIncome + rental;

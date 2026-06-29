@@ -156,6 +156,29 @@ describe("project — inflation-aware with nominal returns", () => {
 		expect(later.annualSpend).toBeCloseTo(75490, -1);
 	});
 
+	it("grows Social Security with inflation (COLA) once claimed", () => {
+		const result = project({
+			startAge: 49,
+			endAge: 59,
+			retireAge: 49,
+			ssAge: 49, // claim immediately so SS shows from year 0
+			ssAnnual: 40000,
+			portfolio: 3000000,
+			expenses: baseExpenses,
+			planId: "stay",
+			nomReturn: 0.07,
+			inflation: 0.03,
+			rentalNet: 0,
+		});
+		const now = result.find((d) => d.age === 49);
+		const later = result.find((d) => d.age === 59);
+
+		// Year 0: base benefit in today's dollars
+		expect(now.income).toBe(40000);
+		// Year 10: 40000 * 1.03^10 ≈ 53756.6 — must compound, not stay flat
+		expect(later.income).toBeCloseTo(53757, -1);
+	});
+
 	it("handles lost decade returns array with per-expense inflation", () => {
 		const result = project({
 			startAge: 49,
