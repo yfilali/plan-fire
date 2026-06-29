@@ -8,6 +8,7 @@ import TopBar from "./components/shell/TopBar.jsx";
 import DashboardView from "./views/DashboardView.jsx";
 import ExpensesView from "./views/ExpensesView.jsx";
 import AssetsView from "./views/AssetsView.jsx";
+import MarketView from "./views/MarketView.jsx";
 import PlanView from "./views/PlanView.jsx";
 import SettingsView from "./views/SettingsView.jsx";
 import CopilotView from "./views/CopilotView.jsx";
@@ -18,6 +19,7 @@ const VIEWS = {
 	copilot: CopilotView,
 	expenses: ExpensesView,
 	assets: AssetsView,
+	markets: MarketView,
 	plan: PlanView,
 	settings: SettingsView,
 };

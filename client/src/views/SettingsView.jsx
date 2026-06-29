@@ -3,7 +3,6 @@ import { usePersistedState } from "../usePersistedState.jsx";
 import { SectionTitle, Card, CardHeader } from "../components/ui.jsx";
 import { btnBase } from "../lib/styles.js";
 import ProfileSettings from "../components/settings/ProfileSettings.jsx";
-import MarketSettings from "../components/settings/MarketSettings.jsx";
 import DataSettings from "../components/settings/DataSettings.jsx";
 import AccountSettings from "../components/settings/AccountSettings.jsx";
 import BillingSettings from "../components/settings/BillingSettings.jsx";
@@ -12,7 +11,7 @@ import PrivacySettings from "../components/settings/PrivacySettings.jsx";
 import AppearanceSettings from "../components/settings/AppearanceSettings.jsx";
 
 const TABS = [
-	{ id: "Assumptions", icon: "📊" },
+	{ id: "Profile", icon: "🧑" },
 	{ id: "Account", icon: "👤" },
 	{ id: "Billing", icon: "💳" },
 	{ id: "Notifications", icon: "🔔" },
@@ -139,17 +138,13 @@ function LabsSettings() {
 }
 
 export default function SettingsView() {
-	const [tab, setTab] = usePersistedState("settingsTab", "Assumptions");
+	const [tab, setTab] = usePersistedState("settingsTab", "Profile");
+	// Normalize stale/removed tabs (e.g. the old "Assumptions") to Profile so the
+	// chip highlight matches the rendered content.
+	const activeTab = TABS.some((t) => t.id === tab) ? tab : "Profile";
 
 	const content = (() => {
-		switch (tab) {
-			case "Assumptions":
-				return (
-					<>
-						<ProfileSettings />
-						<MarketSettings />
-					</>
-				);
+		switch (activeTab) {
 			case "Account":
 				return <AccountSettings />;
 			case "Billing":
@@ -167,17 +162,18 @@ export default function SettingsView() {
 				return <AppearanceSettings />;
 			case "Labs":
 				return <LabsSettings />;
+			case "Profile":
 			default:
-				return null;
+				return <ProfileSettings />;
 		}
 	})();
 
 	return (
 		<div className="fade-in" style={{ display: "grid", gap: 16 }}>
-			<SectionTitle sub="Manage your plan assumptions, account, billing, and preferences.">
+			<SectionTitle sub="Manage your profile, account, billing, and preferences.">
 				Settings
 			</SectionTitle>
-			<TabRow tab={tab} setTab={setTab} />
+			<TabRow tab={activeTab} setTab={setTab} />
 			<div style={{ display: "grid", gap: 16 }}>{content}</div>
 		</div>
 	);

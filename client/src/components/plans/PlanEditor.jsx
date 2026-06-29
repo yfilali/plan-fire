@@ -101,7 +101,7 @@ export default function PlanEditor({ planId, onClose }) {
 					</span>
 				</div>
 				<div style={{ fontSize: 12, color: S.textDim }}>
-					Profile and market inputs for this plan are edited under <strong style={{ color: S.textMuted }}>Assumptions</strong> while it is the active plan.
+					Profile inputs for this plan are edited under <strong style={{ color: S.textMuted }}>Settings → Profile</strong>, and market assumptions under <strong style={{ color: S.textMuted }}>Markets</strong>, while it is the active plan.
 				</div>
 			</div>
 		</Modal>
