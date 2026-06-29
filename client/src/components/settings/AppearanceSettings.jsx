@@ -2,13 +2,15 @@ import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { usePlanner } from "../../state/PlannerProvider.jsx";
 import { usePersistedState } from "../../usePersistedState.jsx";
 import { Card, CardHeader, Select } from "../ui.jsx";
+import { FS, RAD, FW } from "../../lib/styles.js";
+import ThemeToggle from "../shell/ThemeToggle.jsx";
 
 function Toggle({ S, on, onClick }) {
 	return (
 		<button
 			onClick={onClick}
 			aria-pressed={on}
-			style={{ width: 46, height: 26, borderRadius: 999, background: on ? S.accent : S.border, position: "relative", border: "none", cursor: "pointer", transition: "background .15s ease", flexShrink: 0 }}
+			style={{ width: 46, height: 26, borderRadius: RAD.pill, background: on ? S.accent : S.border, position: "relative", border: "none", cursor: "pointer", transition: "background .15s ease", flexShrink: 0 }}
 		>
 			<span style={{ position: "absolute", top: 3, left: on ? 23 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,0.3)", transition: "left .15s ease" }} />
 		</button>
@@ -19,8 +21,8 @@ function SettingRow({ S, title, desc, children, last }) {
 	return (
 		<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "13px 0", borderBottom: last ? "none" : `1px solid ${S.border}`, flexWrap: "wrap" }}>
 			<div>
-				<div style={{ fontSize: 13.5, fontWeight: 600, color: S.text }}>{title}</div>
-				{desc && <div style={{ fontSize: 12, color: S.textMuted, marginTop: 2 }}>{desc}</div>}
+				<div style={{ fontSize: FS.base, fontWeight: FW.semibold, color: S.text }}>{title}</div>
+				{desc && <div style={{ fontSize: FS.sm, color: S.textMuted, marginTop: 2 }}>{desc}</div>}
 			</div>
 			{children}
 		</div>
@@ -36,7 +38,11 @@ export default function AppearanceSettings() {
 
 	return (
 		<Card>
-			<CardHeader icon="🎨" title="Appearance" subtitle="How Firly looks and formats numbers. Theme lives under Privacy & Data → Appearance & data." />
+			<CardHeader icon="🎨" title="Appearance" subtitle="How Firly looks and formats numbers." />
+
+			<SettingRow S={S} title="Theme" desc="Light, dark, or follow your system.">
+				<ThemeToggle />
+			</SettingRow>
 
 			<SettingRow S={S} title="Show today's dollars" desc="Display projections in inflation-adjusted (real) dollars instead of nominal.">
 				<Toggle S={S} on={!!realDollars} onClick={() => setRealDollars((v) => !v)} />

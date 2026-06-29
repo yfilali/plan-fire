@@ -1,7 +1,31 @@
 import { useTheme } from "../../theme/ThemeProvider.jsx";
-import { btnBase } from "../../lib/styles.js";
-import { Tag, Select, TextInput } from "../ui.jsx";
+import { btnBase, RAD } from "../../lib/styles.js";
+import { Tag, Select, TextInput, IconButton } from "../ui.jsx";
+import Icon from "../Icon.jsx";
 import { planColor, tagColor, tagLabel } from "../../lib/planMeta.js";
+
+// Pencil/edit glyph in the shared Icon stroke style (24×24, currentColor).
+// The Icon set has no pencil, so it's drawn inline here to stay emoji-free.
+function EditGlyph({ size = 15 }) {
+	return (
+		<svg
+			width={size}
+			height={size}
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.9"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			aria-hidden="true"
+			focusable="false"
+			style={{ display: "block", flexShrink: 0 }}
+		>
+			<path d="M12 20h9" />
+			<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+		</svg>
+	);
+}
 
 const TIER_META = {
 	essential: { tone: "accent", icon: "🛡️" },
@@ -95,8 +119,20 @@ export default function ExpenseRow({ exp, categories, plans, active, editing, on
 				<Tag color={S.blue}>{exp.ageMin ?? ""}–{exp.ageMax ?? ""}</Tag>
 			)}
 			<span style={{ fontSize: 12.5, fontWeight: 650, fontFamily: S.mono, color: S.text }}>${exp.amount.toLocaleString()}</span>
-			<button onClick={() => onEdit(exp.id)} style={{ ...btnBase, padding: "3px 8px", borderRadius: 6, border: `1px solid ${S.border}`, background: "transparent", color: S.textMuted, fontSize: 10.5 }}>edit</button>
-			<button onClick={() => onRemove(exp.id)} style={{ ...btnBase, padding: "3px 8px", borderRadius: 6, border: `1px solid ${S.border}`, background: "transparent", color: S.danger, fontSize: 10.5 }}>✕</button>
+			<IconButton
+				title={`Edit ${exp.name}`}
+				onClick={() => onEdit(exp.id)}
+				style={{ width: 28, height: 28, borderRadius: RAD.sm, color: S.textMuted }}
+			>
+				<EditGlyph />
+			</IconButton>
+			<IconButton
+				title={`Delete ${exp.name}`}
+				onClick={() => onRemove(exp.id)}
+				style={{ width: 28, height: 28, borderRadius: RAD.sm, color: S.danger }}
+			>
+				<Icon name="x-circle" size={16} />
+			</IconButton>
 		</div>
 	);
 }

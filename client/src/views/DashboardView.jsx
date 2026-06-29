@@ -17,13 +17,36 @@ import {
 import { useTheme } from "../theme/ThemeProvider.jsx";
 import { usePlanner } from "../state/PlannerProvider.jsx";
 import { fmt, deflate } from "../engine.js";
-import { statusTone, wrColor } from "../lib/status.js";
-import { Card, CardHeader, StatCard, Segmented, ChartTip } from "../components/ui.jsx";
+import { wrColor } from "../lib/status.js";
+import { computePlanHealth, healthVisual } from "../lib/planHealth.js";
+import { Card, CardHeader, StatCard, Segmented, ChartTip, SectionTitle } from "../components/ui.jsx";
+import Icon from "../components/Icon.jsx";
+import InfoTip from "../components/InfoTip.jsx";
+import { FS, RAD, FW } from "../lib/styles.js";
 import { AgeRangeSlider } from "../AgeRangeSlider.jsx";
 import DownturnCutControls from "../components/DownturnCutControls.jsx";
 import SuccessProbability from "../components/dashboard/SuccessProbability.jsx";
 import MilestonesCard from "../components/dashboard/Milestones.jsx";
 import RegimeSelector from "../components/dashboard/RegimeSelector.jsx";
+
+// Small uppercase eyebrow used to separate the controls / results sub-zones.
+function Eyebrow({ children, style }) {
+	const S = useTheme();
+	return (
+		<span
+			style={{
+				fontSize: FS.xs,
+				letterSpacing: 1,
+				textTransform: "uppercase",
+				color: S.textDim,
+				fontWeight: FW.bold,
+				...style,
+			}}
+		>
+			{children}
+		</span>
+	);
+}
 
 export default function DashboardView() {
 	const S = useTheme();
@@ -32,7 +55,6 @@ export default function DashboardView() {
 		age,
 		retireAge,
 		ssAge,
-		ssAnnual,
 		inflation,
 		nomReturn,
 		marketMode,
@@ -53,7 +75,12 @@ export default function DashboardView() {
 		fullReturnsTimeline,
 	} = p;
 
-	const tone = statusTone(S, effWR);
+	// Unified verdict — one source of truth for headline color + wording, so a
+	// positive outcome is never painted alarm-red. Monte Carlo lives in its own
+	// card (SuccessProbability) and simply doesn't vote here.
+	const health = computePlanHealth({ runsOut, effWR });
+	const visual = healthVisual(health.status, S);
+
 	const [viewFrom, setViewFrom] = useState(age);
 	const [viewTo, setViewTo] = useState(endAge);
 	const effFrom = Math.min(Math.max(viewFrom, age), endAge - 1);
@@ -87,10 +114,12 @@ export default function DashboardView() {
 			? ` · buy ${fmt(activeEcon.newHomeCost)}`
 			: "");
 
+	const dollarsLabel = realDollars ? "Today's $" : "Nominal $";
+
 	return (
 		<div style={{ display: "grid", gap: 16 }} className="fade-in">
-			{/* Headline status */}
-			<Card pad={0} style={{ overflow: "hidden", border: `1px solid ${tone.color}33` }}>
+			{/* ── Headline status — color + icon + word all follow the unified verdict ── */}
+			<Card pad={0} style={{ overflow: "hidden", border: `1px solid ${visual.color}33` }}>
 				<div
 					style={{
 						display: "flex",
@@ -99,40 +128,66 @@ export default function DashboardView() {
 						gap: 16,
 						flexWrap: "wrap",
 						padding: "18px 20px",
-						borderRadius: 16,
-						background: `linear-gradient(110deg, ${tone.color}1c 0%, ${tone.color}0a 45%, transparent 100%)`,
-						borderLeft: `4px solid ${tone.color}`,
+						borderRadius: RAD.lg,
+						background: `linear-gradient(110deg, ${visual.color}1c 0%, ${visual.color}0a 45%, transparent 100%)`,
+						borderLeft: `4px solid ${visual.color}`,
 					}}
 				>
-					<div>
-						<div style={{ fontSize: 18, fontWeight: 750, color: tone.color }}>
-							{!runsOut
-								? "✓ Your money never runs out"
-								: `⚠ Portfolio depletes at age ${runsOut.age}`}
+					<div style={{ minWidth: 0 }}>
+						<div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+							<Icon name={visual.icon} size={20} color={visual.color} />
+							<span style={{ fontSize: FS.lg, fontWeight: FW.bold, color: visual.color }}>
+								{!runsOut
+									? "Your money lasts the whole plan"
+									: `Portfolio depletes at age ${runsOut.age}`}
+							</span>
+							<span
+								style={{
+									fontSize: FS.xs,
+									fontWeight: FW.bold,
+									textTransform: "uppercase",
+									letterSpacing: 0.6,
+									color: visual.color,
+									background: `${visual.color}1e`,
+									border: `1px solid ${visual.color}55`,
+									borderRadius: RAD.pill,
+									padding: "2px 9px",
+								}}
+							>
+								{visual.label}
+							</span>
 						</div>
-						<div style={{ fontSize: 12.5, color: S.textMuted, marginTop: 3 }}>
+						<div style={{ fontSize: FS.sm, color: S.textMuted, marginTop: 5, lineHeight: 1.5 }}>
+							{health.reasons.join(" · ")}
+						</div>
+						<div style={{ fontSize: FS.xs, color: S.textDim, marginTop: 3 }}>
 							{housingLabel} · {projections.primaryLabel}
 							{retireAge > age && ` · Working until ${retireAge}`}
 						</div>
 					</div>
 					<div style={{ textAlign: "right" }}>
-						<div style={{ fontSize: 10.5, color: S.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>
+						<div style={{ fontSize: FS.xs, color: S.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>
 							{projections.altLabel}
 						</div>
 						<div
 							style={{
-								fontSize: 14,
-								fontWeight: 700,
+								display: "inline-flex",
+								alignItems: "center",
+								gap: 6,
+								marginTop: 2,
+								fontSize: FS.md,
+								fontWeight: FW.bold,
 								color: altRunsOut ? S.danger : S.accent,
 							}}
 						>
-							{altRunsOut ? `Runs out @ ${altRunsOut.age}` : "Survives ✓"}
+							<Icon name={altRunsOut ? "x-circle" : "check"} size={15} color={altRunsOut ? S.danger : S.accent} />
+							{altRunsOut ? `Runs out @ ${altRunsOut.age}` : "Survives"}
 						</div>
 					</div>
 				</div>
 			</Card>
 
-			{/* Stats */}
+			{/* ── Headline metrics ── */}
 			<div className="stat-grid stagger">
 				<StatCard label="Portfolio" value={fmt(projections.startPort)} sub="Post-transition" accent={S.blue} />
 				<StatCard label={`Spend @ ${age}`} value={fmt(spendNow)} sub="Current / yr" />
@@ -144,182 +199,180 @@ export default function DashboardView() {
 				/>
 				<StatCard label="Spend @ 70" value={fmt(dispSpend70)} sub="SS starts" color={S.accent} />
 				<StatCard label="Withdrawal rate" value={`${effWR.toFixed(1)}%`} sub="Target ≤ 4%" color={wrColor(S, effWR)} accent={wrColor(S, effWR)} />
-				<StatCard label="Balance @ 90" value={fmt(at90)} sub={realDollars ? "Today's $" : "Nominal"} color={at90 > 0 ? S.accent : S.danger} />
+				<StatCard label="Balance @ 90" value={fmt(at90)} sub={dollarsLabel} color={at90 > 0 ? S.accent : S.danger} />
 			</div>
 
-			{/* Success probability (leaf) */}
-			<SuccessProbability />
-
-			{/* Controls bar */}
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: 12,
-					flexWrap: "wrap",
-					padding: "10px 14px",
-					background: S.card,
-					border: `1px solid ${S.border}`,
-					borderRadius: 12,
-				}}
-			>
-				<span style={{ fontSize: 10.5, letterSpacing: 1, textTransform: "uppercase", color: S.textDim, fontWeight: 700 }}>
-					Zoom
-				</span>
-				<AgeRangeSlider
-					from={effFrom}
-					to={effTo}
-					min={age}
-					max={endAge}
-					onChangeFrom={setViewFrom}
-					onChangeTo={setViewTo}
-					bg={S.border}
-					active={S.accent}
-					mono={S.mono}
-					labelColor={S.text}
-				/>
-				<Segmented
-					size="sm"
-					value={realDollars}
-					onChange={setRealDollars}
-					options={[
-						{ value: false, label: "Nominal $" },
-						{ value: true, label: "Today's $" },
-					]}
-				/>
-			</div>
-
-			{/* Projection */}
-			<Card>
-				<CardHeader
-					title="Portfolio projection"
-					subtitle="Balance (left axis) under two market regimes. Spending (purple) steps down at Medicare and housing transitions; income (blue) is work + Social Security + rental — right axis."
-					right={<RegimeSelector />}
-				/>
-				<ResponsiveContainer width="100%" height={300}>
-					<ComposedChart data={chartData} syncId="dash" margin={{ top: 5, right: 8, bottom: 5, left: 5 }}>
-						<defs>
-							<linearGradient id="gradSpend" x1="0" y1="0" x2="0" y2="1">
-								<stop offset="0%" stopColor={S.purple} stopOpacity={0.32} />
-								<stop offset="100%" stopColor={S.purple} stopOpacity={0.02} />
-							</linearGradient>
-							<linearGradient id="gradPrimary" x1="0" y1="0" x2="0" y2="1">
-								<stop offset="0%" stopColor={S.accent} stopOpacity={0.18} />
-								<stop offset="100%" stopColor={S.accent} stopOpacity={0} />
-							</linearGradient>
-						</defs>
-						<CartesianGrid strokeDasharray="3 3" stroke={S.border} vertical={false} />
-						<XAxis {...ageAxisProps} />
-						<YAxis yAxisId="bal" tickFormatter={fmt} tick={{ fontSize: 10, fill: S.textMuted }} tickLine={false} axisLine={false} width={50} />
-						<YAxis yAxisId="cash" orientation="right" tickFormatter={fmt} tick={{ fontSize: 10, fill: S.textMuted }} tickLine={false} axisLine={false} width={50} />
-						<Tooltip content={<ChartTip />} cursor={{ stroke: S.border }} />
-						<Legend formatter={(v) => <span style={{ fontSize: 11, color: S.textMuted }}>{v}</span>} />
-						{retireAge > age && (
-							<ReferenceLine yAxisId="bal" x={retireAge} stroke={S.blue} strokeDasharray="4 4" label={{ value: "Retire", fontSize: 10, fill: S.blue }} />
-						)}
-						<ReferenceLine yAxisId="bal" x={65} stroke={S.purple} strokeDasharray="4 4" label={{ value: "Medicare", fontSize: 10, fill: S.purple }} />
-						<ReferenceLine yAxisId="bal" x={ssAge} stroke={S.accent} strokeDasharray="4 4" label={{ value: "SS", fontSize: 10, fill: S.accent }} />
-						{runsOut && (
-							<ReferenceLine yAxisId="bal" x={runsOut.age} stroke={S.danger} label={{ value: "Depleted", fontSize: 10, fill: S.danger }} />
-						)}
-						<Area type="stepAfter" yAxisId="cash" dataKey="spending" name="Annual spending" fill="url(#gradSpend)" stroke={S.purple} strokeWidth={1.5} />
-						<Line type="stepAfter" yAxisId="cash" dataKey="income" name="Income" stroke={S.blue} strokeWidth={1.5} dot={false} strokeDasharray="2 2" />
-						<Area type="monotone" yAxisId="bal" dataKey="primary" name={projections.primaryLabel} stroke={S.accent} strokeWidth={2.6} fill="url(#gradPrimary)" dot={false} />
-						<Line type="monotone" yAxisId="bal" dataKey="alt" name={projections.altLabel} stroke={S.textDim} strokeWidth={2} strokeDasharray="6 4" dot={false} opacity={0.6} />
-					</ComposedChart>
-				</ResponsiveContainer>
-
-				<div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 6 }}>
-					<span style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: S.textDim, fontWeight: 700 }}>
-						Market returns
-					</span>
-					<span style={{ fontSize: 10, color: S.textMuted }}>Avg {Math.round(nomReturn * 100)}% / yr</span>
-				</div>
-				<ResponsiveContainer width="100%" height={56}>
-					<BarChart data={returnsTimeline} syncId="dash" margin={{ top: 5, right: 8, bottom: 5, left: 5 }}>
-						<XAxis {...ageAxisProps} hide />
-						<YAxis hide width={50} />
-						<ReferenceLine y={0} stroke={S.border} />
-						<Tooltip content={<ChartTip formatter={(v) => `${(v * 100).toFixed(1)}%`} />} cursor={{ fill: S.textMuted + "10" }} />
-						<Bar dataKey="ret" name={projections.primaryLabel} radius={[2, 2, 0, 0]} fillOpacity={marketMode === "historical" ? 0.35 : 0.9}>
-							{returnsTimeline.map((d) => (
-								<Cell key={d.age} fill={d.ret < 0 ? S.danger : S.accent} />
-							))}
-						</Bar>
-						<ReferenceLine y={nomReturn} stroke={S.accent} strokeDasharray="4 4" strokeOpacity={marketMode === "historical" ? 1 : 0.5} />
-					</BarChart>
-				</ResponsiveContainer>
-			</Card>
-
-			{/* Milestones (leaf) — below the main chart */}
-			<MilestonesCard />
-
-			{/* Withdrawal rate */}
-			<Card>
-				<CardHeader
-					title="Withdrawal rate"
-					subtitle="Net withdrawal (spending minus income) as a share of the portfolio. Gaps appear after depletion."
-					right={
-						<span style={{ fontSize: 13, fontWeight: 700, color: wrColor(S, effWR) }}>
-							{effWR.toFixed(1)}% now
-						</span>
-					}
-				/>
-				<ResponsiveContainer width="100%" height={180}>
-					<ComposedChart data={chartData} syncId="dash" margin={{ top: 5, right: 8, bottom: 5, left: 5 }}>
-						<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
-						<XAxis {...ageAxisProps} />
-						<YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: S.textMuted }} tickLine={false} axisLine={false} width={40} />
-						<Tooltip content={<ChartTip formatter={(v) => `${v.toFixed(1)}%`} />} cursor={{ stroke: S.border }} />
-						<ReferenceLine y={4} stroke={S.textDim} strokeDasharray="4 4" label={{ value: "4% rule", position: "insideTopRight", fontSize: 10, fill: S.textMuted }} />
-						<Line type="monotone" dataKey="wdRate" name="Withdrawal rate" stroke={S.warning} strokeWidth={2.4} dot={false} connectNulls={false} />
-					</ComposedChart>
-				</ResponsiveContainer>
-			</Card>
-
-			<DownturnCutControls />
-
-			<Milestones {...{ S, age, endAge, retireAge, ssAge, ssAnnual, relocates: activeEcon.relocates, moveAge: activeEcon.moveAge, planIcon: activePlan?.icon }} />
-		</div>
-	);
-}
-
-function Milestones({ S, age, endAge, retireAge, ssAge, ssAnnual, relocates, moveAge, planIcon }) {
-	const items = [
-		...(relocates ? [{ a: moveAge, l: "Relocate", icon: planIcon || "🚚" }] : []),
-		...(retireAge > age ? [{ a: retireAge, l: "Retire", icon: "🎉" }] : []),
-		{ a: 59, l: "401k penalty-free", icon: "💼" },
-		{ a: 62, l: "Early SS eligible", icon: "📋" },
-		{ a: 65, l: "Medicare", icon: "🏥", hl: true },
-		{ a: ssAge, l: `SS starts (${fmt(ssAnnual)}/yr)`, icon: "💵", hl: true },
-	].filter((m) => m.a >= age && m.a <= endAge);
-
-	return (
-		<Card>
-			<CardHeader title="Key milestones" />
-			<div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-				{items.map((m, i) => (
+			{/* ════ CONTROLS ════ Inputs that reshape every result below. */}
+			<section>
+				<SectionTitle sub="Adjust the view and stress assumptions — every result below reacts to these.">
+					Controls
+				</SectionTitle>
+				<div style={{ display: "grid", gap: 12 }}>
 					<div
-						key={i}
 						style={{
-							display: "inline-flex",
+							display: "flex",
 							alignItems: "center",
-							gap: 7,
-							padding: "5px 11px",
-							borderRadius: 999,
-							border: `1px solid ${m.hl ? S.accent + "66" : S.border}`,
-							background: m.hl ? S.accent + "10" : S.bg,
-							fontSize: 11.5,
+							gap: 14,
+							flexWrap: "wrap",
+							padding: "10px 14px",
+							background: S.card,
+							border: `1px solid ${S.border}`,
+							borderRadius: RAD.md,
 						}}
 					>
-						<span>{m.icon}</span>
-						<span style={{ fontWeight: m.hl ? 650 : 450, color: m.hl ? S.accent : S.text }}>
-							{m.l}
+						<Eyebrow>Zoom</Eyebrow>
+						<AgeRangeSlider
+							from={effFrom}
+							to={effTo}
+							min={age}
+							max={endAge}
+							onChangeFrom={setViewFrom}
+							onChangeTo={setViewTo}
+							bg={S.border}
+							active={S.accent}
+							mono={S.mono}
+							labelColor={S.text}
+						/>
+						<span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+							<Eyebrow>Dollars</Eyebrow>
+							<InfoTip term="real vs nominal dollars" />
+							<Segmented
+								size="sm"
+								value={realDollars}
+								onChange={setRealDollars}
+								options={[
+									{ value: false, label: "Nominal $" },
+									{ value: true, label: "Today's $" },
+								]}
+							/>
 						</span>
-						<span style={{ fontFamily: S.mono, color: S.textMuted }}>@{m.a}</span>
 					</div>
-				))}
-			</div>
-		</Card>
+					<DownturnCutControls />
+				</div>
+			</section>
+
+			{/* ════ RESULTS ════ Everything the controls produce. */}
+			<section>
+				<SectionTitle sub={`Projection, odds and milestones — shown in ${dollarsLabel.toLowerCase()}.`}>
+					Results
+				</SectionTitle>
+				<div style={{ display: "grid", gap: 16 }}>
+					{/* Projection — split into two stacked charts sharing one x-axis so the
+					    balance scale never collides with the income/spending scale. */}
+					<Card>
+						<CardHeader
+							title="Portfolio projection"
+							subtitle="Balance under two market regimes (top), then income vs spending (bottom). Spending steps down at Medicare and housing transitions."
+							right={
+								<span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+									<InfoTip term="regime" />
+									<RegimeSelector />
+								</span>
+							}
+						/>
+
+						{/* Balance — the primary line is the dominant, full-opacity mark. */}
+						<ResponsiveContainer width="100%" height={210}>
+							<ComposedChart data={chartData} syncId="dash" margin={{ top: 5, right: 8, bottom: 0, left: 5 }}>
+								<defs>
+									<linearGradient id="gradPrimary" x1="0" y1="0" x2="0" y2="1">
+										<stop offset="0%" stopColor={S.accent} stopOpacity={0.22} />
+										<stop offset="100%" stopColor={S.accent} stopOpacity={0} />
+									</linearGradient>
+								</defs>
+								<CartesianGrid strokeDasharray="3 3" stroke={S.border} vertical={false} />
+								<XAxis {...ageAxisProps} hide />
+								<YAxis tickFormatter={fmt} tick={{ fontSize: 10, fill: S.textMuted }} tickLine={false} axisLine={false} width={52} />
+								<Tooltip content={<ChartTip />} cursor={{ stroke: S.border }} />
+								<Legend formatter={(v) => <span style={{ fontSize: FS.xs, color: S.textMuted }}>{v}</span>} />
+								{retireAge > age && (
+									<ReferenceLine x={retireAge} stroke={S.blue} strokeDasharray="4 4" label={{ value: "Retire", fontSize: 10, fill: S.blue }} />
+								)}
+								<ReferenceLine x={65} stroke={S.purple} strokeDasharray="4 4" label={{ value: "Medicare", fontSize: 10, fill: S.purple }} />
+								<ReferenceLine x={ssAge} stroke={S.accent} strokeDasharray="4 4" label={{ value: "SS", fontSize: 10, fill: S.accent }} />
+								{runsOut && (
+									<ReferenceLine x={runsOut.age} stroke={S.danger} label={{ value: "Depleted", fontSize: 10, fill: S.danger }} />
+								)}
+								{/* alt drawn first (behind), de-emphasized; primary on top, dominant */}
+								<Line type="monotone" dataKey="alt" name={projections.altLabel} stroke={S.textDim} strokeWidth={1.6} strokeDasharray="5 4" dot={false} opacity={0.5} />
+								<Area type="monotone" dataKey="primary" name={projections.primaryLabel} stroke={S.accent} strokeWidth={2.8} fill="url(#gradPrimary)" dot={false} />
+							</ComposedChart>
+						</ResponsiveContainer>
+
+						{/* Income vs spending — own axis, no longer fighting the balance scale. */}
+						<Eyebrow style={{ display: "block", marginTop: 10, marginBottom: 2 }}>Income vs spending</Eyebrow>
+						<ResponsiveContainer width="100%" height={130}>
+							<ComposedChart data={chartData} syncId="dash" margin={{ top: 5, right: 8, bottom: 5, left: 5 }}>
+								<defs>
+									<linearGradient id="gradSpend" x1="0" y1="0" x2="0" y2="1">
+										<stop offset="0%" stopColor={S.purple} stopOpacity={0.32} />
+										<stop offset="100%" stopColor={S.purple} stopOpacity={0.02} />
+									</linearGradient>
+								</defs>
+								<CartesianGrid strokeDasharray="3 3" stroke={S.border} vertical={false} />
+								<XAxis {...ageAxisProps} />
+								<YAxis tickFormatter={fmt} tick={{ fontSize: 10, fill: S.textMuted }} tickLine={false} axisLine={false} width={52} />
+								<Tooltip content={<ChartTip />} cursor={{ stroke: S.border }} />
+								<Legend formatter={(v) => <span style={{ fontSize: FS.xs, color: S.textMuted }}>{v}</span>} />
+								<Area type="stepAfter" dataKey="spending" name="Annual spending" fill="url(#gradSpend)" stroke={S.purple} strokeWidth={1.6} dot={false} />
+								<Line type="stepAfter" dataKey="income" name="Income" stroke={S.blue} strokeWidth={1.8} dot={false} strokeDasharray="2 2" />
+							</ComposedChart>
+						</ResponsiveContainer>
+
+						{/* Per-year market returns */}
+						<div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 10 }}>
+							<Eyebrow>Market returns</Eyebrow>
+							<span style={{ fontSize: FS.xs, color: S.textMuted }}>Avg {Math.round(nomReturn * 100)}% / yr</span>
+						</div>
+						<ResponsiveContainer width="100%" height={56}>
+							<BarChart data={returnsTimeline} syncId="dash" margin={{ top: 5, right: 8, bottom: 5, left: 5 }}>
+								<XAxis {...ageAxisProps} hide />
+								<YAxis hide width={52} />
+								<ReferenceLine y={0} stroke={S.border} />
+								<Tooltip content={<ChartTip formatter={(v) => `${(v * 100).toFixed(1)}%`} />} cursor={{ fill: S.textMuted + "10" }} />
+								<Bar dataKey="ret" name={projections.primaryLabel} radius={[2, 2, 0, 0]} fillOpacity={marketMode === "historical" ? 0.35 : 0.9}>
+									{returnsTimeline.map((d) => (
+										<Cell key={d.age} fill={d.ret < 0 ? S.danger : S.accent} />
+									))}
+								</Bar>
+								<ReferenceLine y={nomReturn} stroke={S.accent} strokeDasharray="4 4" strokeOpacity={marketMode === "historical" ? 1 : 0.5} />
+							</BarChart>
+						</ResponsiveContainer>
+					</Card>
+
+					{/* Monte Carlo success (leaf) */}
+					<SuccessProbability />
+
+					{/* Withdrawal rate */}
+					<Card>
+						<CardHeader
+							title="Withdrawal rate"
+							subtitle="Net withdrawal (spending minus income) as a share of the portfolio. Gaps appear after depletion."
+							right={
+								<span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+									<span style={{ fontSize: FS.base, fontWeight: FW.bold, color: wrColor(S, effWR) }}>
+										{effWR.toFixed(1)}% now
+									</span>
+									<InfoTip term="WR" />
+								</span>
+							}
+						/>
+						<ResponsiveContainer width="100%" height={180}>
+							<ComposedChart data={chartData} syncId="dash" margin={{ top: 5, right: 8, bottom: 5, left: 5 }}>
+								<CartesianGrid strokeDasharray="3 3" stroke={S.border} />
+								<XAxis {...ageAxisProps} />
+								<YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: S.textMuted }} tickLine={false} axisLine={false} width={40} />
+								<Tooltip content={<ChartTip formatter={(v) => `${v.toFixed(1)}%`} />} cursor={{ stroke: S.border }} />
+								<ReferenceLine y={4} stroke={S.textDim} strokeDasharray="4 4" label={{ value: "4% rule", position: "insideTopRight", fontSize: 10, fill: S.textMuted }} />
+								<Line type="monotone" dataKey="wdRate" name="Withdrawal rate" stroke={S.warning} strokeWidth={2.4} dot={false} connectNulls={false} />
+							</ComposedChart>
+						</ResponsiveContainer>
+					</Card>
+
+					{/* Milestones (leaf) — one card, two labeled groups */}
+					<MilestonesCard />
+				</div>
+			</section>
+		</div>
 	);
 }

@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { usePlanner } from "../../state/PlannerProvider.jsx";
-import { project, fmt } from "../../engine.js";
+import { project, fmt, deflate } from "../../engine.js";
 import { Card, CardHeader, Button } from "../ui.jsx";
+import Icon from "../Icon.jsx";
+import InfoTip from "../InfoTip.jsx";
+import { FS, RAD, FW } from "../../lib/styles.js";
 import { usePro } from "../../lib/pro.js";
 import { runMonteCarlo } from "../../lib/montecarlo.js";
 import UpgradeModal from "../settings/UpgradeModal.jsx";
@@ -30,6 +33,7 @@ export default function SuccessProbability() {
 		discretionaryCut,
 		luxuryCut,
 		cutMode,
+		realDollars,
 	} = usePlanner();
 
 	const mc = useMemo(() => {
@@ -69,6 +73,13 @@ export default function SuccessProbability() {
 	const tone = pct >= 85 ? S.accent : pct >= 70 ? S.warning : S.danger;
 	const verdict = pct >= 85 ? "On track" : pct >= 70 ? "Borderline" : "At risk";
 
+	// Terminal wealth lands at the end of the horizon in NOMINAL dollars. Lead
+	// with today's-dollars (governed by the same toggle as the projection) so the
+	// figures are comprehensible — a raw $200M+ nominal median means little.
+	const yearsOut = endAge - age;
+	const adj = (v) => (realDollars ? deflate(v, yearsOut, inflation) : v);
+	const dollarsLabel = realDollars ? "today's $" : "nominal";
+
 	return (
 		<Card>
 			<CardHeader
@@ -77,9 +88,16 @@ export default function SuccessProbability() {
 				subtitle={`${TRIALS.toLocaleString()} randomized market paths · ${Math.round(VOLATILITY * 100)}% volatility`}
 				right={
 					isPro ? (
-						<span style={{ fontSize: 11, fontWeight: 650, color: tone }}>{verdict}</span>
+						<span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+							<Icon
+								name={pct >= 85 ? "check" : pct >= 70 ? "alert" : "warning"}
+								size={14}
+								color={tone}
+							/>
+							<span style={{ fontSize: FS.xs, fontWeight: FW.semibold, color: tone }}>{verdict}</span>
+						</span>
 					) : (
-						<span style={{ fontSize: 11, fontWeight: 650, color: S.blue }}>🔒 Pro</span>
+						<span style={{ fontSize: FS.xs, fontWeight: FW.semibold, color: S.blue }}>🔒 Pro</span>
 					)
 				}
 			/>
@@ -97,27 +115,33 @@ export default function SuccessProbability() {
 						<span style={{ fontSize: 46, fontWeight: 800, color: tone, fontFamily: S.mono, lineHeight: 1 }}>
 							{pct}%
 						</span>
-						<span style={{ fontSize: 13, color: S.textMuted }}>
+						<span style={{ fontSize: FS.base, color: S.textMuted }}>
 							of paths your portfolio outlives you (to {endAge})
 						</span>
 					</div>
 
 					{/* Probability bar */}
-					<div style={{ height: 8, borderRadius: 6, background: S.bg, marginTop: 14, overflow: "hidden", border: `1px solid ${S.border}` }}>
+					<div style={{ height: 8, borderRadius: RAD.sm, background: S.bg, marginTop: 14, overflow: "hidden", border: `1px solid ${S.border}` }}>
 						<div style={{ width: `${pct}%`, height: "100%", background: tone, transition: "width .3s ease" }} />
 					</div>
 
 					{/* Terminal-wealth band */}
-					<div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginTop: 16 }}>
+					<div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 16, marginBottom: 10 }}>
+						<span style={{ fontSize: FS.xs, letterSpacing: 1, textTransform: "uppercase", color: S.textDim, fontWeight: FW.bold }}>
+							Ending balance · {dollarsLabel}
+						</span>
+						<InfoTip term="real vs nominal dollars" />
+					</div>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
 						{[
-							{ k: "Pessimistic", v: mc.p10, c: S.danger, sub: "10th pct" },
-							{ k: "Median", v: mc.p50, c: S.text, sub: "50th pct" },
-							{ k: "Optimistic", v: mc.p90, c: S.accent, sub: "90th pct" },
+							{ k: "Pessimistic", v: adj(mc.p10), c: S.danger, sub: "10th pct" },
+							{ k: "Median", v: adj(mc.p50), c: S.text, sub: "50th pct" },
+							{ k: "Optimistic", v: adj(mc.p90), c: S.accent, sub: "90th pct" },
 						].map((b) => (
-							<div key={b.k} style={{ padding: "10px 12px", background: S.bg, border: `1px solid ${S.border}`, borderRadius: 10 }}>
-								<div style={{ fontSize: 10.5, color: S.textMuted, fontWeight: 600 }}>{b.k}</div>
-								<div style={{ fontSize: 17, fontWeight: 750, color: b.c, fontFamily: S.mono, marginTop: 3 }}>{fmt(b.v)}</div>
-								<div style={{ fontSize: 10, color: S.textDim }}>ending balance · {b.sub}</div>
+							<div key={b.k} style={{ padding: "10px 12px", background: S.bg, border: `1px solid ${S.border}`, borderRadius: RAD.sm }}>
+								<div style={{ fontSize: FS.xs, color: S.textMuted, fontWeight: FW.semibold }}>{b.k}</div>
+								<div style={{ fontSize: FS.lg, fontWeight: FW.bold, color: b.c, fontFamily: S.mono, marginTop: 3 }}>{fmt(b.v)}</div>
+								<div style={{ fontSize: FS.xs, color: S.textDim }}>{b.sub}</div>
 							</div>
 						))}
 					</div>
@@ -136,7 +160,7 @@ export default function SuccessProbability() {
 							textAlign: "center",
 						}}
 					>
-						<div style={{ fontSize: 13, color: S.text, fontWeight: 600 }}>
+						<div style={{ fontSize: FS.base, color: S.text, fontWeight: FW.semibold }}>
 							See your real odds of never running out
 						</div>
 						<Button variant="primary" size="md" onClick={() => setShowUpgrade(true)}>

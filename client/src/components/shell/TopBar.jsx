@@ -1,7 +1,9 @@
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { usePlanner } from "../../state/PlannerProvider.jsx";
-import { statusTone } from "../../lib/status.js";
+import { computePlanHealth, healthVisual } from "../../lib/planHealth.js";
+import { FS } from "../../lib/styles.js";
 import { Badge, IconButton } from "../ui.jsx";
+import Icon from "../Icon.jsx";
 import { NAV } from "./Sidebar.jsx";
 import PlanSwitcher from "./PlanSwitcher.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
@@ -9,7 +11,10 @@ import ThemeToggle from "./ThemeToggle.jsx";
 export default function TopBar({ view, onMenu }) {
 	const S = useTheme();
 	const { effWR, runsOut } = usePlanner();
-	const tone = statusTone(S, effWR);
+	// Canonical verdict — same inputs/precedence as the sidebar and dashboard
+	// banner, so the badge can never contradict them.
+	const { status } = computePlanHealth({ runsOut, effWR });
+	const visual = healthVisual(status, S);
 	const title = NAV.find((n) => n.id === view)?.label || "";
 
 	return (
@@ -24,26 +29,21 @@ export default function TopBar({ view, onMenu }) {
 
 			<div
 				className="hide-sm"
-				style={{ fontSize: 15, fontWeight: 700, color: S.text }}
+				style={{ fontSize: FS.md, fontWeight: 700, color: S.text }}
 			>
 				{title}
 			</div>
 
 			<div style={{ flex: 1 }} />
 
-			<Badge color={tone.color}>
-				<span
-					className="pulse-dot"
-					style={{
-						width: 7,
-						height: 7,
-						borderRadius: 4,
-						background: tone.color,
-					}}
-				/>
+			<Badge color={visual.color}>
+				<Icon name={visual.icon} size={14} color={visual.color} />
+				<span style={{ fontWeight: 700 }}>{visual.label}</span>
 				<span className="hide-sm">
-					{runsOut ? `Depletes @ ${runsOut.age}` : "Money lasts"} ·{" "}
+					{" · "}
+					{runsOut ? `Depletes @ ${runsOut.age}` : "Money lasts"}
 				</span>
+				{" · "}
 				{effWR.toFixed(1)}% WR
 			</Badge>
 

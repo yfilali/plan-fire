@@ -1,7 +1,9 @@
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { useStoreStatus } from "../../usePersistedState.jsx";
 import { usePlanner } from "../../state/PlannerProvider.jsx";
-import { statusTone } from "../../lib/status.js";
+import { computePlanHealth, healthVisual } from "../../lib/planHealth.js";
+import { FS, RAD } from "../../lib/styles.js";
+import Icon from "../Icon.jsx";
 import Brand from "./Brand.jsx";
 
 const icon = (d) => (
@@ -51,8 +53,11 @@ export const NAV = [
 export default function Sidebar({ view, setView, open, onClose }) {
 	const S = useTheme();
 	const { serverOk } = useStoreStatus();
-	const { effWR } = usePlanner();
-	const tone = statusTone(S, effWR);
+	const { effWR, runsOut } = usePlanner();
+	// Canonical verdict — keyed on the deterministic projection (runsOut) plus
+	// WR, so the sidebar agrees with the topbar badge and the dashboard banner.
+	const { status, label } = computePlanHealth({ runsOut, effWR });
+	const visual = healthVisual(status, S);
 
 	return (
 		<>
@@ -87,15 +92,15 @@ export default function Sidebar({ view, setView, open, onClose }) {
 				<div style={{ padding: "12px 16px" }}>
 					<div
 						style={{
-							borderRadius: 12,
-							border: `1px solid ${tone.color}40`,
-							background: tone.color + "12",
+							borderRadius: RAD.md,
+							border: `1px solid ${visual.color}40`,
+							background: visual.color + "12",
 							padding: "11px 13px",
 						}}
 					>
 						<div
 							style={{
-								fontSize: 10.5,
+								fontSize: FS.xs,
 								color: S.textMuted,
 								fontWeight: 600,
 								textTransform: "uppercase",
@@ -112,12 +117,22 @@ export default function Sidebar({ view, setView, open, onClose }) {
 								marginTop: 3,
 							}}
 						>
-							<span style={{ fontSize: 15, fontWeight: 700, color: tone.color }}>
-								{tone.label}
+							<span
+								style={{
+									display: "inline-flex",
+									alignItems: "center",
+									gap: 6,
+									fontSize: FS.md,
+									fontWeight: 700,
+									color: visual.color,
+								}}
+							>
+								<Icon name={visual.icon} size={16} color={visual.color} />
+								{label}
 							</span>
 							<span
 								style={{
-									fontSize: 12,
+									fontSize: FS.sm,
 									color: S.textMuted,
 									fontFamily: S.mono,
 								}}
@@ -132,7 +147,7 @@ export default function Sidebar({ view, setView, open, onClose }) {
 							alignItems: "center",
 							gap: 7,
 							marginTop: 11,
-							fontSize: 11,
+							fontSize: FS.xs,
 							color: S.textDim,
 						}}
 					>

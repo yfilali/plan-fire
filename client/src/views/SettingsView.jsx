@@ -1,7 +1,7 @@
 import { useTheme } from "../theme/ThemeProvider.jsx";
 import { usePersistedState } from "../usePersistedState.jsx";
 import { SectionTitle, Card, CardHeader } from "../components/ui.jsx";
-import { btnBase } from "../lib/styles.js";
+import { btnBase, FS, RAD, FW } from "../lib/styles.js";
 import ProfileSettings from "../components/settings/ProfileSettings.jsx";
 import DataSettings from "../components/settings/DataSettings.jsx";
 import AccountSettings from "../components/settings/AccountSettings.jsx";
@@ -31,7 +31,7 @@ function TabRow({ tab, setTab }) {
 				padding: 5,
 				background: S.bg,
 				border: `1px solid ${S.border}`,
-				borderRadius: 12,
+				borderRadius: RAD.md,
 			}}
 		>
 			{TABS.map((t) => {
@@ -46,9 +46,9 @@ function TabRow({ tab, setTab }) {
 							alignItems: "center",
 							gap: 6,
 							padding: "7px 13px",
-							fontSize: 12.5,
-							fontWeight: on ? 650 : 500,
-							borderRadius: 9,
+							fontSize: FS.sm,
+							fontWeight: on ? 650 : FW.medium,
+							borderRadius: RAD.sm,
 							background: on ? S.card : "transparent",
 							color: on ? S.text : S.textMuted,
 							border: `1px solid ${on ? S.border : "transparent"}`,
@@ -99,8 +99,8 @@ function LabsSettings() {
 							}}
 						>
 							<div>
-								<div style={{ fontSize: 13.5, fontWeight: 600, color: S.text }}>{f.label}</div>
-								<div style={{ fontSize: 12, color: S.textMuted, marginTop: 2 }}>{f.desc}</div>
+								<div style={{ fontSize: FS.base, fontWeight: FW.semibold, color: S.text }}>{f.label}</div>
+								<div style={{ fontSize: FS.sm, color: S.textMuted, marginTop: 2 }}>{f.desc}</div>
 							</div>
 							<button
 								onClick={() => toggle(f.id)}
@@ -109,7 +109,7 @@ function LabsSettings() {
 									...btnBase,
 									width: 46,
 									height: 26,
-									borderRadius: 999,
+									borderRadius: RAD.pill,
 									background: on ? S.accent : S.border,
 									position: "relative",
 									transition: "background .15s ease",
@@ -154,8 +154,8 @@ export default function SettingsView() {
 			case "Privacy & Data":
 				return (
 					<>
-						<DataSettings />
 						<PrivacySettings />
+						<DataSettings />
 					</>
 				);
 			case "Appearance":

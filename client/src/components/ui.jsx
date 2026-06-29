@@ -1,5 +1,5 @@
 import { useTheme } from "../theme/ThemeProvider.jsx";
-import { btnBase, makeInput } from "../lib/styles.js";
+import { btnBase, makeInput, RAD } from "../lib/styles.js";
 import { fmt } from "../engine.js";
 
 /* ── Surfaces ────────────────────────────────────────────────────────── */
@@ -157,9 +157,9 @@ export function Button({
 }) {
 	const S = useTheme();
 	const sizes = {
-		sm: { padding: "5px 11px", fontSize: 12, borderRadius: 8 },
-		md: { padding: "8px 15px", fontSize: 13, borderRadius: 9 },
-		lg: { padding: "11px 20px", fontSize: 14, borderRadius: 10 },
+		sm: { padding: "5px 11px", fontSize: 12, borderRadius: RAD.sm },
+		md: { padding: "8px 15px", fontSize: 13, borderRadius: RAD.sm },
+		lg: { padding: "11px 20px", fontSize: 14, borderRadius: RAD.sm },
 	};
 	const variants = {
 		primary: {
@@ -212,7 +212,7 @@ export function IconButton({ children, title, active, style, ...rest }) {
 				...btnBase,
 				width: 36,
 				height: 36,
-				borderRadius: 9,
+				borderRadius: RAD.sm,
 				display: "inline-flex",
 				alignItems: "center",
 				justifyContent: "center",
@@ -235,11 +235,13 @@ export function Chip({ active, onClick, children, color }) {
 	const c = color || S.accent;
 	return (
 		<button
+			type="button"
 			onClick={onClick}
+			aria-pressed={!!active}
 			style={{
 				...btnBase,
 				padding: "5px 13px",
-				borderRadius: 20,
+				borderRadius: RAD.pill,
 				border: `1.5px solid ${active ? c : S.border}`,
 				background: active ? c + "1e" : "transparent",
 				color: active ? c : S.textMuted,
@@ -258,13 +260,14 @@ export function Segmented({ options, value, onChange, size = "md" }) {
 	const fs = size === "sm" ? 11 : 12.5;
 	return (
 		<div
+			role="radiogroup"
 			style={{
 				display: "inline-flex",
 				padding: 3,
 				gap: 2,
 				background: S.bg,
 				border: `1px solid ${S.border}`,
-				borderRadius: 10,
+				borderRadius: RAD.sm,
 			}}
 		>
 			{options.map((o) => {
@@ -272,6 +275,9 @@ export function Segmented({ options, value, onChange, size = "md" }) {
 				return (
 					<button
 						key={String(o.value)}
+						type="button"
+						role="radio"
+						aria-checked={on}
 						onClick={() => onChange(o.value)}
 						style={{
 							...btnBase,

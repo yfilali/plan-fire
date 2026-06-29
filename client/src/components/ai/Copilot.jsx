@@ -4,6 +4,8 @@ import { usePlanner } from "../../state/PlannerProvider.jsx";
 import { useAuth } from "../../state/AuthProvider.jsx";
 import { useAiActions } from "../../lib/aiActions.js";
 import { Card, CardHeader, Button, Badge } from "../ui.jsx";
+import Icon from "../Icon.jsx";
+import { FS, RAD, FW } from "../../lib/styles.js";
 import UpgradeModal from "../settings/UpgradeModal.jsx";
 
 const SUGGESTIONS = [
@@ -84,7 +86,7 @@ export default function Copilot() {
 			const msg = { ...next[msgIdx] };
 			msg.actions = msg.actions.map((a, i) => (i === idx ? { ...a, applied: true } : a));
 			next[msgIdx] = msg;
-			return [...next, { role: "system", content: `✓ ${label || action.label || "Applied"}` }];
+			return [...next, { role: "system", content: label || action.label || "Applied" }];
 		});
 	}
 
@@ -92,11 +94,11 @@ export default function Copilot() {
 		return (
 			<>
 				<Card>
-					<CardHeader icon="✦" title="Firly Co-pilot" subtitle="An AI planner that reads your real numbers and can edit your plan for you." />
+					<CardHeader icon={<Icon name="sparkle" size={16} color={S.accent} />} title="Firly Co-pilot" subtitle="An AI planner that reads your real numbers and can edit your plan for you." />
 					<div style={{ textAlign: "center", padding: "24px 8px" }}>
-						<div style={{ fontSize: 40, marginBottom: 10 }}>✦</div>
-						<div style={{ fontSize: 15, fontWeight: 700, color: S.text }}>Ask anything about your plan</div>
-						<div style={{ fontSize: 13, color: S.textMuted, marginTop: 6, maxWidth: 420, marginInline: "auto", lineHeight: 1.5 }}>
+						<div style={{ display: "inline-flex", marginBottom: 10 }}><Icon name="sparkle" size={40} color={S.accent} /></div>
+						<div style={{ fontSize: FS.md, fontWeight: FW.bold, color: S.text }}>Ask anything about your plan</div>
+						<div style={{ fontSize: FS.base, color: S.textMuted, marginTop: 6, maxWidth: 420, marginInline: "auto", lineHeight: 1.5 }}>
 							"Can I retire at 52?" — the co-pilot answers with <em>your</em> figures and proposes one-tap changes you can apply. Available on Firly Pro.
 						</div>
 						<div style={{ marginTop: 18 }}>
@@ -112,24 +114,39 @@ export default function Copilot() {
 	return (
 		<Card pad={0} style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 150px)", minHeight: 460 }}>
 			<div style={{ padding: "16px 18px", borderBottom: `1px solid ${S.border}` }}>
-				<CardHeader icon="✦" title="Firly Co-pilot" subtitle="Grounded in your live plan — it can propose changes you apply with one tap." />
+				<CardHeader icon={<Icon name="sparkle" size={16} color={S.accent} />} title="Firly Co-pilot" subtitle="Grounded in your live plan — it can propose changes you apply with one tap." />
 			</div>
 
 			<div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
 				{messages.length === 0 && (
-					<div style={{ margin: "auto", textAlign: "center", color: S.textMuted }}>
-						<div style={{ fontSize: 32, marginBottom: 8 }}>✦</div>
-						<div style={{ fontSize: 13, marginBottom: 14 }}>Ask about your runway, retirement age, or spending.</div>
-						<div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-							{SUGGESTIONS.map((s) => (
-								<button
-									key={s}
-									onClick={() => send(s)}
-									style={{ cursor: "pointer", padding: "7px 13px", borderRadius: 20, border: `1px solid ${S.border}`, background: S.bg, color: S.text, fontSize: 12.5 }}
-								>
-									{s}
-								</button>
-							))}
+					<div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+						{/* Compact intro — what the co-pilot is for, not a centered void. */}
+						<div style={{ display: "flex", gap: 12, padding: 14, borderRadius: RAD.md, border: `1px solid ${S.border}`, background: S.bg }}>
+							<div style={{ width: 38, height: 38, flexShrink: 0, borderRadius: RAD.sm, background: S.accentSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
+								<Icon name="sparkle" size={20} color={S.accent} />
+							</div>
+							<div>
+								<div style={{ fontSize: FS.md, fontWeight: FW.semibold, color: S.text }}>Ask anything about your plan</div>
+								<div style={{ fontSize: FS.base, color: S.textMuted, marginTop: 4, lineHeight: 1.5 }}>
+									I read your live numbers and answer with <em>your</em> figures. When a change is worth making, I propose it as a one-tap edit you apply right here.
+								</div>
+							</div>
+						</div>
+
+						{/* A small set of starter prompts. */}
+						<div>
+							<div style={{ fontSize: FS.xs, fontWeight: FW.semibold, color: S.textMuted, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Try asking</div>
+							<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+								{SUGGESTIONS.map((s) => (
+									<button
+										key={s}
+										onClick={() => send(s)}
+										style={{ cursor: "pointer", textAlign: "left", padding: "10px 13px", borderRadius: RAD.sm, border: `1px solid ${S.border}`, background: S.bg, color: S.text, fontSize: FS.base }}
+									>
+										{s}
+									</button>
+								))}
+							</div>
 						</div>
 					</div>
 				)}
@@ -137,7 +154,8 @@ export default function Copilot() {
 				{messages.map((m, i) => {
 					if (m.role === "system") {
 						return (
-							<div key={i} style={{ alignSelf: "center", fontSize: 12, color: S.accent, fontWeight: 600, background: S.accentSoft, padding: "5px 12px", borderRadius: 20 }}>
+							<div key={i} style={{ alignSelf: "center", display: "inline-flex", alignItems: "center", gap: 5, fontSize: FS.sm, color: S.accent, fontWeight: FW.semibold, background: S.accentSoft, padding: "5px 12px", borderRadius: RAD.pill }}>
+								<Icon name="check" size={13} color={S.accent} />
 								{m.content}
 							</div>
 						);
@@ -148,8 +166,8 @@ export default function Copilot() {
 							<div
 								style={{
 									padding: "10px 14px",
-									borderRadius: 14,
-									fontSize: 13.5,
+									borderRadius: RAD.md,
+									fontSize: FS.base,
 									lineHeight: 1.55,
 									whiteSpace: "pre-wrap",
 									background: mine ? S.accent : S.bg,
@@ -170,7 +188,7 @@ export default function Copilot() {
 											onClick={() => onApply(a, idx, i)}
 											style={{ alignSelf: "flex-start", opacity: a.applied ? 0.6 : 1 }}
 										>
-											{a.applied ? "✓ " : "⚡ "}
+											{a.applied && <Icon name="check" size={14} />}
 											{a.label || `${a.field || a.type}`}
 										</Button>
 									))}
@@ -196,11 +214,11 @@ export default function Copilot() {
 					style={{
 						flex: 1,
 						padding: "10px 14px",
-						borderRadius: 10,
+						borderRadius: RAD.sm,
 						border: `1px solid ${S.border}`,
 						background: S.bg,
 						color: S.text,
-						fontSize: 13.5,
+						fontSize: FS.base,
 						outline: "none",
 					}}
 				/>
