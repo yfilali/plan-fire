@@ -6,7 +6,7 @@
 // /api/billing/dev-activate URL that instantly unlocks the demo entitlement.
 
 import { createHmac, timingSafeEqual } from 'crypto';
-import { setEntitlement } from './store.js';
+import { setEntitlement, getEntitlement, setStripeCustomerId } from './store.js';
 
 // Mirror client/src/lib/pro.js PRO pricing.
 const PRICES = { monthly: 6, yearly: 49, lifetime: 149 };
@@ -86,7 +86,7 @@ export async function checkout(uid, plan, req) {
 }
 
 // Set the demo entitlement directly (dev unlock + Stripe webhook completion).
-export function devActivate(uid, plan) {
+export async function devActivate(uid, plan) {
   const p = PRICES[plan] ? plan : 'monthly';
   const now = Date.now();
   const renews =
@@ -101,7 +101,7 @@ export function devActivate(uid, plan) {
     renews,
     priceId: planPriceId(p) || ('dev_' + p),
   };
-  setEntitlement(uid, ent);
+  await setEntitlement(uid, ent);
   return ent;
 }
 
@@ -125,7 +125,7 @@ function verifySignature(rawBody, sigHeader, secret) {
 }
 
 // Handle an incoming webhook. `req.rawBody` must be the raw request payload.
-export function webhook(req) {
+export async function webhook(req) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET || '';
   let event;
 
@@ -150,18 +150,26 @@ export function webhook(req) {
     const session = event.data?.object || {};
     const uid = session.client_reference_id || session.metadata?.uid;
     const plan = session.metadata?.plan || 'monthly';
-    if (uid) devActivate(uid, plan);
+    if (uid) {
+      // Remember the Stripe customer so the billing portal can target it.
+      if (session.customer) await setStripeCustomerId(uid, session.customer);
+      await devActivate(uid, plan);
+    }
   }
   return { status: 200, body: { received: true } };
 }
 
 // Billing-portal URL (Stripe portal when configured, else a no-op anchor).
+// Targets the Stripe customer recorded at checkout — not the app uid.
 export async function portal(uid, req) {
   if (!stripeKey()) return { url: '#' };
+  const ent = await getEntitlement(uid);
+  const customer = ent?.stripeCustomerId;
+  if (!customer) return { url: '#' };
   try {
     const origin = baseUrl(req);
     const session = await stripe('/billing_portal/sessions', {
-      customer: uid,
+      customer,
       return_url: origin + '/?view=settings',
     });
     return { url: session.url };

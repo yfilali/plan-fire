@@ -1,3 +1,6 @@
+# Local / self-hosted image. (Vercel deploys do not use this Dockerfile —
+# they build via `npm run build` + the api/ serverless function.)
+
 # Stage 1: Build the React client
 FROM node:20-alpine AS client-build
 WORKDIR /app/client
@@ -10,19 +13,16 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 
-COPY server/package.json ./server/
-RUN cd server && npm install --production
+# Server/API deps now live in the root package.json.
+COPY package.json package-lock.json* ./
+RUN npm install --omit=dev
 
 COPY server/ ./server/
 COPY --from=client-build /app/client/dist ./client/dist
 
-RUN mkdir -p /data
-
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV DATA_PATH=/data/state.json
 
 EXPOSE 3000
-VOLUME ["/data"]
 
 CMD ["node", "server/index.js"]

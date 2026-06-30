@@ -1,0 +1,26 @@
+{
+  "name": "retirement-planner",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Firly — retirement / FIRE planner. Vite SPA + Express API, deployable on Vercel with Neon Postgres.",
+  "scripts": {
+    "start": "node server/index.js",
+    "build": "npm --prefix client install --no-audit --no-fund && npm --prefix client run build",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node server/db/migrate.js",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "better-auth": "^1.6.22",
+    "drizzle-orm": "^0.45.2",
+    "express": "^4.21.0",
+    "resend": "^6.16.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10"
+  }
+}

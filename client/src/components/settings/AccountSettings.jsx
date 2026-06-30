@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { useAuth } from "../../state/AuthProvider.jsx";
 import { clearAllData } from "../../usePersistedState.jsx";
@@ -18,10 +17,7 @@ function Row({ S, title, desc, children, danger }) {
 
 export default function AccountSettings() {
 	const S = useTheme();
-	const { user, entitlement, guest, signOut, openPortal, startSignIn } = useAuth();
-	const [email, setEmail] = useState("");
-	const [sent, setSent] = useState(null);
-	const [busy, setBusy] = useState(false);
+	const { user, entitlement, guest, signOut, openPortal } = useAuth();
 
 	const handleDelete = async () => {
 		if (!confirm("Delete your account and ALL plan data? This cannot be undone. A backup is recommended first.")) return;
@@ -30,15 +26,12 @@ export default function AccountSettings() {
 		window.location.reload();
 	};
 
-	const sendLink = async () => {
-		if (!/\S+@\S+\.\S+/.test(email) || busy) return;
-		setBusy(true);
-		try {
-			const { devLink } = await startSignIn(email);
-			setSent(devLink || "sent");
-		} finally {
-			setBusy(false);
-		}
+	// Bring up the full login screen (email/password + Google/Facebook) by
+	// clearing the "continue as guest" flag and reloading. Guest work is folded
+	// into the account automatically on first sign-in.
+	const goToSignIn = () => {
+		try { localStorage.removeItem("firly_guest_continue"); } catch { /* ignore */ }
+		window.location.reload();
 	};
 
 	// Guest mode — invite the visitor to claim their data with a sign-in.
@@ -48,26 +41,9 @@ export default function AccountSettings() {
 				<CardHeader icon="👤" title="Account" subtitle="You're in guest mode. Sign in to save your plans and sync across devices." />
 				<div style={{ padding: "12px 14px", background: S.accentSoft, border: `1px solid ${S.accent}33`, borderRadius: 12, marginBottom: 14 }}>
 					<div style={{ fontSize: 13, color: S.text, fontWeight: 600 }}>Your work is saved on this device.</div>
-					<div style={{ fontSize: 12, color: S.textMuted, marginTop: 3 }}>Sign in and we'll carry it over to your account automatically.</div>
+					<div style={{ fontSize: 12, color: S.textMuted, marginTop: 3 }}>Sign in or create an account and we'll carry it over automatically.</div>
 				</div>
-				<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-					<input
-						type="email"
-						value={email}
-						onChange={(e) => setEmail(e.target.value)}
-						placeholder="you@email.com"
-						style={{ flex: 1, minWidth: 200, padding: "10px 13px", borderRadius: 10, border: `1px solid ${S.border}`, background: S.bg, color: S.text, fontSize: 13.5, outline: "none" }}
-					/>
-					<Button variant="primary" onClick={sendLink} disabled={busy}>{busy ? "Sending…" : "Send sign-in link"}</Button>
-				</div>
-				{sent && (
-					<div style={{ marginTop: 12, fontSize: 12.5, color: S.textMuted }}>
-						Check your email for the link.{" "}
-						{sent !== "sent" && (
-							<a href={sent} style={{ color: S.accent, fontWeight: 600 }}>Open magic link (demo)</a>
-						)}
-					</div>
-				)}
+				<Button variant="primary" onClick={goToSignIn}>Sign in or create account</Button>
 			</Card>
 		);
 	}

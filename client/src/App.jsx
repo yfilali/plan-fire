@@ -13,6 +13,7 @@ import PlanView from "./views/PlanView.jsx";
 import SettingsView from "./views/SettingsView.jsx";
 import CopilotView from "./views/CopilotView.jsx";
 import LoginScreen from "./components/auth/LoginScreen.jsx";
+import ResetPasswordScreen from "./components/auth/ResetPasswordScreen.jsx";
 
 const VIEWS = {
 	dashboard: DashboardView,
@@ -92,6 +93,11 @@ export default function App() {
 		mq.addEventListener?.("change", onChange);
 		return () => mq.removeEventListener?.("change", onChange);
 	}, []);
+
+	// Password-reset landing page (from the emailed link) — shown regardless of
+	// auth state, before anything else.
+	if (window.location.pathname === "/reset-password")
+		return <ResetPasswordScreen />;
 
 	if (authLoading) return <Loader label="Signing you in…" />;
 	// Show the login screen until the visitor either signs in or chooses to

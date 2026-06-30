@@ -4,17 +4,24 @@ services:
     container_name: retirement-planner
     ports:
       - "8089:3000"
-    volumes:
-      - planner-data:/data
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - DATA_PATH=/data/state.json
-      # AI co-pilot live link. Set ANTHROPIC_API_KEY in a local .env file
-      # (auto-loaded by Compose, gitignored). Unset → co-pilot stays in
-      # offline demo mode; the app still runs fine.
+      # State now lives in Neon Postgres — point this at your Neon database
+      # (a dev branch is ideal). All secrets are read from a local .env file,
+      # which Compose auto-loads and which is gitignored.
+      - DATABASE_URL=${DATABASE_URL:-}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:8089}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - FACEBOOK_CLIENT_ID=${FACEBOOK_CLIENT_ID:-}
+      - FACEBOOK_CLIENT_SECRET=${FACEBOOK_CLIENT_SECRET:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-
-volumes:
-  planner-data:
-    driver: local
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - STRIPE_PRICE_MONTHLY=${STRIPE_PRICE_MONTHLY:-}
+      - STRIPE_PRICE_YEARLY=${STRIPE_PRICE_YEARLY:-}
+      - STRIPE_PRICE_LIFETIME=${STRIPE_PRICE_LIFETIME:-}
