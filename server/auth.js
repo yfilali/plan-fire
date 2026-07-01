@@ -29,7 +29,7 @@ const GUEST_TTL = 60 * 24 * 60 * 60 * 1000; // 60 days
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
-const EMAIL_FROM = process.env.EMAIL_FROM || 'Firly <onboarding@resend.dev>';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Firely <onboarding@resend.dev>';
 
 export function hasEmailTransport() {
   return !!resend;
@@ -80,10 +80,10 @@ export const auth = betterAuth({
     sendResetPassword: async ({ user: u, url }) => {
       await sendEmail({
         to: u.email,
-        subject: 'Reset your Firly password',
+        subject: 'Reset your Firely password',
         html: emailShell(
           'Reset your password',
-          'We received a request to reset your Firly password.',
+          'We received a request to reset your Firely password.',
           url,
           'Reset password',
         ),
@@ -97,10 +97,10 @@ export const auth = betterAuth({
     sendVerificationEmail: async ({ user: u, url }) => {
       await sendEmail({
         to: u.email,
-        subject: 'Verify your email — Firly',
+        subject: 'Verify your email — Firely',
         html: emailShell(
           'Confirm your email',
-          'Welcome to Firly. Confirm your email to finish setting up your account.',
+          'Welcome to Firely. Confirm your email to finish setting up your account.',
           url,
           'Verify email',
         ),

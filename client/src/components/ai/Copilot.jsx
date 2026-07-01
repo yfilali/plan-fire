@@ -94,12 +94,12 @@ export default function Copilot() {
 		return (
 			<>
 				<Card>
-					<CardHeader icon={<Icon name="sparkle" size={16} color={S.accent} />} title="Firly Co-pilot" subtitle="An AI planner that reads your real numbers and can edit your plan for you." />
+					<CardHeader icon={<Icon name="sparkle" size={16} color={S.accent} />} title="Firely Co-pilot" subtitle="An AI planner that reads your real numbers and can edit your plan for you." />
 					<div style={{ textAlign: "center", padding: "24px 8px" }}>
 						<div style={{ display: "inline-flex", marginBottom: 10 }}><Icon name="sparkle" size={40} color={S.accent} /></div>
 						<div style={{ fontSize: FS.md, fontWeight: FW.bold, color: S.text }}>Ask anything about your plan</div>
 						<div style={{ fontSize: FS.base, color: S.textMuted, marginTop: 6, maxWidth: 420, marginInline: "auto", lineHeight: 1.5 }}>
-							"Can I retire at 52?" — the co-pilot answers with <em>your</em> figures and proposes one-tap changes you can apply. Available on Firly Pro.
+							"Can I retire at 52?" — the co-pilot answers with <em>your</em> figures and proposes one-tap changes you can apply. Available on Firely Pro.
 						</div>
 						<div style={{ marginTop: 18 }}>
 							<Button variant="primary" size="lg" onClick={() => setShowUpgrade(true)}>Unlock the Co-pilot</Button>
@@ -114,7 +114,7 @@ export default function Copilot() {
 	return (
 		<Card pad={0} style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 150px)", minHeight: 460 }}>
 			<div style={{ padding: "16px 18px", borderBottom: `1px solid ${S.border}` }}>
-				<CardHeader icon={<Icon name="sparkle" size={16} color={S.accent} />} title="Firly Co-pilot" subtitle="Grounded in your live plan — it can propose changes you apply with one tap." />
+				<CardHeader icon={<Icon name="sparkle" size={16} color={S.accent} />} title="Firely Co-pilot" subtitle="Grounded in your live plan — it can propose changes you apply with one tap." />
 			</div>
 
 			<div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>

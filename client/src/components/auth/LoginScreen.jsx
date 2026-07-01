@@ -118,7 +118,7 @@ export default function LoginScreen({ onGuest }) {
 				}}
 			>
 				<div style={{ textAlign: "center", marginBottom: 22 }}>
-					<div style={{ fontSize: 30, fontWeight: 850, color: S.accent, letterSpacing: -0.5 }}>Firly</div>
+					<div style={{ fontSize: 30, fontWeight: 850, color: S.accent, letterSpacing: -0.5 }}>Firely</div>
 					<div style={{ fontSize: 14, color: S.textMuted, marginTop: 4 }}>
 						{mode === "signup"
 							? "Create your account."
@@ -208,7 +208,7 @@ export default function LoginScreen({ onGuest }) {
 
 				{mode === "login" && (
 					<div style={{ textAlign: "center", marginTop: 16, fontSize: 12.5, color: S.textMuted }}>
-						New to Firly?{" "}
+						New to Firely?{" "}
 						<button onClick={() => { setMode("signup"); setErr(null); setNotice(null); }} style={{ background: "none", border: "none", color: S.accent, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
 							Create an account
 						</button>

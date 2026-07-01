@@ -34,7 +34,7 @@ export default function UpgradeModal({ onClose, onUnlock }) {
 	}
 
 	return (
-		<Modal title="Upgrade to Firly Pro" onClose={onClose} width={470}>
+		<Modal title="Upgrade to Firely Pro" onClose={onClose} width={470}>
 			<div style={{ textAlign: "center", marginBottom: 18 }}>
 				<div style={{ fontSize: 34, marginBottom: 6 }}>✦</div>
 				<div style={{ fontSize: 17, fontWeight: 750, color: S.text }}>Everything, unlocked</div>

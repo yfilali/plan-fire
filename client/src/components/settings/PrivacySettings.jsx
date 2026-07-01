@@ -47,7 +47,7 @@ export default function PrivacySettings() {
 			</div>
 
 			<div style={{ fontSize: FS.xs, color: S.textDim, marginTop: 12, lineHeight: 1.5 }}>
-				Firly stores your plans on your own server instance and mirrors them to this browser. We don't sell or share financial data.
+				Firely stores your plans on your own server instance and mirrors them to this browser. We don't sell or share financial data.
 			</div>
 		</Card>
 	);

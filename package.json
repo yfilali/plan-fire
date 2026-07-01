@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Firly — retirement / FIRE planner. Vite SPA + Express API, deployable on Vercel with Neon Postgres.",
+  "description": "Firely — retirement / FIRE planner. Vite SPA + Express API, deployable on Vercel with Neon Postgres.",
   "scripts": {
     "start": "node server/index.js",
     "build": "npm --prefix client install --no-audit --no-fund && npm --prefix client run build",

@@ -1,7 +1,7 @@
 import { useAuth } from "../state/AuthProvider.jsx";
 
 // ─────────────────────────────────────────────────────────────────────────
-//  "Firly Pro" entitlement.
+//  "Firely Pro" entitlement.
 //
 //  The entitlement now lives server-side (verified via /api/me) and is unlocked
 //  through real or dev billing. usePro() bridges that to the existing call
@@ -12,7 +12,7 @@ import { useAuth } from "../state/AuthProvider.jsx";
 // ─────────────────────────────────────────────────────────────────────────
 
 export const PRO = {
-	name: "Firly Pro",
+	name: "Firely Pro",
 	monthly: 6,
 	yearly: 49,
 	lifetime: 149,

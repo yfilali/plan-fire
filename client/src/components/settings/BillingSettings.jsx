@@ -28,7 +28,7 @@ export default function BillingSettings() {
 					<div style={{ padding: "14px 16px", background: S.accentSoft, border: `1px solid ${S.accent}33`, borderRadius: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
 						<div>
 							<div style={{ fontSize: 14, fontWeight: 750, color: S.text }}>
-								✦ Firly {tier === "lifetime" ? "Lifetime" : "Pro"}
+								✦ Firely {tier === "lifetime" ? "Lifetime" : "Pro"}
 							</div>
 							<div style={{ fontSize: 12.5, color: S.textMuted, marginTop: 3 }}>
 								{tier === "lifetime" ? "Lifetime access — no renewal." : renews ? `Renews ${renews}` : "Active"}
@@ -70,7 +70,7 @@ export default function BillingSettings() {
 							</div>
 						))}
 					</div>
-					<Button variant="primary" size="lg" full onClick={() => setShowUpgrade(true)}>Upgrade to Firly Pro</Button>
+					<Button variant="primary" size="lg" full onClick={() => setShowUpgrade(true)}>Upgrade to Firely Pro</Button>
 				</>
 			)}
 
