@@ -66,9 +66,11 @@ DATABASE_URL="postgres://…-pooler…/neondb?sslmode=require" npm run db:migrat
 To change the schema later: edit `server/db/schema.js`, then
 `npm run db:generate` (writes a new SQL migration) and `npm run db:migrate`.
 
-> Optional: add `npm run db:migrate && ` to the `buildCommand` in `vercel.json`
-> so each deploy migrates its own (branch) database. Safe with the Neon+Vercel
-> integration because previews use isolated branches.
+> Migrations run automatically on deploy: `vercel.json`'s `buildCommand` is
+> `npm run db:migrate && npm run build`, so each deployment migrates its own
+> environment's Neon database (Drizzle skips already-applied migrations). Safe
+> with the Neon+Vercel integration because each environment has its own DB/branch.
+> To manage migrations manually instead, drop `db:migrate` from the build command.
 
 ### 5. Google OAuth
 - console.cloud.google.com → **APIs & Services → Credentials → Create OAuth
