@@ -13,6 +13,11 @@ const FEATURES = [
 		desc: "Model housing moves, retirement ages, and what-ifs side by side.",
 	},
 	{
+		emoji: "🎚️",
+		title: "Flexible spending controls",
+		desc: "Model expenses that start and stop at any age, set per-item inflation, and toggle one-off versus recurring costs.",
+	},
+	{
 		emoji: "🎲",
 		title: "Monte Carlo confidence",
 		pro: true,
@@ -79,7 +84,7 @@ export default function Features() {
 					style={{
 						marginTop: "clamp(36px,5vw,52px)",
 						display: "grid",
-						gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+						gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))",
 						gap: 20,
 					}}
 				>
