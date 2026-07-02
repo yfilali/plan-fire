@@ -12,35 +12,43 @@ import {
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { Button } from "../ui.jsx";
 
-// Landing hero. Copy sits over a soft radial accent glow; below it a product
-// card showing the same "Portfolio projection" chart the app renders on the
-// dashboard: portfolio balance (left axis) plus annual spending (right axis,
-// steps down at Medicare) with Retire / Medicare / SS reference lines.
-// Populated with representative demo figures.
+// Landing hero. Below the copy sits a replica of the app's real dashboard
+// "Portfolio projection" card: two stacked panels — balance under two market
+// regimes (Historical avg vs Lost decade) on top, then income vs spending
+// below — with Retire / Medicare / SS milestone lines. Representative demo data.
 
-const RETIRE = 57;
+const RETIRE = 60;
 const MEDICARE = 65;
-const SS_AGE = 70;
+const SS_AGE = 67;
+
 const PROJECTION = (() => {
 	const rows = [];
-	let a = 190000; // projected balance
+	let hist = 150000; // "Historical avg" regime balance
+	let lost = 150000; // "Lost decade" regime balance
 	for (let age = 40; age <= 95; age++) {
-		if (age <= RETIRE) {
-			a = a * 1.1 + 27000;
-		} else {
-			const ss = age >= SS_AGE ? 30000 : 0;
-			a = a * 1.035 - (120000 - ss);
-		}
-		// Annual spending steps down at retirement and again at Medicare.
-		const spending =
-			age <= RETIRE ? 82000 : age < MEDICARE ? 74000 : 64000;
-		rows.push({ age, primary: Math.max(Math.round(a), 0), spending });
+		const salary = age < RETIRE ? 95000 : 0;
+		const ss = age >= SS_AGE ? 32000 : 0;
+		const spending = age < MEDICARE ? 70000 : 60000;
+		const income = salary + ss;
+		const net = income - spending;
+		const histReturn = age < RETIRE ? 1.09 : 1.05;
+		const lostReturn = age < RETIRE ? 1.055 : 1.0;
+		hist = hist * histReturn + net;
+		lost = lost * lostReturn + net;
+		rows.push({
+			age,
+			hist: Math.max(Math.round(hist), 0),
+			lost: Math.max(Math.round(lost), 0),
+			spending,
+			income,
+		});
 	}
 	return rows;
 })();
 
-const fmtMoney = (v) =>
+const fmtBig = (v) =>
 	v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${Math.round(v / 1e3)}k`;
+const fmtK = (v) => `$${Math.round(v / 1e3)}k`;
 
 export default function Hero() {
 	const S = useTheme();
@@ -82,7 +90,6 @@ export default function Hero() {
 					textAlign: "center",
 				}}
 			>
-				{/* eyebrow pill */}
 				<span
 					style={{
 						display: "inline-flex",
@@ -128,7 +135,6 @@ export default function Hero() {
 					financial-independence date update as you plan.
 				</p>
 
-				{/* CTA row */}
 				<div
 					style={{
 						display: "flex",
@@ -154,23 +160,30 @@ export default function Hero() {
 					Free to start · Private by design · No card required.
 				</p>
 
-				{/* product visual — the real dashboard projection chart */}
 				<ProjectionCard S={S} />
 			</div>
 		</section>
 	);
 }
 
-// Mirrors the app's "Portfolio projection" card: an accent-gradient area for
-// the active plan, a dashed alternative-plan line, and dashed Retire /
-// Medicare / SS reference lines over an age axis.
+// Replica of the dashboard "Portfolio projection" card.
 function ProjectionCard({ S }) {
+	const legendStyle = (v) => (
+		<span style={{ fontSize: 11.5, color: S.textMuted }}>{v}</span>
+	);
+	const refLabel = (value, fill) => ({
+		value,
+		fontSize: 10,
+		fill,
+		position: "top",
+	});
+
 	return (
 		<div
 			style={{
 				marginTop: "clamp(40px,6vw,64px)",
 				width: "100%",
-				maxWidth: 860,
+				maxWidth: 880,
 				background: S.card,
 				border: `1px solid ${S.border}`,
 				borderRadius: 20,
@@ -179,25 +192,79 @@ function ProjectionCard({ S }) {
 				textAlign: "left",
 			}}
 		>
-			<div style={{ marginBottom: 12 }}>
+			<div style={{ marginBottom: 6 }}>
 				<div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>
 					Portfolio projection
 				</div>
-				<div style={{ fontSize: 12, color: S.textDim, marginTop: 3 }}>
-					Balance by age, with your retirement, Medicare, and Social Security
-					milestones.
+				<div style={{ fontSize: 12, color: S.textDim, marginTop: 3, lineHeight: 1.45 }}>
+					Balance under two market regimes (top), then income vs spending
+					(bottom). Spending steps down at Medicare and housing transitions.
 				</div>
 			</div>
 
-			<ResponsiveContainer width="100%" height={264}>
-				<ComposedChart
-					data={PROJECTION}
-					margin={{ top: 28, right: 16, bottom: 0, left: 4 }}
-				>
+			{/* Panel 1 — balance under two regimes */}
+			<ResponsiveContainer width="100%" height={188}>
+				<ComposedChart data={PROJECTION} margin={{ top: 22, right: 8, bottom: 0, left: 4 }}>
 					<defs>
-						<linearGradient id="fly-hero-primary" x1="0" y1="0" x2="0" y2="1">
+						<linearGradient id="fly-hero-hist" x1="0" y1="0" x2="0" y2="1">
 							<stop offset="0%" stopColor={S.accent} stopOpacity={0.22} />
 							<stop offset="100%" stopColor={S.accent} stopOpacity={0} />
+						</linearGradient>
+					</defs>
+					<CartesianGrid strokeDasharray="3 3" stroke={S.border} vertical={false} />
+					<XAxis dataKey="age" type="number" domain={[40, 95]} hide />
+					<YAxis
+						tickFormatter={fmtBig}
+						tick={{ fontSize: 10, fill: S.textMuted }}
+						tickLine={false}
+						axisLine={false}
+						width={46}
+					/>
+					<Legend formatter={legendStyle} />
+					<ReferenceLine x={RETIRE} stroke={S.blue} strokeDasharray="4 4" label={refLabel("Retire", S.blue)} />
+					<ReferenceLine x={MEDICARE} stroke={S.purple} strokeDasharray="4 4" label={refLabel("Medicare", S.purple)} />
+					<ReferenceLine x={SS_AGE} stroke={S.accent} strokeDasharray="4 4" label={refLabel("SS", S.accent)} />
+					<Line
+						type="monotone"
+						dataKey="lost"
+						name="Lost decade"
+						stroke={S.textDim}
+						strokeWidth={1.6}
+						strokeDasharray="5 4"
+						dot={false}
+						opacity={0.7}
+					/>
+					<Area
+						type="monotone"
+						dataKey="hist"
+						name="Historical avg"
+						stroke={S.accent}
+						strokeWidth={2.8}
+						fill="url(#fly-hero-hist)"
+						dot={false}
+					/>
+				</ComposedChart>
+			</ResponsiveContainer>
+
+			{/* Panel 2 — income vs spending */}
+			<div
+				style={{
+					fontSize: 10.5,
+					fontWeight: 700,
+					letterSpacing: 0.6,
+					textTransform: "uppercase",
+					color: S.textMuted,
+					margin: "10px 0 2px",
+				}}
+			>
+				Income vs spending
+			</div>
+			<ResponsiveContainer width="100%" height={148}>
+				<ComposedChart data={PROJECTION} margin={{ top: 4, right: 8, bottom: 0, left: 4 }}>
+					<defs>
+						<linearGradient id="fly-hero-spend" x1="0" y1="0" x2="0" y2="1">
+							<stop offset="0%" stopColor={S.purple} stopOpacity={0.2} />
+							<stop offset="100%" stopColor={S.purple} stopOpacity={0} />
 						</linearGradient>
 					</defs>
 					<CartesianGrid strokeDasharray="3 3" stroke={S.border} vertical={false} />
@@ -209,68 +276,31 @@ function ProjectionCard({ S }) {
 						tick={{ fontSize: 10, fill: S.textMuted }}
 						tickLine={false}
 						axisLine={{ stroke: S.border }}
-						tickFormatter={(v) => `${v}`}
 					/>
 					<YAxis
-						yAxisId="balance"
-						tickFormatter={fmtMoney}
+						tickFormatter={fmtK}
 						tick={{ fontSize: 10, fill: S.textMuted }}
 						tickLine={false}
 						axisLine={false}
-						width={48}
+						width={46}
 					/>
-					<YAxis
-						yAxisId="spending"
-						orientation="right"
-						tickFormatter={fmtMoney}
-						tick={{ fontSize: 10, fill: S.textDim }}
-						tickLine={false}
-						axisLine={false}
-						width={44}
-					/>
-					<Legend
-						formatter={(v) => (
-							<span style={{ fontSize: 11.5, color: S.textMuted }}>{v}</span>
-						)}
-					/>
-					<ReferenceLine
-						yAxisId="balance"
-						x={RETIRE}
-						stroke={S.blue}
-						strokeDasharray="4 4"
-						label={{ value: "Retire", fontSize: 10, fill: S.blue, position: "top" }}
-					/>
-					<ReferenceLine
-						yAxisId="balance"
-						x={MEDICARE}
-						stroke={S.purple}
-						strokeDasharray="4 4"
-						label={{ value: "Medicare", fontSize: 10, fill: S.purple, position: "top" }}
-					/>
-					<ReferenceLine
-						yAxisId="balance"
-						x={SS_AGE}
-						stroke={S.accent}
-						strokeDasharray="4 4"
-						label={{ value: "SS", fontSize: 10, fill: S.accent, position: "top" }}
-					/>
+					<Legend formatter={legendStyle} />
 					<Area
-						yAxisId="balance"
-						type="monotone"
-						dataKey="primary"
-						name="Portfolio balance"
-						stroke={S.accent}
-						strokeWidth={2.8}
-						fill="url(#fly-hero-primary)"
-						dot={false}
-					/>
-					<Line
-						yAxisId="spending"
 						type="stepAfter"
 						dataKey="spending"
 						name="Annual spending"
 						stroke={S.purple}
 						strokeWidth={1.8}
+						fill="url(#fly-hero-spend)"
+						dot={false}
+					/>
+					<Line
+						type="stepAfter"
+						dataKey="income"
+						name="Income"
+						stroke={S.blue}
+						strokeWidth={1.8}
+						strokeDasharray="2 3"
 						dot={false}
 					/>
 				</ComposedChart>
