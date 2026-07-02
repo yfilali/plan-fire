@@ -2,20 +2,22 @@ import {
 	ResponsiveContainer,
 	ComposedChart,
 	Area,
+	Line,
 	XAxis,
 	YAxis,
 	CartesianGrid,
 	ReferenceLine,
+	Legend,
 } from "recharts";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { Button } from "../ui.jsx";
 
 // Landing hero. Copy sits over a soft radial accent glow; below it a product
 // card showing the same "Portfolio projection" chart the app renders on the
-// dashboard (recharts area of balance-by-age with Retire / Medicare / SS
-// reference lines), populated with representative demo figures.
+// dashboard: portfolio balance (left axis) plus annual spending (right axis,
+// steps down at Medicare) with Retire / Medicare / SS reference lines.
+// Populated with representative demo figures.
 
-// Representative accumulation → drawdown trajectory for two plans.
 const RETIRE = 57;
 const MEDICARE = 65;
 const SS_AGE = 70;
@@ -29,7 +31,10 @@ const PROJECTION = (() => {
 			const ss = age >= SS_AGE ? 30000 : 0;
 			a = a * 1.035 - (120000 - ss);
 		}
-		rows.push({ age, primary: Math.max(Math.round(a), 0) });
+		// Annual spending steps down at retirement and again at Medicare.
+		const spending =
+			age <= RETIRE ? 82000 : age < MEDICARE ? 74000 : 64000;
+		rows.push({ age, primary: Math.max(Math.round(a), 0), spending });
 	}
 	return rows;
 })();
@@ -207,11 +212,26 @@ function ProjectionCard({ S }) {
 						tickFormatter={(v) => `${v}`}
 					/>
 					<YAxis
+						yAxisId="balance"
 						tickFormatter={fmtMoney}
 						tick={{ fontSize: 10, fill: S.textMuted }}
 						tickLine={false}
 						axisLine={false}
 						width={48}
+					/>
+					<YAxis
+						yAxisId="spending"
+						orientation="right"
+						tickFormatter={fmtMoney}
+						tick={{ fontSize: 10, fill: S.textDim }}
+						tickLine={false}
+						axisLine={false}
+						width={44}
+					/>
+					<Legend
+						formatter={(v) => (
+							<span style={{ fontSize: 11.5, color: S.textMuted }}>{v}</span>
+						)}
 					/>
 					<ReferenceLine
 						x={RETIRE}
@@ -232,12 +252,22 @@ function ProjectionCard({ S }) {
 						label={{ value: "SS", fontSize: 10, fill: S.accent, position: "top" }}
 					/>
 					<Area
+						yAxisId="balance"
 						type="monotone"
 						dataKey="primary"
-						name="Projected balance"
+						name="Portfolio balance"
 						stroke={S.accent}
 						strokeWidth={2.8}
 						fill="url(#fly-hero-primary)"
+						dot={false}
+					/>
+					<Line
+						yAxisId="spending"
+						type="stepAfter"
+						dataKey="spending"
+						name="Annual spending"
+						stroke={S.purple}
+						strokeWidth={1.8}
 						dot={false}
 					/>
 				</ComposedChart>
