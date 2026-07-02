@@ -12,8 +12,6 @@ import MarketView from "./views/MarketView.jsx";
 import PlanView from "./views/PlanView.jsx";
 import SettingsView from "./views/SettingsView.jsx";
 import CopilotView from "./views/CopilotView.jsx";
-import LoginScreen from "./components/auth/LoginScreen.jsx";
-import ResetPasswordScreen from "./components/auth/ResetPasswordScreen.jsx";
 
 const VIEWS = {
 	dashboard: DashboardView,
@@ -26,8 +24,9 @@ const VIEWS = {
 };
 
 // Remember a guest who chose to continue without an account, so the login
-// screen doesn't reappear on every reload.
-const GUEST_CONTINUE_KEY = "firly_guest_continue";
+// screen doesn't reappear on every reload. Exported so LoginScreen sets the
+// same flag when a visitor picks "Continue as guest".
+export const GUEST_CONTINUE_KEY = "firly_guest_continue";
 
 function Loader({ label }) {
 	const S = useTheme();
@@ -61,28 +60,21 @@ function Loader({ label }) {
 	);
 }
 
-export default function App() {
+// The authenticated planner shell, rendered by Root at "/app" wrapped in
+// StateProvider + PlannerProvider. Assumes those providers are present.
+export default function AppShell() {
 	const { loaded } = useStoreStatus();
 	const { ready } = usePlanner();
 	const { loading: authLoading, user } = useAuth();
 	const [view, setView] = usePersistedState("view", "dashboard");
 	const [navOpen, setNavOpen] = useState(false);
-	const [guestContinued, setGuestContinued] = useState(() => {
+	const guestContinued = (() => {
 		try {
 			return localStorage.getItem(GUEST_CONTINUE_KEY) === "1";
 		} catch {
 			return false;
 		}
-	});
-
-	const continueAsGuest = () => {
-		try {
-			localStorage.setItem(GUEST_CONTINUE_KEY, "1");
-		} catch {
-			// ignore storage failures — session-only guest is fine
-		}
-		setGuestContinued(true);
-	};
+	})();
 
 	// Close the mobile drawer automatically once we're back at desktop width,
 	// so a stale "open" state can't leave the sidebar stuck.
@@ -94,15 +86,19 @@ export default function App() {
 		return () => mq.removeEventListener?.("change", onChange);
 	}, []);
 
-	// Password-reset landing page (from the emailed link) — shown regardless of
-	// auth state, before anything else.
-	if (window.location.pathname === "/reset-password")
-		return <ResetPasswordScreen />;
+	// A visitor who is neither authenticated nor continuing as a guest has no
+	// business on "/app" — send them to the login screen. Done in an effect so
+	// we don't navigate during render.
+	useEffect(() => {
+		if (!authLoading && !user && !guestContinued) {
+			window.location.href = "/login";
+		}
+	}, [authLoading, user, guestContinued]);
 
 	if (authLoading) return <Loader label="Signing you in…" />;
-	// Show the login screen until the visitor either signs in or chooses to
-	// continue as a guest. LoginScreen can be dismissed to guest via onGuest.
-	if (!user && !guestContinued) return <LoginScreen onGuest={continueAsGuest} />;
+	// While the redirect above is in flight, render a spinner rather than the
+	// (unauthorized) planner.
+	if (!user && !guestContinued) return <Loader label="Redirecting…" />;
 	if (!loaded) return <Loader label="Loading your plan…" />;
 	if (!ready) return <Loader label="Preparing plans…" />;
 

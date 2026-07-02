@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { useAuth } from "../../state/AuthProvider.jsx";
 import { Button } from "../ui.jsx";
+import { GUEST_CONTINUE_KEY } from "../../App.jsx";
 
 // Real auth: email/password (sign up + log in), Google & Facebook OAuth, and
 // password reset. Social buttons appear only for providers the server has
-// configured (useAuth().providers).
-export default function LoginScreen({ onGuest }) {
+// configured (useAuth().providers). Rendered as a full-screen route at
+// "/login" and "/signup" (initialMode selects the starting mode).
+export default function LoginScreen({ initialMode = "login" }) {
 	const S = useTheme();
 	const {
 		providers,
@@ -16,7 +18,18 @@ export default function LoginScreen({ onGuest }) {
 		requestPasswordReset,
 	} = useAuth();
 
-	const [mode, setMode] = useState("login"); // login | signup | forgot
+	const [mode, setMode] = useState(initialMode); // login | signup | forgot
+
+	// Persist the guest-continue flag (same key AppShell reads) and head to the
+	// planner.
+	const continueAsGuest = () => {
+		try {
+			localStorage.setItem(GUEST_CONTINUE_KEY, "1");
+		} catch {
+			// ignore storage failures — session-only guest is fine
+		}
+		window.location.href = "/app";
+	};
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -55,7 +68,7 @@ export default function LoginScreen({ onGuest }) {
 							: r.error,
 					);
 				}
-				// on success the app re-renders into the authenticated shell
+				else window.location.href = "/app"; // authenticated — go to planner
 			} else if (mode === "signup") {
 				const r = await signUpEmail({ name, email, password });
 				if (r.error) setErr(r.error);
@@ -118,7 +131,9 @@ export default function LoginScreen({ onGuest }) {
 				}}
 			>
 				<div style={{ textAlign: "center", marginBottom: 22 }}>
-					<div style={{ fontSize: 30, fontWeight: 850, color: S.accent, letterSpacing: -0.5 }}>Firely</div>
+					<a href="/" style={{ textDecoration: "none" }}>
+						<div style={{ fontSize: 30, fontWeight: 850, color: S.accent, letterSpacing: -0.5 }}>Firely</div>
+					</a>
 					<div style={{ fontSize: 14, color: S.textMuted, marginTop: 4 }}>
 						{mode === "signup"
 							? "Create your account."
@@ -216,7 +231,7 @@ export default function LoginScreen({ onGuest }) {
 				)}
 
 				<div style={{ textAlign: "center", marginTop: 18 }}>
-					<button onClick={onGuest} style={{ background: "none", border: "none", color: S.textDim, fontSize: 12.5, cursor: "pointer", textDecoration: "underline" }}>
+					<button onClick={continueAsGuest} style={{ background: "none", border: "none", color: S.textDim, fontSize: 12.5, cursor: "pointer", textDecoration: "underline" }}>
 						Continue as guest
 					</button>
 				</div>
