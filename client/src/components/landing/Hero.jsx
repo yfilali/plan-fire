@@ -2,12 +2,10 @@ import {
 	ResponsiveContainer,
 	ComposedChart,
 	Area,
-	Line,
 	XAxis,
 	YAxis,
 	CartesianGrid,
 	ReferenceLine,
-	Legend,
 } from "recharts";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { Button } from "../ui.jsx";
@@ -20,25 +18,18 @@ import { Button } from "../ui.jsx";
 // Representative accumulation → drawdown trajectory for two plans.
 const RETIRE = 57;
 const MEDICARE = 65;
-const SS_AGE = 67;
+const SS_AGE = 70;
 const PROJECTION = (() => {
 	const rows = [];
-	let a = 190000; // "Your plan" balance
-	let b = 165000; // "Alternative plan" balance
+	let a = 190000; // projected balance
 	for (let age = 40; age <= 95; age++) {
 		if (age <= RETIRE) {
 			a = a * 1.1 + 27000;
-			b = b * 1.085 + 19000;
 		} else {
 			const ss = age >= SS_AGE ? 30000 : 0;
 			a = a * 1.035 - (120000 - ss);
-			b = b * 1.03 - (112000 - ss);
 		}
-		rows.push({
-			age,
-			primary: Math.max(Math.round(a), 0),
-			alt: Math.max(Math.round(b), 0),
-		});
+		rows.push({ age, primary: Math.max(Math.round(a), 0) });
 	}
 	return rows;
 })();
@@ -196,7 +187,7 @@ function ProjectionCard({ S }) {
 			<ResponsiveContainer width="100%" height={264}>
 				<ComposedChart
 					data={PROJECTION}
-					margin={{ top: 8, right: 10, bottom: 0, left: 4 }}
+					margin={{ top: 28, right: 16, bottom: 0, left: 4 }}
 				>
 					<defs>
 						<linearGradient id="fly-hero-primary" x1="0" y1="0" x2="0" y2="1">
@@ -222,11 +213,6 @@ function ProjectionCard({ S }) {
 						axisLine={false}
 						width={48}
 					/>
-					<Legend
-						formatter={(v) => (
-							<span style={{ fontSize: 11.5, color: S.textMuted }}>{v}</span>
-						)}
-					/>
 					<ReferenceLine
 						x={RETIRE}
 						stroke={S.blue}
@@ -245,20 +231,10 @@ function ProjectionCard({ S }) {
 						strokeDasharray="4 4"
 						label={{ value: "SS", fontSize: 10, fill: S.accent, position: "top" }}
 					/>
-					<Line
-						type="monotone"
-						dataKey="alt"
-						name="Alternative plan"
-						stroke={S.textDim}
-						strokeWidth={1.6}
-						strokeDasharray="5 4"
-						dot={false}
-						opacity={0.55}
-					/>
 					<Area
 						type="monotone"
 						dataKey="primary"
-						name="Your plan"
+						name="Projected balance"
 						stroke={S.accent}
 						strokeWidth={2.8}
 						fill="url(#fly-hero-primary)"
