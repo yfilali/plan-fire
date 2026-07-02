@@ -15,7 +15,7 @@ const FEATURES = [
 	{
 		emoji: "🎚️",
 		title: "Flexible spending controls",
-		desc: "Model expenses that start and stop at any age, set per-item inflation, and toggle one-off versus recurring costs.",
+		desc: "Tier expenses as essential, discretionary, or luxury — then model tightening the belt in a downturn by cutting discretionary and luxury spending until markets recover.",
 	},
 	{
 		emoji: "🎲",
