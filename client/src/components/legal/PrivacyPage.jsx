@@ -43,16 +43,6 @@ export default function PrivacyPage() {
 		fontSize: 14,
 		margin: "0 0 24px",
 	};
-	const callout = {
-		background: S.accentSoft,
-		border: `1px solid ${S.border}`,
-		borderRadius: 14,
-		padding: "14px 18px",
-		color: S.textMuted,
-		fontSize: 14,
-		lineHeight: 1.6,
-		marginBottom: 40,
-	};
 	const h2 = {
 		fontSize: 20,
 		fontWeight: 700,
@@ -83,12 +73,7 @@ export default function PrivacyPage() {
 				</div>
 
 				<h1 style={title}>Privacy Policy</h1>
-				<p style={updated}>Last updated: 2026</p>
-
-				<div style={callout}>
-					This is a starting template — review with legal counsel before
-					launch.
-				</div>
+				<p style={updated}>Last updated: July 2, 2026</p>
 
 				<h2 style={h2}>Introduction</h2>
 				<p style={p}>

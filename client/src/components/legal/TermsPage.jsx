@@ -42,16 +42,6 @@ export default function TermsPage() {
 		fontSize: 14,
 		margin: "0 0 24px",
 	};
-	const callout = {
-		background: S.accentSoft,
-		border: `1px solid ${S.border}`,
-		borderRadius: 14,
-		padding: "14px 18px",
-		color: S.textMuted,
-		fontSize: 14,
-		lineHeight: 1.6,
-		marginBottom: 40,
-	};
 	const h2 = {
 		fontSize: 20,
 		fontWeight: 700,
@@ -96,12 +86,7 @@ export default function TermsPage() {
 				</div>
 
 				<h1 style={title}>Terms of Service</h1>
-				<p style={updated}>Last updated: 2026</p>
-
-				<div style={callout}>
-					This is a starting template — review with legal counsel before
-					launch.
-				</div>
+				<p style={updated}>Last updated: July 2, 2026</p>
 
 				<h2 style={h2}>Acceptance of terms</h2>
 				<p style={p}>
@@ -190,9 +175,8 @@ export default function TermsPage() {
 
 				<h2 style={h2}>Governing law</h2>
 				<p style={p}>
-					These terms are governed by the laws of [Jurisdiction], without
-					regard to its conflict-of-laws rules. (Placeholder — set your
-					governing jurisdiction before launch.)
+					These terms are governed by the laws of the State of Delaware,
+					United States, without regard to its conflict-of-laws rules.
 				</p>
 
 				<h2 style={h2}>Contact</h2>
