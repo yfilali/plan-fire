@@ -27,7 +27,7 @@ const FEATURES = [
 		emoji: "✨",
 		title: "AI Co-pilot",
 		pro: true,
-		desc: "Ask ‘Can I retire at 52?’ and get answers grounded in your real numbers — with one-tap changes.",
+		desc: "More than a chatbot — it reads your live plan and drives it for you. Ask ‘Can I retire at 52?’ and it’ll retune your retirement age, Social Security timing, return and inflation assumptions, and downturn cuts — or build a whole new scenario — each applied with one tap.",
 	},
 	{
 		emoji: "⏳",
