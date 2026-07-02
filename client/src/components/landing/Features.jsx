@@ -95,40 +95,50 @@ export default function Features() {
 								boxShadow: S.shadowSm,
 							}}
 						>
-							<div
-								style={{
-									width: 46,
-									height: 46,
-									borderRadius: 12,
-									background: S.accentSoft,
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									fontSize: 24,
-									marginBottom: 14,
-								}}
-							>
-								{f.emoji}
-							</div>
+							{/* Icon + title share one row; description spans below. */}
 							<div
 								style={{
 									display: "flex",
 									alignItems: "center",
-									gap: 8,
-									flexWrap: "wrap",
-									marginBottom: 7,
+									gap: 14,
+									marginBottom: 12,
 								}}
 							>
-								<span
+								<div
 									style={{
-										fontSize: 17,
-										fontWeight: 700,
-										color: S.text,
+										width: 46,
+										height: 46,
+										borderRadius: 12,
+										background: S.accentSoft,
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "center",
+										fontSize: 24,
+										flexShrink: 0,
 									}}
 								>
-									{f.title}
-								</span>
-								{f.pro && <Badge color={S.accent}>Pro</Badge>}
+									{f.emoji}
+								</div>
+								<div
+									style={{
+										display: "flex",
+										alignItems: "center",
+										gap: 8,
+										flexWrap: "wrap",
+										minWidth: 0,
+									}}
+								>
+									<span
+										style={{
+											fontSize: 17,
+											fontWeight: 700,
+											color: S.text,
+										}}
+									>
+										{f.title}
+									</span>
+									{f.pro && <Badge color={S.accent}>Pro</Badge>}
+								</div>
 							</div>
 							<p
 								style={{
