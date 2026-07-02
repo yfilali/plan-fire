@@ -234,18 +234,21 @@ function ProjectionCard({ S }) {
 						)}
 					/>
 					<ReferenceLine
+						yAxisId="balance"
 						x={RETIRE}
 						stroke={S.blue}
 						strokeDasharray="4 4"
 						label={{ value: "Retire", fontSize: 10, fill: S.blue, position: "top" }}
 					/>
 					<ReferenceLine
+						yAxisId="balance"
 						x={MEDICARE}
 						stroke={S.purple}
 						strokeDasharray="4 4"
 						label={{ value: "Medicare", fontSize: 10, fill: S.purple, position: "top" }}
 					/>
 					<ReferenceLine
+						yAxisId="balance"
 						x={SS_AGE}
 						stroke={S.accent}
 						strokeDasharray="4 4"
