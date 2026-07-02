@@ -1,9 +1,51 @@
+import {
+	ResponsiveContainer,
+	ComposedChart,
+	Area,
+	Line,
+	XAxis,
+	YAxis,
+	CartesianGrid,
+	ReferenceLine,
+	Legend,
+} from "recharts";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { Button } from "../ui.jsx";
 
-// Landing hero. Copy is centered over a soft radial accent glow; below it a
-// faux "runway" product card built entirely from divs + inline SVG (no images)
-// so it renders crisply on any background and tracks the theme accent.
+// Landing hero. Copy sits over a soft radial accent glow; below it a product
+// card showing the same "Portfolio projection" chart the app renders on the
+// dashboard (recharts area of balance-by-age with Retire / Medicare / SS
+// reference lines), populated with representative demo figures.
+
+// Representative accumulation → drawdown trajectory for two plans.
+const RETIRE = 57;
+const MEDICARE = 65;
+const SS_AGE = 67;
+const PROJECTION = (() => {
+	const rows = [];
+	let a = 190000; // "Your plan" balance
+	let b = 165000; // "Alternative plan" balance
+	for (let age = 40; age <= 95; age++) {
+		if (age <= RETIRE) {
+			a = a * 1.1 + 27000;
+			b = b * 1.085 + 19000;
+		} else {
+			const ss = age >= SS_AGE ? 30000 : 0;
+			a = a * 1.035 - (120000 - ss);
+			b = b * 1.03 - (112000 - ss);
+		}
+		rows.push({
+			age,
+			primary: Math.max(Math.round(a), 0),
+			alt: Math.max(Math.round(b), 0),
+		});
+	}
+	return rows;
+})();
+
+const fmtMoney = (v) =>
+	v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${Math.round(v / 1e3)}k`;
+
 export default function Hero() {
 	const S = useTheme();
 
@@ -116,33 +158,17 @@ export default function Hero() {
 					Free to start · Private by design · No card required.
 				</p>
 
-				{/* faux product visual */}
-				<RunwayCard S={S} />
+				{/* product visual — the real dashboard projection chart */}
+				<ProjectionCard S={S} />
 			</div>
 		</section>
 	);
 }
 
-// Rounded white card containing a "runway" area chart and a few stat chips.
-function RunwayCard({ S }) {
-	// A gently accelerating runway curve that peaks at the FI point.
-	const W = 720;
-	const H = 260;
-	const pts = [
-		[0, 210],
-		[90, 196],
-		[180, 178],
-		[270, 150],
-		[360, 128],
-		[450, 96],
-		[540, 70],
-		[630, 46],
-		[720, 30],
-	];
-	const line = pts.map((p, i) => `${i ? "L" : "M"}${p[0]},${p[1]}`).join(" ");
-	const area = `${line} L${W},${H} L0,${H} Z`;
-	const fi = pts[pts.length - 1]; // FI point at the top-right
-
+// Mirrors the app's "Portfolio projection" card: an accent-gradient area for
+// the active plan, a dashed alternative-plan line, and dashed Retire /
+// Medicare / SS reference lines over an age axis.
+function ProjectionCard({ S }) {
 	return (
 		<div
 			style={{
@@ -157,143 +183,89 @@ function RunwayCard({ S }) {
 				textAlign: "left",
 			}}
 		>
-			{/* card header row */}
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-					gap: 12,
-					marginBottom: 16,
-					flexWrap: "wrap",
-				}}
-			>
-				<div>
-					<div style={{ fontSize: 13, fontWeight: 700, color: S.text }}>
-						Your runway to financial independence
-					</div>
-					<div style={{ fontSize: 12, color: S.textDim, marginTop: 3 }}>
-						Projected net worth · age 32 → 50
-					</div>
+			<div style={{ marginBottom: 12 }}>
+				<div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>
+					Portfolio projection
 				</div>
-				<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-					<StatChip S={S} label="FI date" value="2041" accent />
-					<StatChip S={S} label="Success" value="92%" />
-					<StatChip S={S} label="Coast age" value="46" />
+				<div style={{ fontSize: 12, color: S.textDim, marginTop: 3 }}>
+					Balance by age, with your retirement, Medicare, and Social Security
+					milestones.
 				</div>
 			</div>
 
-			{/* runway area chart */}
-			<div style={{ position: "relative", width: "100%" }}>
-				<svg
-					viewBox={`0 0 ${W} ${H}`}
-					preserveAspectRatio="none"
-					width="100%"
-					height="clamp(160px,26vw,240px)"
-					role="img"
-					aria-label="Rising net-worth runway reaching the financial-independence point"
-					style={{ display: "block" }}
+			<ResponsiveContainer width="100%" height={264}>
+				<ComposedChart
+					data={PROJECTION}
+					margin={{ top: 8, right: 10, bottom: 0, left: 4 }}
 				>
 					<defs>
-						<linearGradient id="fly-hero-fill" x1="0" y1="0" x2="0" y2="1">
-							<stop offset="0%" stopColor={S.accent} stopOpacity="0.34" />
-							<stop offset="100%" stopColor={S.accent} stopOpacity="0.02" />
+						<linearGradient id="fly-hero-primary" x1="0" y1="0" x2="0" y2="1">
+							<stop offset="0%" stopColor={S.accent} stopOpacity={0.22} />
+							<stop offset="100%" stopColor={S.accent} stopOpacity={0} />
 						</linearGradient>
 					</defs>
-
-					{/* faint baseline gridlines */}
-					{[0.25, 0.5, 0.75].map((f) => (
-						<line
-							key={f}
-							x1="0"
-							x2={W}
-							y1={H * f}
-							y2={H * f}
-							stroke={S.border}
-							strokeWidth="1"
-						/>
-					))}
-
-					<path d={area} fill="url(#fly-hero-fill)" />
-					<path
-						d={line}
-						fill="none"
-						stroke={S.accent}
-						strokeWidth="3"
-						strokeLinecap="round"
-						strokeLinejoin="round"
+					<CartesianGrid strokeDasharray="3 3" stroke={S.border} vertical={false} />
+					<XAxis
+						dataKey="age"
+						type="number"
+						domain={[40, 95]}
+						ticks={[40, 50, 60, 70, 80, 90]}
+						tick={{ fontSize: 10, fill: S.textMuted }}
+						tickLine={false}
+						axisLine={{ stroke: S.border }}
+						tickFormatter={(v) => `${v}`}
 					/>
-
-					{/* FI point marker */}
-					<circle cx={fi[0]} cy={fi[1]} r="10" fill={S.accent} opacity="0.18" />
-					<circle
-						cx={fi[0]}
-						cy={fi[1]}
-						r="5"
-						fill={S.card}
-						stroke={S.accent}
-						strokeWidth="3"
+					<YAxis
+						tickFormatter={fmtMoney}
+						tick={{ fontSize: 10, fill: S.textMuted }}
+						tickLine={false}
+						axisLine={false}
+						width={48}
 					/>
-				</svg>
-
-				{/* FI flag label pinned near the top-right endpoint */}
-				<div
-					style={{
-						position: "absolute",
-						top: 4,
-						right: 6,
-						display: "inline-flex",
-						alignItems: "center",
-						gap: 6,
-						padding: "4px 10px",
-						borderRadius: 999,
-						fontSize: 11.5,
-						fontWeight: 650,
-						background: S.accentSoft,
-						color: S.accent,
-						border: `1px solid ${S.accent}33`,
-					}}
-				>
-					<span aria-hidden="true">◎</span> FI reached
-				</div>
-			</div>
-		</div>
-	);
-}
-
-function StatChip({ S, label, value, accent = false }) {
-	return (
-		<div
-			style={{
-				padding: "7px 12px",
-				borderRadius: 12,
-				background: accent ? S.accentSoft : S.bg,
-				border: `1px solid ${accent ? S.accent + "33" : S.border}`,
-				minWidth: 78,
-			}}
-		>
-			<div
-				style={{
-					fontSize: 9.5,
-					fontWeight: 700,
-					letterSpacing: 0.6,
-					textTransform: "uppercase",
-					color: S.textMuted,
-				}}
-			>
-				{label}
-			</div>
-			<div
-				style={{
-					fontSize: 17,
-					fontWeight: 750,
-					fontFamily: S.mono,
-					color: accent ? S.accent : S.text,
-					lineHeight: 1.2,
-				}}
-			>
-				{value}
-			</div>
+					<Legend
+						formatter={(v) => (
+							<span style={{ fontSize: 11.5, color: S.textMuted }}>{v}</span>
+						)}
+					/>
+					<ReferenceLine
+						x={RETIRE}
+						stroke={S.blue}
+						strokeDasharray="4 4"
+						label={{ value: "Retire", fontSize: 10, fill: S.blue, position: "top" }}
+					/>
+					<ReferenceLine
+						x={MEDICARE}
+						stroke={S.purple}
+						strokeDasharray="4 4"
+						label={{ value: "Medicare", fontSize: 10, fill: S.purple, position: "top" }}
+					/>
+					<ReferenceLine
+						x={SS_AGE}
+						stroke={S.accent}
+						strokeDasharray="4 4"
+						label={{ value: "SS", fontSize: 10, fill: S.accent, position: "top" }}
+					/>
+					<Line
+						type="monotone"
+						dataKey="alt"
+						name="Alternative plan"
+						stroke={S.textDim}
+						strokeWidth={1.6}
+						strokeDasharray="5 4"
+						dot={false}
+						opacity={0.55}
+					/>
+					<Area
+						type="monotone"
+						dataKey="primary"
+						name="Your plan"
+						stroke={S.accent}
+						strokeWidth={2.8}
+						fill="url(#fly-hero-primary)"
+						dot={false}
+					/>
+				</ComposedChart>
+			</ResponsiveContainer>
 		</div>
 	);
 }
