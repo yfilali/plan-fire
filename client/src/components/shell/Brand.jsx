@@ -1,6 +1,6 @@
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 
-// PlanFire wordmark — a flame (FIRE) in a rounded tile, tuned to the verdant
+// PlanFIRE wordmark — a flame (FIRE) in a rounded tile, tuned to the verdant
 // accent so the brand and the UI read as one system.
 const GLOW = "rgba(16,185,129,0.42)";
 
@@ -37,7 +37,7 @@ export default function Brand() {
 						color: S.text,
 					}}
 				>
-					PlanFire
+					PlanFIRE
 				</div>
 				<div
 					style={{

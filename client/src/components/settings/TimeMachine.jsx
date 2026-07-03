@@ -344,7 +344,7 @@ export default function TimeMachine() {
 						<div style={{ fontSize: 13, color: S.textMuted, maxWidth: 360, lineHeight: 1.5 }}>
 							Replay any real market era — {meta.minYear}–{meta.maxYear} — across stocks, bonds, gold, real estate and cash, on your actual portfolio.
 						</div>
-						<Button variant="primary" size="lg" onClick={() => setShowUpgrade(true)}>Upgrade to PlanFire Pro</Button>
+						<Button variant="primary" size="lg" onClick={() => setShowUpgrade(true)}>Upgrade to PlanFIRE Pro</Button>
 					</div>
 				</div>
 				{showUpgrade && (

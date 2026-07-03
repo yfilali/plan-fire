@@ -1,4 +1,4 @@
-# Deploying PlanFire (Vercel + Neon + Better Auth)
+# Deploying PlanFIRE (Vercel + Neon + Better Auth)
 
 The app ships as a Vite SPA (static) plus an Express API wrapped as a single
 Vercel serverless function (`api/index.js`). Data lives in Neon Postgres; auth
@@ -45,7 +45,7 @@ In **Project → Settings → Environment Variables** (Production + Preview):
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
 | `BETTER_AUTH_URL` | your production URL, e.g. `https://firly.vercel.app` |
 | `RESEND_API_KEY` | from resend.com |
-| `EMAIL_FROM` | e.g. `PlanFire <noreply@yourdomain.com>` (verified Resend domain) |
+| `EMAIL_FROM` | e.g. `PlanFIRE <noreply@yourdomain.com>` (verified Resend domain) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | see step 5 |
 | `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | see step 6 |
 | `ANTHROPIC_API_KEY` | optional, for the live AI co-pilot |

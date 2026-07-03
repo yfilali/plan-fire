@@ -90,14 +90,14 @@ export default function TermsPage() {
 
 				<h2 style={h2}>Acceptance of terms</h2>
 				<p style={p}>
-					By creating an account or using PlanFire ("the service"), you agree
+					By creating an account or using PlanFIRE ("the service"), you agree
 					to these Terms of Service. If you do not agree, please do not use
-					PlanFire.
+					PlanFIRE.
 				</p>
 
-				<h2 style={h2}>What PlanFire is</h2>
+				<h2 style={h2}>What PlanFIRE is</h2>
 				<p style={p}>
-					PlanFire is a financial-independence planning and modeling{" "}
+					PlanFIRE is a financial-independence planning and modeling{" "}
 					<strong>tool</strong>. It lets you enter your own numbers and
 					explore projections, runway, plan comparisons, and market
 					scenarios. It is software that helps you think — not an advisor.
@@ -106,7 +106,7 @@ export default function TermsPage() {
 				<h2 style={h2}>Important disclaimer</h2>
 				<div style={disclaimer}>
 					<p style={disclaimerText}>
-						PlanFire is for informational and educational purposes only and
+						PlanFIRE is for informational and educational purposes only and
 						is NOT financial, investment, tax, or legal advice. All
 						projections are estimates based on the assumptions you provide
 						— they are not guarantees of future results. Always consult a
@@ -123,7 +123,7 @@ export default function TermsPage() {
 
 				<h2 style={h2}>Free &amp; open source</h2>
 				<p style={p}>
-					PlanFire is free to use and open source. Every feature is
+					PlanFIRE is free to use and open source. Every feature is
 					available to everyone at no cost — there are no paid tiers,
 					subscriptions, or in-app purchases.
 				</p>
@@ -140,14 +140,14 @@ export default function TermsPage() {
 						permission.
 					</li>
 					<li style={li}>
-						Use PlanFire for unlawful purposes or in violation of these
+						Use PlanFIRE for unlawful purposes or in violation of these
 						terms.
 					</li>
 				</ul>
 
 				<h2 style={h2}>Intellectual property</h2>
 				<p style={p}>
-					PlanFire, including its software, design, and branding, is owned by
+					PlanFIRE, including its software, design, and branding, is owned by
 					us and protected by applicable law. The financial data you enter
 					remains yours; you grant us only the limited rights needed to
 					operate the service for you.
@@ -157,7 +157,7 @@ export default function TermsPage() {
 				<p style={p}>
 					The service is provided "as is" and "as available" without
 					warranties of any kind. To the fullest extent permitted by law,
-					PlanFire and its operators are not liable for any indirect,
+					PlanFIRE and its operators are not liable for any indirect,
 					incidental, or consequential damages, or for any financial
 					decisions or losses arising from your use of the service or
 					reliance on its projections.

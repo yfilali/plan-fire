@@ -130,7 +130,7 @@ export default function Hero() {
 						maxWidth: 640,
 					}}
 				>
-					PlanFire is a FIRE-native retirement planner — model your runway,
+					PlanFIRE is a FIRE-native retirement planner — model your runway,
 					stress-test against real market history, and watch your
 					financial-independence date update as you plan.
 				</p>

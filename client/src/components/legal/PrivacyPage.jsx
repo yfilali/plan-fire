@@ -2,7 +2,7 @@ import Brand from "../shell/Brand.jsx";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 
 // Standalone /privacy route. Inline styles only, theme-token driven so the
-// dark scheme keeps working. Tailored to PlanFire's real data practices.
+// dark scheme keeps working. Tailored to PlanFIRE's real data practices.
 export default function PrivacyPage() {
 	const S = useTheme();
 
@@ -77,7 +77,7 @@ export default function PrivacyPage() {
 
 				<h2 style={h2}>Introduction</h2>
 				<p style={p}>
-					PlanFire ("we", "us") is a financial-independence and retirement
+					PlanFIRE ("we", "us") is a financial-independence and retirement
 					planner. We take the privacy of your financial information
 					seriously — it is the whole point of the product. This policy
 					explains what we collect, how we use it, and the choices you
@@ -122,7 +122,7 @@ export default function PrivacyPage() {
 				<h2 style={h2}>Where it's stored</h2>
 				<p style={p}>
 					Your plans are stored server-side against your account so you can
-					reach them from any device. If you use PlanFire as a guest, your
+					reach them from any device. If you use PlanFIRE as a guest, your
 					data lives only in your own browser until you create an account.
 				</p>
 
@@ -135,7 +135,7 @@ export default function PrivacyPage() {
 
 				<h2 style={h2}>Third-party services</h2>
 				<p style={p}>
-					We rely on a small set of trusted providers to operate PlanFire:
+					We rely on a small set of trusted providers to operate PlanFIRE:
 				</p>
 				<ul style={ul}>
 					<li style={li}>
@@ -161,13 +161,13 @@ export default function PrivacyPage() {
 
 				<h2 style={h2}>Children</h2>
 				<p style={p}>
-					PlanFire is not directed at children and is not intended for anyone
+					PlanFIRE is not directed at children and is not intended for anyone
 					under 18. We do not knowingly collect information from minors.
 				</p>
 
 				<h2 style={h2}>Changes to this policy</h2>
 				<p style={p}>
-					We may update this policy as PlanFire evolves. When we make material
+					We may update this policy as PlanFIRE evolves. When we make material
 					changes, we'll update the "last updated" date above and, where
 					appropriate, notify you.
 				</p>

@@ -22,5 +22,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🔥 PlanFire running on http://0.0.0.0:${PORT}`);
+  console.log(`🔥 PlanFIRE running on http://0.0.0.0:${PORT}`);
 });

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────
-//  PlanFire — Historical market dataset (server-side seed)
+//  PlanFIRE — Historical market dataset (server-side seed)
 //
 //  Annual NOMINAL total returns by asset class, 1928 → 2025. This is the
 //  reference data that powers the premium "Time Machine" backtest. It ships

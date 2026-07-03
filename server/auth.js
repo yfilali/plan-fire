@@ -29,7 +29,7 @@ const GUEST_TTL = 60 * 24 * 60 * 60 * 1000; // 60 days
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
-const EMAIL_FROM = process.env.EMAIL_FROM || 'PlanFire <onboarding@resend.dev>';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'PlanFIRE <onboarding@resend.dev>';
 
 export function hasEmailTransport() {
   return !!resend;
@@ -80,10 +80,10 @@ export const auth = betterAuth({
     sendResetPassword: async ({ user: u, url }) => {
       await sendEmail({
         to: u.email,
-        subject: 'Reset your PlanFire password',
+        subject: 'Reset your PlanFIRE password',
         html: emailShell(
           'Reset your password',
-          'We received a request to reset your PlanFire password.',
+          'We received a request to reset your PlanFIRE password.',
           url,
           'Reset password',
         ),
@@ -97,10 +97,10 @@ export const auth = betterAuth({
     sendVerificationEmail: async ({ user: u, url }) => {
       await sendEmail({
         to: u.email,
-        subject: 'Verify your email — PlanFire',
+        subject: 'Verify your email — PlanFIRE',
         html: emailShell(
           'Confirm your email',
-          'Welcome to PlanFire. Confirm your email to finish setting up your account.',
+          'Welcome to PlanFIRE. Confirm your email to finish setting up your account.',
           url,
           'Verify email',
         ),

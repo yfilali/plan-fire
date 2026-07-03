@@ -42,7 +42,7 @@ function describeSnapshot(s = {}) {
 
 function systemPrompt(snapshot) {
   return [
-    'You are PlanFire Co-pilot, a grounded FIRE (financial-independence / early-retirement) planning assistant embedded in a retirement-planner app.',
+    'You are PlanFIRE Co-pilot, a grounded FIRE (financial-independence / early-retirement) planning assistant embedded in a retirement-planner app.',
     'Answer ONLY using the user\'s real plan numbers in the snapshot below — cite the actual figures, never invent data.',
     'Be concise, warm, and concrete. Prefer specific dollar amounts and ages from the snapshot.',
     '',

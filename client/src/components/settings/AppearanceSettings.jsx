@@ -38,7 +38,7 @@ export default function AppearanceSettings() {
 
 	return (
 		<Card>
-			<CardHeader icon="🎨" title="Appearance" subtitle="How PlanFire looks and formats numbers." />
+			<CardHeader icon="🎨" title="Appearance" subtitle="How PlanFIRE looks and formats numbers." />
 
 			<SettingRow S={S} title="Theme" desc="Light, dark, or follow your system.">
 				<ThemeToggle />
@@ -65,7 +65,7 @@ export default function AppearanceSettings() {
 				</Select>
 			</SettingRow>
 
-			<SettingRow S={S} title="Default landing tab" desc="Where PlanFire opens when you launch it." last>
+			<SettingRow S={S} title="Default landing tab" desc="Where PlanFIRE opens when you launch it." last>
 				<Select value={defaultView} onChange={(e) => setDefaultView(e.target.value)} style={{ width: 150 }}>
 					<option value="dashboard">Dashboard</option>
 					<option value="copilot">Co-pilot</option>
