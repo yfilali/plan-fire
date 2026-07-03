@@ -128,7 +128,7 @@ export function AuthProvider({ children }) {
 		// guest-claim run on mount.
 		const { error } = await authClient.signIn.social({
 			provider,
-			callbackURL: "/",
+			callbackURL: "/app",
 		});
 		if (error) return { error: error.message || "Sign-in failed." };
 		return { ok: true };
