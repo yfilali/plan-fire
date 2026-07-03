@@ -4,7 +4,6 @@ import Hero from "./Hero.jsx";
 import Stats from "./Stats.jsx";
 import Features from "./Features.jsx";
 import HowItWorks from "./HowItWorks.jsx";
-import Pricing from "./Pricing.jsx";
 import FAQ from "./FAQ.jsx";
 import Footer from "./Footer.jsx";
 
@@ -29,7 +28,6 @@ export default function LandingPage() {
 				<Stats />
 				<Features />
 				<HowItWorks />
-				<Pricing />
 				<FAQ />
 			</main>
 			<Footer />

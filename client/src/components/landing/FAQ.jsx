@@ -3,8 +3,8 @@ import { useTheme } from "../../theme/ThemeProvider.jsx";
 
 const QA = [
 	{
-		q: "Is Firely free?",
-		a: "Yes — the core planner, projections, and plan comparison are free. Pro unlocks Monte Carlo, the AI Co-pilot, and the Time Machine.",
+		q: "Is PlanFire free?",
+		a: "Completely. PlanFire is free and open source — every feature, including Monte Carlo, the AI Co-pilot, and the Time Machine, is unlocked for everyone. No paid tier, no upsell.",
 	},
 	{
 		q: "Is my financial data private?",
@@ -23,8 +23,8 @@ const QA = [
 		a: "Yes — choose ‘Continue as guest’. Your work is saved locally and carried into your account when you sign up.",
 	},
 	{
-		q: "How do I cancel Pro?",
-		a: "Anytime, from billing settings. You keep Pro until the period ends.",
+		q: "Is PlanFire open source?",
+		a: "Yes — the whole project is open source. You can self-host it, read the code, and contribute.",
 	},
 ];
 

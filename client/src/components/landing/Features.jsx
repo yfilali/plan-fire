@@ -1,5 +1,4 @@
 import { useTheme } from "../../theme/ThemeProvider.jsx";
-import { Badge } from "../ui.jsx";
 
 const FEATURES = [
 	{
@@ -142,7 +141,6 @@ export default function Features() {
 									>
 										{f.title}
 									</span>
-									{f.pro && <Badge color={S.accent}>Pro</Badge>}
 								</div>
 							</div>
 							<p

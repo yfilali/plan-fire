@@ -7,7 +7,6 @@ import Brand from "../shell/Brand.jsx";
 // collapse below ~720px; the CTAs stay put so signup is always one tap away.
 const LINKS = [
 	{ label: "Features", href: "#features" },
-	{ label: "Pricing", href: "#pricing" },
 	{ label: "FAQ", href: "#faq" },
 ];
 

@@ -62,7 +62,7 @@ export default function ResetPasswordScreen() {
 				}}
 			>
 				<div style={{ textAlign: "center", marginBottom: 22 }}>
-					<div style={{ fontSize: 30, fontWeight: 850, color: S.accent, letterSpacing: -0.5 }}>Firely</div>
+					<div style={{ fontSize: 30, fontWeight: 850, color: S.accent, letterSpacing: -0.5 }}>PlanFire</div>
 					<div style={{ fontSize: 14, color: S.textMuted, marginTop: 4 }}>Set a new password.</div>
 				</div>
 

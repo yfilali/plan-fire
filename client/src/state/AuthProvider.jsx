@@ -190,7 +190,9 @@ export function AuthProvider({ children }) {
 		}
 	}, []);
 
-	const isPro = !!entitlement && entitlement.status === "active";
+	// Open-source: every feature is free and unlocked for everyone. No paid
+	// gating — isPro is always true, which also hides the (now-removed) upsells.
+	const isPro = true;
 
 	const value = {
 		loading,

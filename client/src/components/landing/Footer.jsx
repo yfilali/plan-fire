@@ -6,7 +6,6 @@ const COLUMNS = [
 		title: "Product",
 		links: [
 			{ label: "Features", href: "#features" },
-			{ label: "Pricing", href: "#pricing" },
 			{ label: "FAQ", href: "#faq" },
 		],
 	},
@@ -136,7 +135,7 @@ export default function Footer() {
 						gap: 12,
 					}}
 				>
-					<span style={{ fontSize: 13, color: S.textMuted }}>© {year} Firely</span>
+					<span style={{ fontSize: 13, color: S.textMuted }}>© {year} PlanFire</span>
 					<span style={{ fontSize: 12.5, color: S.textDim }}>
 						Estimates, not financial advice. Your numbers, your call.
 					</span>

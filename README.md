@@ -1,8 +1,8 @@
-# Firely
+# PlanFire
 
 > **Plan your escape.** Model your runway to financial independence.
 
-Firely is a FIRE-native retirement planning dashboard — model your runway, compare housing plans, and stress-test against down markets, with server-side persistence.
+PlanFire is a FIRE-native retirement planning dashboard — model your runway, compare housing plans, and stress-test against down markets, with server-side persistence.
 
 ## Architecture
 
@@ -30,10 +30,10 @@ Firely is a FIRE-native retirement planning dashboard — model your runway, com
 - **Flexible properties** — model zero, one, or many properties with arbitrary values, mortgages, and rental economics
 - Expense tracker with custom categories; tag each expense to whichever of *your* plans it applies to, plus age ranges, inflation overrides, and spend tiers
 - Market simulation (historical avg vs "lost decade" stress test)
-- **🎲 Monte Carlo success probability (Firely Pro)** — thousands of randomized return paths report the share in which your portfolio outlives you, with a terminal-wealth band (10th/50th/90th percentile). Free users see the card blurred behind an upsell.
+- **🎲 Monte Carlo success probability (PlanFire Pro)** — thousands of randomized return paths report the share in which your portfolio outlives you, with a terminal-wealth band (10th/50th/90th percentile). Free users see the card blurred behind an upsell.
 - **🏁 FIRE milestones** — the ages your plan crosses Coast-FIRE, financial independence, $500k/$1M/$2M net worth, and (worst case) depletion — derived live from the projection.
-- **✦ AI Co-pilot (Firely Pro)** — a chat assistant grounded in a minimal numeric snapshot of *your* plan. It answers with your real figures and can propose one-tap changes (e.g. "Retire at 57") applied straight to your plan. Powered by Claude; degrades to a deterministic offline reply when no API key is set.
-- **⏳ Time Machine (Firely Pro)** — replay any real market era since 1928 on your actual portfolio. Allocate across stocks, Treasury bonds, corporate bonds, real estate, gold and cash, then watch real year-by-year returns drive your projection. Famous-era presets (Stagflation, the Long Bull, the Lost Decade, the GFC, …) or a custom window. Backed by a server-shipped historical dataset.
+- **✦ AI Co-pilot (PlanFire Pro)** — a chat assistant grounded in a minimal numeric snapshot of *your* plan. It answers with your real figures and can propose one-tap changes (e.g. "Retire at 57") applied straight to your plan. Powered by Claude; degrades to a deterministic offline reply when no API key is set.
+- **⏳ Time Machine (PlanFire Pro)** — replay any real market era since 1928 on your actual portfolio. Allocate across stocks, Treasury bonds, corporate bonds, real estate, gold and cash, then watch real year-by-year returns drive your projection. Famous-era presets (Stagflation, the Long Bull, the Lost Decade, the GFC, …) or a custom window. Backed by a server-shipped historical dataset.
 - **🔐 Accounts** — passwordless magic-link sign-in (+ guest mode that migrates your anonymous data on first login). Per-user, cookie-scoped server storage.
 - **💳 Billing** — Stripe Checkout + webhook-verified entitlement (monthly / yearly / lifetime). The server is the single source of truth for Pro; the client never grants entitlement. Demo builds activate instantly when Stripe isn't configured.
 - **⚙️ Settings** — tabbed: Assumptions · Account · Billing · Notifications · Privacy & Data · Appearance · Labs.
@@ -156,7 +156,7 @@ docker restart retirement-planner
 
 ## Configuration
 
-All optional — Firely runs fully in **demo mode** with none of these set (magic
+All optional — PlanFire runs fully in **demo mode** with none of these set (magic
 links are returned/logged instead of emailed, billing activates instantly, and
 the AI co-pilot uses a deterministic offline reply).
 

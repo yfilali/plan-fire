@@ -5,7 +5,6 @@ import { btnBase, FS, RAD, FW } from "../lib/styles.js";
 import ProfileSettings from "../components/settings/ProfileSettings.jsx";
 import DataSettings from "../components/settings/DataSettings.jsx";
 import AccountSettings from "../components/settings/AccountSettings.jsx";
-import BillingSettings from "../components/settings/BillingSettings.jsx";
 import NotificationSettings from "../components/settings/NotificationSettings.jsx";
 import PrivacySettings from "../components/settings/PrivacySettings.jsx";
 import AppearanceSettings from "../components/settings/AppearanceSettings.jsx";
@@ -13,7 +12,6 @@ import AppearanceSettings from "../components/settings/AppearanceSettings.jsx";
 const TABS = [
 	{ id: "Profile", icon: "🧑" },
 	{ id: "Account", icon: "👤" },
-	{ id: "Billing", icon: "💳" },
 	{ id: "Notifications", icon: "🔔" },
 	{ id: "Privacy & Data", icon: "🔒" },
 	{ id: "Appearance", icon: "🎨" },
@@ -147,8 +145,6 @@ export default function SettingsView() {
 		switch (activeTab) {
 			case "Account":
 				return <AccountSettings />;
-			case "Billing":
-				return <BillingSettings />;
 			case "Notifications":
 				return <NotificationSettings />;
 			case "Privacy & Data":
