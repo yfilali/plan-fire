@@ -22,7 +22,6 @@ export default function Nav() {
 				zIndex: 50,
 				height: 64,
 				background: `${S.surface}e6`,
-				WebkitBackdropFilter: "saturate(180%) blur(10px)",
 				backdropFilter: "saturate(180%) blur(10px)",
 				WebkitBackdropFilter: "saturate(180%) blur(10px)",
 				borderBottom: `1px solid ${S.border}`,

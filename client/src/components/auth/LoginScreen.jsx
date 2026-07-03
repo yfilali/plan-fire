@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { useAuth } from "../../state/AuthProvider.jsx";
 import { Button } from "../ui.jsx";
-import { GUEST_CONTINUE_KEY } from "../../App.jsx";
+import { GUEST_CONTINUE_KEY } from "../../lib/guest.js";
 
 // Real auth: email/password (sign up + log in), Google & Facebook OAuth, and
 // password reset. Social buttons appear only for providers the server has

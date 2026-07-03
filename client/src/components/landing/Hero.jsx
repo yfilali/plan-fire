@@ -160,7 +160,9 @@ export default function Hero() {
 					Free forever · Open source · Private by design.
 				</p>
 
-				<ProjectionCard S={S} />
+				{/* recharts needs the DOM; render only on the client (the static
+				    prerender skips it — it's a decorative product shot). */}
+				{typeof window !== "undefined" && <ProjectionCard S={S} />}
 			</div>
 		</section>
 	);

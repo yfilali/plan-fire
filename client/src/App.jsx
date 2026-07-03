@@ -23,10 +23,7 @@ const VIEWS = {
 	settings: SettingsView,
 };
 
-// Remember a guest who chose to continue without an account, so the login
-// screen doesn't reappear on every reload. Exported so LoginScreen sets the
-// same flag when a visitor picks "Continue as guest".
-export const GUEST_CONTINUE_KEY = "firly_guest_continue";
+import { GUEST_CONTINUE_KEY } from "./lib/guest.js";
 
 function Loader({ label }) {
 	const S = useTheme();

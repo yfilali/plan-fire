@@ -1,19 +1,25 @@
+import { lazy, Suspense } from "react";
 import { StateProvider } from "./usePersistedState.jsx";
 import { PlannerProvider } from "./state/PlannerProvider.jsx";
-import AppShell from "./App.jsx";
 import LandingPage from "./components/landing/LandingPage.jsx";
 import LoginScreen from "./components/auth/LoginScreen.jsx";
 import ResetPasswordScreen from "./components/auth/ResetPasswordScreen.jsx";
 import PrivacyPage from "./components/legal/PrivacyPage.jsx";
 import TermsPage from "./components/legal/TermsPage.jsx";
 
-// Dependency-free pathname router. ThemeProvider + AuthProvider are mounted
-// globally (in main.jsx), so every branch below can use useTheme()/useAuth().
-// StateProvider + PlannerProvider are mounted ONLY around the planner shell so
-// that visiting marketing/auth/legal pages never triggers /api/state loads or
-// creates guest rows.
-export default function Root() {
-	const path = window.location.pathname;
+// The authenticated planner shell is lazy-loaded so its heavy tree (recharts
+// dashboard, planner state, etc.) stays out of the static prerender of the
+// public marketing/legal/auth routes.
+const AppShell = lazy(() => import("./App.jsx"));
+
+// Dependency-free pathname router. `pathname` is passed in during the static
+// prerender (no window on the server); on the client it defaults to the real
+// location. ThemeProvider + AuthProvider are mounted globally (main.jsx), so
+// every branch can use useTheme()/useAuth(). StateProvider + PlannerProvider
+// wrap only the planner shell so public pages never load/persist planner state.
+export default function Root({ pathname }) {
+	const path =
+		pathname ?? (typeof window !== "undefined" ? window.location.pathname : "/");
 
 	switch (path) {
 		case "/login":
@@ -28,11 +34,13 @@ export default function Root() {
 			return <ResetPasswordScreen />;
 		case "/app":
 			return (
-				<StateProvider>
-					<PlannerProvider>
-						<AppShell />
-					</PlannerProvider>
-				</StateProvider>
+				<Suspense fallback={null}>
+					<StateProvider>
+						<PlannerProvider>
+							<AppShell />
+						</PlannerProvider>
+					</StateProvider>
+				</Suspense>
 			);
 		case "/":
 		default:

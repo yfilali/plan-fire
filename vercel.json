@@ -3,6 +3,7 @@
   "buildCommand": "npm run db:migrate && npm run build",
   "outputDirectory": "client/dist",
   "framework": null,
+  "cleanUrls": true,
   "functions": {
     "api/index.js": {
       "maxDuration": 30
