@@ -157,7 +157,7 @@ export default function Hero() {
 				</div>
 
 				<p style={{ marginTop: 16, fontSize: 12.5, color: S.textDim }}>
-					Free to start · Private by design · No card required.
+					Free forever · Open source · Private by design.
 				</p>
 
 				<ProjectionCard S={S} />
