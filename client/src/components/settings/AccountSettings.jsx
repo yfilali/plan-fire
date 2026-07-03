@@ -1,7 +1,7 @@
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { useAuth } from "../../state/AuthProvider.jsx";
 import { clearAllData } from "../../usePersistedState.jsx";
-import { Card, CardHeader, Button, Badge } from "../ui.jsx";
+import { Card, CardHeader, Button } from "../ui.jsx";
 
 function Row({ S, title, desc, children, danger }) {
 	return (
@@ -17,7 +17,7 @@ function Row({ S, title, desc, children, danger }) {
 
 export default function AccountSettings() {
 	const S = useTheme();
-	const { user, entitlement, guest, signOut, openPortal } = useAuth();
+	const { user, guest, signOut } = useAuth();
 
 	const handleDelete = async () => {
 		if (!confirm("Delete your account and ALL plan data? This cannot be undone. A backup is recommended first.")) return;
@@ -48,27 +48,12 @@ export default function AccountSettings() {
 		);
 	}
 
-	const tier = entitlement?.status === "active" ? entitlement.tier || "pro" : "free";
-	const renews = entitlement?.renews ? new Date(entitlement.renews).toLocaleDateString() : null;
-
 	return (
 		<Card>
-			<CardHeader icon="👤" title="Account" subtitle="Your identity, plan, and sessions." />
+			<CardHeader icon="👤" title="Account" subtitle="Your identity and sessions." />
 
 			<Row S={S} title="Email">{<span style={{ fontSize: 13, color: S.text, fontFamily: S.mono }}>{user.email}</span>}</Row>
 			{user.name && <Row S={S} title="Name">{<span style={{ fontSize: 13, color: S.text }}>{user.name}</span>}</Row>}
-
-			<Row S={S} title="Plan" desc={renews ? `Renews ${renews}` : "Free plan"}>
-				<Badge color={tier === "free" ? S.textMuted : S.accent}>
-					{tier === "free" ? "Free" : `✦ ${tier === "lifetime" ? "Lifetime" : "Pro"}`}
-				</Badge>
-			</Row>
-
-			{tier !== "free" && (
-				<Row S={S} title="Billing" desc="Update card, invoices, or cancel.">
-					<Button onClick={openPortal}>Manage billing</Button>
-				</Row>
-			)}
 
 			<Row S={S} title="Sign out" desc="End this session on this device.">
 				<Button onClick={signOut}>Sign out</Button>
