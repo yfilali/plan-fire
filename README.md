@@ -7,19 +7,22 @@ PlanFIRE is a FIRE-native retirement planning dashboard — model your runway, c
 ## Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌──────────┐
-│  React SPA  │────▶│  Express API │────▶│  SQLite  │
-│  (Vite)     │ /api│  (Node.js)   │     │  (/data) │
-└─────────────┘     └──────────────┘     └──────────┘
-       ▲                    │
-       └────────────────────┘
+┌─────────────┐     ┌──────────────────────┐     ┌─────────────────┐
+│  React SPA  │────▶│  Express API         │────▶│  Neon Postgres   │
+│  (Vite)     │ /api│  (Vercel function or │     │  (Drizzle ORM)   │
+└─────────────┘     │   standalone Node)   │     └─────────────────┘
+       ▲             └──────────────────────┘
+       └───────────────────────┘
          Serves static files
 ```
 
-- **Client**: React + Recharts, built by Vite, served as static files by Express
-- **Server**: Express API with SQLite (via better-sqlite3) key-value store
-- **Persistence**: SQLite database on a Docker volume — survives container rebuilds
+- **Client**: React + Recharts, built by Vite, served as static assets (by Vercel or Express)
+- **Server**: Express API — deployed as a single Vercel serverless function (`api/index.js`) or run standalone (`server/index.js`)
+- **Persistence**: Neon Postgres via Drizzle ORM — per-owner state in a `jsonb` blob, survives redeploys
+- **Auth**: Better Auth — email/password, Google, and Facebook, plus a guest mode that migrates anonymous data on first login
 - **Fallback**: If server is unreachable, client falls back to localStorage
+
+See [DEPLOY.md](DEPLOY.md) for the full Vercel + Neon setup guide.
 
 ## Features
 
@@ -67,18 +70,20 @@ State flows one way: `StateProvider` (persistence) → `ThemeProvider` + `Planne
 ## Quick Start (Docker)
 
 ```bash
+cp .env.example .env   # fill in DATABASE_URL (a Neon dev branch) and other secrets
+npm run db:migrate      # once, to create tables
 docker compose up -d --build
 ```
 
-App runs at **http://localhost:8080**. Data persists in a Docker volume.
+App runs at **http://localhost:8089**.
 
 ## Quick Start (Local Dev)
 
 Terminal 1 — server:
 ```bash
-cd server
 npm install
-DB_PATH=./dev.db node index.js
+npm run db:migrate   # once, to create tables (needs DATABASE_URL in .env)
+npm start
 ```
 
 Terminal 2 — client (with hot reload + API proxy):
@@ -90,45 +95,17 @@ npm run dev
 
 Client at **http://localhost:5173**, API calls proxied to **localhost:3000**.
 
-## Deploy to Home Server
+## Deploying
 
-```bash
-# Clone/copy the project
-docker compose up -d --build
-
-# Check it's running
-docker logs retirement-planner
-
-# View the database volume
-docker volume inspect retirement-planner_planner-data
-```
-
-### Behind a Reverse Proxy
-
-Container exposes port 3000 internally, mapped to 8080 on the host. Example Caddy config:
-
-```
-planner.yourdomain.com {
-    reverse_proxy localhost:8080
-}
-```
+PlanFIRE deploys as a Vercel serverless function backed by Neon Postgres. See
+[DEPLOY.md](DEPLOY.md) for the full setup (project import, environment
+variables, OAuth apps, and database migrations).
 
 ## Data & Backups
 
-Data lives in a Docker volume (`planner-data`). To back up:
-
-```bash
-# Via the app UI: click ⋮ → Export Data
-
-# Or directly copy the SQLite file:
-docker cp retirement-planner:/data/retirement-planner.db ./backup.db
-```
-
-To restore:
-```bash
-docker cp ./backup.db retirement-planner:/data/retirement-planner.db
-docker restart retirement-planner
-```
+State lives in Neon Postgres (`app_state.data`, a jsonb blob per user/guest).
+Use the app UI (⋮ → Export Data) to download a JSON backup, or Neon's own
+branching/backup features for database-level snapshots.
 
 ## API Reference
 
@@ -143,9 +120,8 @@ docker restart retirement-planner
 | POST | `/api/import` | Upload JSON to replace state |
 | GET | `/api/market-history` | Historical asset-class returns dataset (read-only; powers the Time Machine) |
 | GET | `/api/me` | Current user, entitlement, and guest flag |
-| POST | `/api/auth/start` | Begin passwordless sign-in (`{email}` → magic link) |
-| GET | `/api/auth/verify?token=` | Consume a magic link, set the session cookie |
-| POST | `/api/auth/signout` | End the session |
+| POST | `/api/account/claim-guest` | Fold anonymous guest data into an account on first sign-in |
+| ALL | `/api/auth/*` | Better Auth — email/password, Google, Facebook, session, reset-password |
 | POST | `/api/billing/checkout` | Start Stripe Checkout (or a dev-activate URL) |
 | POST | `/api/billing/webhook` | Stripe webhook → sets verified entitlement |
 | POST | `/api/billing/portal` | Stripe customer-portal link |
@@ -156,18 +132,22 @@ docker restart retirement-planner
 
 ## Configuration
 
-All optional — PlanFIRE runs fully in **demo mode** with none of these set (magic
-links are returned/logged instead of emailed, billing activates instantly, and
-the AI co-pilot uses a deterministic offline reply).
+`DATABASE_URL` and `BETTER_AUTH_SECRET` are required; everything else is
+optional — PlanFIRE runs in **demo mode** without them (verification/reset
+emails are logged instead of sent, billing activates instantly, and the AI
+co-pilot uses a deterministic offline reply). See `.env.example` for the full,
+commented list. Highlights:
 
 | Variable | Purpose |
 |----------|---------|
-| `DATA_PATH` | JSON store location (default `/data/state.json`) |
-| `ANTHROPIC_API_KEY` | Enables the live AI co-pilot (Claude `claude-opus-4-8`) |
-| `STRIPE_SECRET_KEY` | Enables real Stripe Checkout / portal / webhooks |
-| `STRIPE_PRICE_MONTHLY` / `_YEARLY` / `_LIFETIME` | Stripe price IDs per plan |
-| `STRIPE_WEBHOOK_SECRET` | Verifies incoming Stripe webhook signatures |
-| `FIRLY_SMTP` | When set, magic links are emailed instead of returned in the response |
+| `DATABASE_URL` | Neon Postgres connection string (pooled) |
+| `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL` | Auth session signing key and public app origin |
+| `RESEND_API_KEY` / `EMAIL_FROM` | Sends verification/reset emails (else logged to console) |
+| `GOOGLE_CLIENT_ID` / `_SECRET`, `FACEBOOK_CLIENT_ID` / `_SECRET` | Social login |
+| `ANTHROPIC_API_KEY` | Enables the live AI co-pilot (Claude) |
+| `STRIPE_SECRET_KEY`, `STRIPE_PRICE_MONTHLY` / `_YEARLY` / `_LIFETIME`, `STRIPE_WEBHOOK_SECRET` | Real Stripe Checkout / portal / webhooks |
+
+See [DEPLOY.md](DEPLOY.md) for how to wire these up on Vercel.
 
 ## Historical Market Dataset
 
@@ -193,6 +173,6 @@ latest published years.
 ## Stack
 
 - React 18 + Vite + Recharts
-- Express + JSON file KV store (per-user namespaced)
-- Passwordless magic-link auth · Stripe billing · Claude AI co-pilot — all optional, demo-mode by default
-- Docker (multi-stage build)
+- Express + Neon Postgres (Drizzle ORM), per-owner state as a `jsonb` blob
+- Better Auth (email/password + Google + Facebook + guest mode) · Stripe billing · Claude AI co-pilot — billing and AI are optional, demo-mode by default
+- Deployed as a Vercel serverless function, or via Docker (multi-stage build)
