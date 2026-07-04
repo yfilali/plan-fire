@@ -4,6 +4,7 @@ import {
 	useEffect,
 	useMemo,
 	useCallback,
+	useState,
 } from "react";
 import { usePersistedState, useStore } from "../usePersistedState.jsx";
 import {
@@ -435,6 +436,18 @@ export function PlannerProvider({ children }) {
 	const [categories, setCategories] = usePersistedState("categories", null);
 	const [schemaVersion, setSchemaVersion] = usePersistedState("schemaVersion", null);
 	const [realDollars, setRealDollars] = usePersistedState("realDollars", false);
+	const [onboardingComplete, setOnboardingComplete] = usePersistedState("onboardingComplete", null);
+
+	// Snapshot whether this owner's store was empty the moment it loaded — i.e.
+	// before the migration effect below seeds v3 defaults into it. Only a
+	// genuinely brand-new account (guest or signed-up) starts empty, so this
+	// distinguishes "first ever visit" from "existing account, flag just unset".
+	const [isNewAccount, setIsNewAccount] = useState(null);
+	useEffect(() => {
+		if (!loaded || isNewAccount !== null) return;
+		setIsNewAccount(Object.keys(store).length === 0);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [loaded]);
 
 	// One-time migration/seed: runs once when store is loaded and schemaVersion !== 3.
 	// Chained: v1/legacy → v2 (flat plan model) → v3 (unified `assets` pool).
@@ -895,8 +908,20 @@ export function PlannerProvider({ children }) {
 	// ready = migration has completed and v3 root keys are populated
 	const ready = schemaVersion === 3 && Array.isArray(plans) && Array.isArray(assets);
 
+	// Show the guided setup wizard once, on a brand-new account's first visit
+	// (onboardingComplete still unset), until it's finished or skipped — or any
+	// time it's explicitly restarted from Settings (onboardingComplete: false).
+	const showOnboarding =
+		ready &&
+		(onboardingComplete === false || (onboardingComplete === null && isNewAccount === true));
+	const completeOnboarding = useCallback(() => setOnboardingComplete(true), [setOnboardingComplete]);
+	const restartOnboarding = useCallback(() => setOnboardingComplete(false), [setOnboardingComplete]);
+
 	const value = {
 		ready,
+		showOnboarding,
+		completeOnboarding,
+		restartOnboarding,
 		endAge: END_AGE,
 		realDollars,
 		setRealDollars,

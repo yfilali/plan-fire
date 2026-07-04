@@ -5,12 +5,14 @@ import {
 	importData,
 	clearAllData,
 } from "../../usePersistedState.jsx";
+import { usePlanner } from "../../state/PlannerProvider.jsx";
 import { Card, CardHeader, Button } from "../ui.jsx";
 import { FS, FW } from "../../lib/styles.js";
 
 export default function DataSettings() {
 	const S = useTheme();
 	const fileRef = useRef(null);
+	const { restartOnboarding } = usePlanner();
 
 	const handleImport = (e) => {
 		const f = e.target.files?.[0];
@@ -56,6 +58,7 @@ export default function DataSettings() {
 		<Card>
 			<CardHeader icon="⚙️" title="Data" subtitle="Back up, restore, or reset your plans. Data is saved to your server and mirrored locally." />
 
+			{row("Guided setup", "Re-run the step-by-step walkthrough for age, savings, and Social Security.", <Button onClick={restartOnboarding}>↺ Restart</Button>)}
 			{row("Export backup", "Download every plan as a JSON file.", <Button onClick={exportData}>⤓ Export</Button>)}
 			{row("Import backup", "Replace current data from a JSON file.", <Button onClick={() => fileRef.current?.click()}>⤒ Import</Button>)}
 			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "13px 0", flexWrap: "wrap" }}>
