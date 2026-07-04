@@ -194,28 +194,26 @@ function buildSeedPlans() {
 // neutral slate, not the demo numbers in LEGACY (a $1.9M house, a $500K
 // second property, a $2400 mortgage, ...) — those are placeholders for
 // migrating this app's own historical single-user data, not sensible
-// defaults for a stranger signing up. The three plan shells stay (the
-// stay/sell/rent comparison is the app's core pitch), but with zeroed
-// housing config and no properties or expenses; onboarding fills in the
-// real numbers, and everything else stays editable in Assets/Expenses.
-const FRESH_PLAN_SHELLS = [
-	{ id: "stay", name: "Stay put", icon: "🏙️", tone: "danger", baseline: true },
-	{ id: "sell_move", name: "Sell + relocate", icon: "🌲", tone: "accent", baseline: false },
-	{ id: "rent_out", name: "Rent out + relocate", icon: "🏠", tone: "blue", baseline: false },
-];
+// defaults for a stranger signing up. Onboarding never asks about relocation
+// scenarios, so it seeds exactly one plan — not the stay/sell/rent trio —
+// with zeroed housing config and no properties or expenses; a user who wants
+// to compare scenarios adds more plans explicitly from the Plans page.
+export const FRESH_PLAN_ID = "plan1";
 
 function buildFreshPlans() {
-	return FRESH_PLAN_SHELLS.map((p) => ({
-		...PLAN_INPUT_DEFAULTS,
-		id: p.id,
-		name: p.name,
-		icon: p.icon,
-		tone: p.tone,
-		baseline: p.baseline,
-		actions: {},
-		newHomeCost: 0,
-		transitionYears: 0,
-	}));
+	return [
+		{
+			...PLAN_INPUT_DEFAULTS,
+			id: FRESH_PLAN_ID,
+			name: "My Plan",
+			icon: PLAN_ICONS[0],
+			tone: PLAN_TONES[0],
+			baseline: true,
+			actions: {},
+			newHomeCost: 0,
+			transitionYears: 0,
+		},
+	];
 }
 
 // A single liquid asset at $0 — the "Savings" onboarding step sets its real
@@ -495,7 +493,7 @@ export function PlannerProvider({ children }) {
 
 		if (isNewAccount) {
 			setValue("plans", buildFreshPlans());
-			setValue("activePlanId", "stay");
+			setValue("activePlanId", FRESH_PLAN_ID);
 			setValue("expenses", []);
 			setValue("assets", buildFreshAssets());
 			setValue("categories", DEFAULT_CATEGORIES);
@@ -971,7 +969,7 @@ export function PlannerProvider({ children }) {
 	// layered underneath the new answers.
 	const restartOnboarding = useCallback(() => {
 		setPlans(buildFreshPlans());
-		setActivePlanId("stay");
+		setActivePlanId(FRESH_PLAN_ID);
 		setExpenses([]);
 		setAssets(buildFreshAssets());
 		setCategories(DEFAULT_CATEGORIES);
