@@ -118,7 +118,7 @@ export default function Hero() {
 						maxWidth: 900,
 					}}
 				>
-					Know the exact day you can retire.
+					Plan your FIRE date — stress-tested against 100 years of markets.
 				</h1>
 
 				<p
@@ -130,9 +130,8 @@ export default function Hero() {
 						maxWidth: 640,
 					}}
 				>
-					PlanFIRE is a FIRE-native retirement planner — model your runway,
-					stress-test against real market history, and watch your
-					financial-independence date update as you plan.
+					PlanFIRE models your runway and updates your financial-independence
+					date as you plan — no more guessing.
 				</p>
 
 				<div
