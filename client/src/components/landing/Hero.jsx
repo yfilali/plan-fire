@@ -104,7 +104,7 @@ export default function Hero() {
 						color: S.accent,
 					}}
 				>
-					<span aria-hidden="true">🔥</span> Plan your escape.
+					<span aria-hidden="true">🔥</span> Plan it. Stress-test it.
 				</span>
 
 				<h1
