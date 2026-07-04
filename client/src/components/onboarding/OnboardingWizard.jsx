@@ -8,11 +8,25 @@ import { fmt } from "../../engine.js";
 
 const SS_AGES = [62, 65, 67, 68, 70];
 
-// Fixed (not random) id for the wizard's own placeholder expense line, so
-// re-running onboarding (e.g. "Restart" in Settings) can find-and-update
-// exactly that one entry — and never mistakes some other real, itemized
-// expense for "the placeholder" just because it happened to be first.
-const PLACEHOLDER_EXPENSE_ID = "onboarding_placeholder";
+// Fixed (not random) ids for the wizard's own expense lines, so re-running
+// onboarding (e.g. "Restart" in Settings) can find-and-update exactly these
+// entries — never mistaking some other real, itemized expense for one of
+// these just because it happened to be first. Three distinct lines (rather
+// than one flat number) so the review step and dashboard actually show off
+// what makes this app's expense modeling different: a cost that grows with
+// inflation (essentials), one that doesn't (a fixed-rate mortgage), and one
+// that phases out at a specific age (health insurance before Medicare).
+const EXPENSE_IDS = {
+	essentials: "onboarding_essentials",
+	fixed: "onboarding_fixed",
+	healthPre65: "onboarding_health_pre65",
+	healthPost65: "onboarding_health_post65",
+};
+
+// A post-65 Medicare + Medigap cost is typically a fraction of pre-65 ACA
+// premiums — used to auto-generate the second, cheaper age-phased entry
+// without asking a 4th question.
+const post65Estimate = (pre65Amount) => Math.round((pre65Amount * 0.35) / 50) * 50;
 
 const STEPS = ["welcome", "age", "savings", "expenses", "income", "review"];
 
@@ -166,37 +180,72 @@ export default function OnboardingWizard() {
 		if (retireAge < v) setRetireAge(v);
 	};
 
-	// Expenses: either one placeholder line item (upserted by a fixed id, so
-	// any other real, itemized expenses the account already has are left
-	// untouched) or none at all if the user would rather itemize for real
-	// afterward. Only pre-selects "estimate" if a placeholder from an earlier
-	// onboarding run is already there — otherwise this step always forces an
-	// explicit choice.
-	const existingPlaceholder = expenses.find((e) => e.id === PLACEHOLDER_EXPENSE_ID);
-	const [expenseMode, setExpenseMode] = useState(() => (existingPlaceholder ? "estimate" : null));
-	const [monthlyExpense, setMonthlyExpense] = useState(() => existingPlaceholder?.amount ?? 4000);
+	// Expenses: up to four line items, each upserted by a fixed id so any
+	// other real, itemized expenses the account already has are left
+	// untouched — or none at all if the user would rather itemize for real
+	// afterward. Only pre-selects "estimate" if this step already ran before
+	// (one of these ids is present) — otherwise it always forces an explicit
+	// choice. NOTE: each handler below issues exactly one setExpenses call —
+	// usePersistedState resolves functional updates against a stale,
+	// per-render closure, so two setExpenses calls back-to-back in the same
+	// tick would have the second clobber the first (see setBacktestWindow's
+	// comment above for the same gotcha).
+	const findOnboardingAmt = (id, fallback) => expenses.find((e) => e.id === id)?.amount ?? fallback;
+	const hasAnyOnboardingExpense = Object.values(EXPENSE_IDS).some((id) =>
+		expenses.some((e) => e.id === id),
+	);
+	const [expenseMode, setExpenseMode] = useState(() => (hasAnyOnboardingExpense ? "estimate" : null));
+	const [essentials, setEssentials] = useState(() => findOnboardingAmt(EXPENSE_IDS.essentials, 3000));
+	const [fixedCost, setFixedCost] = useState(() => findOnboardingAmt(EXPENSE_IDS.fixed, 0));
+	const [healthPre65, setHealthPre65] = useState(() =>
+		findOnboardingAmt(EXPENSE_IDS.healthPre65, age < 65 ? 1200 : 0),
+	);
 
-	const applyPlaceholderExpense = (amount) => {
-		setMonthlyExpense(amount);
-		setExpenses((prev) => [
-			...(prev || []).filter((e) => e.id !== PLACEHOLDER_EXPENSE_ID),
-			{
-				id: PLACEHOLDER_EXPENSE_ID,
-				cat: "other",
-				name: "Living expenses (placeholder)",
-				amount,
-				plans: ["all"],
-				tier: "essential",
-			},
+	// Upserts/removes are batched into one setExpenses call per invocation.
+	const applyExpensePatch = (upserts = [], removeIds = []) => {
+		setExpenses((prev) => {
+			const base = (prev || []).filter(
+				(e) => !removeIds.includes(e.id) && !upserts.some((u) => u.id === e.id),
+			);
+			return [...base, ...upserts];
+		});
+	};
+
+	const applyEssentials = (amount) => {
+		setEssentials(amount);
+		applyExpensePatch([
+			{ id: EXPENSE_IDS.essentials, cat: "other", name: "Everyday essentials", amount, plans: ["all"], tier: "essential" },
 		]);
 	};
+	const applyFixed = (amount) => {
+		setFixedCost(amount);
+		if (amount > 0) {
+			applyExpensePatch([
+				{ id: EXPENSE_IDS.fixed, cat: "housing", name: "Fixed payment (e.g. mortgage)", amount, plans: ["all"], tier: "essential", inflOverride: 0 },
+			]);
+		} else {
+			applyExpensePatch([], [EXPENSE_IDS.fixed]);
+		}
+	};
+	const applyHealthPre65 = (amount) => {
+		setHealthPre65(amount);
+		if (amount > 0) {
+			applyExpensePatch([
+				{ id: EXPENSE_IDS.healthPre65, cat: "health", name: "Health insurance (pre-Medicare)", amount, plans: ["all"], tier: "essential", inflOverride: 0.065, ageMax: 64 },
+				{ id: EXPENSE_IDS.healthPost65, cat: "health", name: "Medicare + Medigap (est.)", amount: post65Estimate(amount), plans: ["all"], tier: "essential", ageMin: 65 },
+			]);
+		} else {
+			applyExpensePatch([], [EXPENSE_IDS.healthPre65, EXPENSE_IDS.healthPost65]);
+		}
+	};
+
 	const chooseEstimate = () => {
 		setExpenseMode("estimate");
-		applyPlaceholderExpense(monthlyExpense);
+		applyEssentials(essentials);
 	};
 	const chooseLater = () => {
 		setExpenseMode("later");
-		setExpenses((prev) => (prev || []).filter((e) => e.id !== PLACEHOLDER_EXPENSE_ID));
+		applyExpensePatch([], Object.values(EXPENSE_IDS));
 	};
 
 	const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
@@ -299,7 +348,7 @@ export default function OnboardingWizard() {
 								onClick={chooseEstimate}
 								icon="flag"
 								title="Rough monthly estimate"
-								desc="One placeholder number, so today's projection has real spending in it."
+								desc="A couple of quick numbers, so today's projection has real spending in it."
 							/>
 							<OptionCard
 								selected={expenseMode === "later"}
@@ -310,16 +359,56 @@ export default function OnboardingWizard() {
 							/>
 						</div>
 						{expenseMode === "estimate" && (
-							<SliderRow
-								label="Estimated monthly spending"
-								value={monthlyExpense}
-								onChange={applyPlaceholderExpense}
-								min={0}
-								max={20000}
-								step={100}
-								format={fmt}
-								editMax={200000}
-							/>
+							<div style={{ display: "grid", gap: 16 }}>
+								<div>
+									<SliderRow
+										label="Everyday essentials"
+										value={essentials}
+										onChange={applyEssentials}
+										min={0}
+										max={20000}
+										step={100}
+										format={fmt}
+										editMax={200000}
+									/>
+									<div style={{ fontSize: 11, color: S.textDim, marginTop: -8 }}>
+										Rent, groceries, utilities — grows with inflation like most spending.
+									</div>
+								</div>
+								<div>
+									<SliderRow
+										label="Fixed payments (optional)"
+										value={fixedCost}
+										onChange={applyFixed}
+										min={0}
+										max={5000}
+										step={50}
+										format={fmt}
+										editMax={50000}
+									/>
+									<div style={{ fontSize: 11, color: S.textDim, marginTop: -8 }}>
+										Stays flat forever — e.g. a fixed-rate mortgage. Leave at $0 if none.
+									</div>
+								</div>
+								{age < 65 && (
+									<div>
+										<SliderRow
+											label="Health insurance before 65 (optional)"
+											value={healthPre65}
+											onChange={applyHealthPre65}
+											min={0}
+											max={5000}
+											step={50}
+											format={fmt}
+											editMax={50000}
+										/>
+										<div style={{ fontSize: 11, color: S.textDim, marginTop: -8 }}>
+											Runs through 64, then drops when Medicare starts at 65.
+											{healthPre65 > 0 && ` → est. ${fmt(post65Estimate(healthPre65))}/mo after 65.`}
+										</div>
+									</div>
+								)}
+							</div>
 						)}
 						{expenseMode === "later" && (
 							<div style={{ padding: "12px 14px", borderRadius: 10, background: S.bg, border: `1px dashed ${S.border}` }}>
@@ -380,10 +469,20 @@ export default function OnboardingWizard() {
 							<ReviewRow label="Current age" value={age} />
 							<ReviewRow label="Target retirement age" value={retireAge} />
 							<ReviewRow label="Investment portfolio" value={fmt(portfolio)} />
-							<ReviewRow
-								label="Monthly spending"
-								value={expenseMode === "estimate" ? fmt(monthlyExpense) : "Add later in Expenses"}
-							/>
+							{expenseMode === "estimate" ? (
+								<>
+									<ReviewRow label="Everyday essentials" value={`${fmt(essentials)}/mo`} />
+									{fixedCost > 0 && <ReviewRow label="Fixed payments" value={`${fmt(fixedCost)}/mo`} />}
+									{age < 65 && healthPre65 > 0 && (
+										<ReviewRow
+											label="Health insurance"
+											value={`${fmt(healthPre65)}/mo → ${fmt(post65Estimate(healthPre65))}/mo at 65`}
+										/>
+									)}
+								</>
+							) : (
+								<ReviewRow label="Monthly spending" value="Add later in Expenses" />
+							)}
 							<ReviewRow label="Social Security" value={`${fmt(ssAnnual)}/yr at ${ssAge}`} />
 						</div>
 						<div
@@ -403,6 +502,7 @@ export default function OnboardingWizard() {
 							<span>
 								{longevity} in your baseline scenario.
 								{expenseMode !== "estimate" && " Add your expenses for a more accurate picture."}
+								{expenseMode === "estimate" && age < 65 && healthPre65 > 0 && " Health costs step down at 65 when Medicare starts."}
 							</span>
 						</div>
 					</>
