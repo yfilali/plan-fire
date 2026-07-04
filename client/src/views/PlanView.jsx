@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTheme } from "../theme/ThemeProvider.jsx";
 import { usePlanner } from "../state/PlannerProvider.jsx";
-import { usePro } from "../lib/pro.js";
 import { fmt } from "../engine.js";
 import { SectionTitle, Card, CardHeader, StatCard, Button } from "../components/ui.jsx";
 import PlanCard from "../components/plans/PlanCard.jsx";
@@ -34,7 +33,6 @@ export default function PlanView() {
 		inflation,
 	} = usePlanner();
 
-	const [isPro] = usePro();
 	const [editing, setEditing] = useState(null);
 
 	const ctx = useMemo(
@@ -54,9 +52,8 @@ export default function PlanView() {
 	);
 
 	const mcByPlan = useMemo(() => {
-		if (!isPro) return null;
 		return Object.fromEntries(plans.map((p) => [p.id, computePlanMonteCarlo(p, ctx)]));
-	}, [isPro, plans, ctx]);
+	}, [plans, ctx]);
 
 	const summarize = (plan) => {
 		if (plan.baseline && Object.values(plan.actions || {}).every((a) => a === "keep") && !plan.newHomeCost) {
@@ -112,7 +109,6 @@ export default function PlanView() {
 				<PlanComparisonMatrix
 					outcomes={outcomes}
 					mcByPlan={mcByPlan}
-					isPro={isPro}
 					activePlanId={activePlanId}
 					onSelect={setActivePlanId}
 				/>

@@ -1,8 +1,7 @@
 import { useTheme } from "../theme/ThemeProvider.jsx";
 import { usePlanner } from "../state/PlannerProvider.jsx";
 import { fmt, LOST_DECADE } from "../engine.js";
-import { usePro } from "../lib/pro.js";
-import { SectionTitle, Card, CardHeader, StatCard, Badge } from "../components/ui.jsx";
+import { SectionTitle, Card, CardHeader, StatCard } from "../components/ui.jsx";
 import SliderRow from "../components/SliderRow.jsx";
 import TimeMachine from "../components/settings/TimeMachine.jsx";
 
@@ -29,12 +28,11 @@ const REGIMES = [
 		title: "Time Machine",
 		desc: "Replay any real market era across stocks, bonds, gold, real estate & cash — on your portfolio.",
 		colorKey: "blue",
-		pro: true,
 	},
 ];
 
 /* ── Regime choice card ────────────────────────────────────────────────── */
-function RegimeCard({ S, regime, color, active, locked, onClick }) {
+function RegimeCard({ S, regime, color, active, onClick }) {
 	return (
 		<button
 			className="lift"
@@ -72,11 +70,7 @@ function RegimeCard({ S, regime, color, active, locked, onClick }) {
 					{regime.title}
 				</span>
 				<span style={{ flex: 1 }} />
-				{locked ? (
-					<Badge color={S.blue}>🔒 PRO</Badge>
-				) : (
-					active && <span style={{ fontSize: 14, color, lineHeight: 1 }}>●</span>
-				)}
+				{active && <span style={{ fontSize: 14, color, lineHeight: 1 }}>●</span>}
 			</div>
 			<div style={{ fontSize: 12, color: S.textMuted, lineHeight: 1.55 }}>{regime.desc}</div>
 		</button>
@@ -125,7 +119,6 @@ function ReturnsBars({ S, bars }) {
 /* ── Page ──────────────────────────────────────────────────────────────── */
 export default function MarketView() {
 	const S = useTheme();
-	const [pro] = usePro();
 	const {
 		marketMode, setMarketMode,
 		nomReturn, setNomReturn,
@@ -158,7 +151,6 @@ export default function MarketView() {
 						regime={r}
 						color={S[r.colorKey]}
 						active={marketMode === r.id}
-						locked={r.pro && !pro}
 						onClick={() => setMarketMode(r.id)}
 					/>
 				))}
@@ -166,20 +158,14 @@ export default function MarketView() {
 
 			{/* Mode-specific body */}
 			{isPeriod ? (
-				pro ? (
-					<Card>
-						<CardHeader
-							icon="🕰"
-							title="Time Machine"
-							subtitle="Pick an era, set your allocation, and see how your portfolio would have fared through real market history."
-							right={<Badge color={S.blue}>PRO</Badge>}
-						/>
-						<TimeMachine />
-					</Card>
-				) : (
-					// Non-pro: TimeMachine renders its own self-contained upgrade panel.
+				<Card>
+					<CardHeader
+						icon="🕰"
+						title="Time Machine"
+						subtitle="Pick an era, set your allocation, and see how your portfolio would have fared through real market history."
+					/>
 					<TimeMachine />
-				)
+				</Card>
 			) : (
 				<Card>
 					<CardHeader

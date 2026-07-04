@@ -26,7 +26,7 @@ function healthFor(o, mcByPlan) {
 	});
 }
 
-export default function PlanComparisonMatrix({ outcomes, mcByPlan, isPro, activePlanId, onSelect }) {
+export default function PlanComparisonMatrix({ outcomes, mcByPlan, activePlanId, onSelect }) {
 	const S = useTheme();
 	const list = (outcomes || []).filter(Boolean);
 
@@ -40,7 +40,7 @@ export default function PlanComparisonMatrix({ outcomes, mcByPlan, isPro, active
 	}
 
 	const multi = list.length > 1;
-	const showMC = !!(isPro && mcByPlan);
+	const showMC = !!mcByPlan;
 
 	// ── Row definitions ──────────────────────────────────────────────────
 	// each: { key, label, cell(o), metric(o)->number|null, dir:'max'|'min' }
@@ -111,29 +111,18 @@ export default function PlanComparisonMatrix({ outcomes, mcByPlan, isPro, active
 			cell: (o) => <span style={{ fontFamily: S.mono }}>{fmt(o.annualSpendAtRetire)}</span>,
 			metric: null,
 		},
-		showMC
-			? {
-					key: "mc",
-					label: "Monte Carlo success",
-					cell: (o) => {
-						const sr = mcByPlan[o.planId]?.successRate;
-						if (sr == null) return <span style={{ color: S.textDim }}>—</span>;
-						return <span style={{ fontFamily: S.mono, fontWeight: 650 }}>{Math.round(sr * 100)}%</span>;
-					},
-					metric: (o) => (mcByPlan[o.planId]?.successRate ?? null),
-					dir: "max",
-				}
-			: {
-					key: "mc-locked",
-					label: "Monte Carlo success",
-					cell: () => (
-						<span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: S.textDim, fontSize: 12 }}>
-							🔒 Pro
-						</span>
-					),
-					metric: null,
-				},
-	];
+		showMC && {
+			key: "mc",
+			label: "Monte Carlo success",
+			cell: (o) => {
+				const sr = mcByPlan[o.planId]?.successRate;
+				if (sr == null) return <span style={{ color: S.textDim }}>—</span>;
+				return <span style={{ fontFamily: S.mono, fontWeight: 650 }}>{Math.round(sr * 100)}%</span>;
+			},
+			metric: (o) => (mcByPlan[o.planId]?.successRate ?? null),
+			dir: "max",
+		},
+	].filter(Boolean);
 
 	// ── Best cell per row ────────────────────────────────────────────────
 	// Returns the set of planIds that hold the winning value. Only ranks when

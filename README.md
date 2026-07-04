@@ -33,13 +33,12 @@ See [DEPLOY.md](DEPLOY.md) for the full Vercel + Neon setup guide.
 - **Flexible properties** — model zero, one, or many properties with arbitrary values, mortgages, and rental economics
 - Expense tracker with custom categories; tag each expense to whichever of *your* plans it applies to, plus age ranges, inflation overrides, and spend tiers
 - Market simulation (historical avg vs "lost decade" stress test)
-- **🎲 Monte Carlo success probability (PlanFIRE Pro)** — thousands of randomized return paths report the share in which your portfolio outlives you, with a terminal-wealth band (10th/50th/90th percentile). Free users see the card blurred behind an upsell.
+- **🎲 Monte Carlo success probability** — thousands of randomized return paths report the share in which your portfolio outlives you, with a terminal-wealth band (10th/50th/90th percentile).
 - **🏁 FIRE milestones** — the ages your plan crosses Coast-FIRE, financial independence, $500k/$1M/$2M net worth, and (worst case) depletion — derived live from the projection.
-- **✦ AI Co-pilot (PlanFIRE Pro)** — a chat assistant grounded in a minimal numeric snapshot of *your* plan. It answers with your real figures and can propose one-tap changes (e.g. "Retire at 57") applied straight to your plan. Powered by Claude; degrades to a deterministic offline reply when no API key is set.
-- **⏳ Time Machine (PlanFIRE Pro)** — replay any real market era since 1928 on your actual portfolio. Allocate across stocks, Treasury bonds, corporate bonds, real estate, gold and cash, then watch real year-by-year returns drive your projection. Famous-era presets (Stagflation, the Long Bull, the Lost Decade, the GFC, …) or a custom window. Backed by a server-shipped historical dataset.
+- **✦ AI Co-pilot** — a chat assistant grounded in a minimal numeric snapshot of *your* plan. It answers with your real figures and can propose one-tap changes (e.g. "Retire at 57") applied straight to your plan. Powered by Claude; degrades to a deterministic offline reply when no API key is set.
+- **⏳ Time Machine** — replay any real market era since 1928 on your actual portfolio. Allocate across stocks, Treasury bonds, corporate bonds, real estate, gold and cash, then watch real year-by-year returns drive your projection. Famous-era presets (Stagflation, the Long Bull, the Lost Decade, the GFC, …) or a custom window. Backed by a server-shipped historical dataset.
 - **🔐 Accounts** — passwordless magic-link sign-in (+ guest mode that migrates your anonymous data on first login). Per-user, cookie-scoped server storage.
-- **💳 Billing** — Stripe Checkout + webhook-verified entitlement (monthly / yearly / lifetime). The server is the single source of truth for Pro; the client never grants entitlement. Demo builds activate instantly when Stripe isn't configured.
-- **⚙️ Settings** — tabbed: Assumptions · Account · Billing · Notifications · Privacy & Data · Appearance · Labs.
+- **⚙️ Settings** — tabbed: Profile · Account · Notifications · Privacy & Data · Appearance · Labs.
 - Downturn spending-cut modeling by expense tier
 - Landlord P&L calculator
 - Portfolio projection through age 95 with Social Security
@@ -119,12 +118,9 @@ branching/backup features for database-level snapshots.
 | GET | `/api/export` | Download state as JSON |
 | POST | `/api/import` | Upload JSON to replace state |
 | GET | `/api/market-history` | Historical asset-class returns dataset (read-only; powers the Time Machine) |
-| GET | `/api/me` | Current user, entitlement, and guest flag |
+| GET | `/api/me` | Current user and guest flag |
 | POST | `/api/account/claim-guest` | Fold anonymous guest data into an account on first sign-in |
 | ALL | `/api/auth/*` | Better Auth — email/password, Google, Facebook, session, reset-password |
-| POST | `/api/billing/checkout` | Start Stripe Checkout (or a dev-activate URL) |
-| POST | `/api/billing/webhook` | Stripe webhook → sets verified entitlement |
-| POST | `/api/billing/portal` | Stripe customer-portal link |
 | POST | `/api/ai/chat` | Grounded co-pilot: `{messages, snapshot}` → `{reply, actions}` |
 
 > `/api/state*`, `/api/export`, and `/api/import` are namespaced per user/guest by
@@ -134,9 +130,8 @@ branching/backup features for database-level snapshots.
 
 `DATABASE_URL` and `BETTER_AUTH_SECRET` are required; everything else is
 optional — PlanFIRE runs in **demo mode** without them (verification/reset
-emails are logged instead of sent, billing activates instantly, and the AI
-co-pilot uses a deterministic offline reply). See `.env.example` for the full,
-commented list. Highlights:
+emails are logged instead of sent, and the AI co-pilot uses a deterministic
+offline reply). See `.env.example` for the full, commented list. Highlights:
 
 | Variable | Purpose |
 |----------|---------|
@@ -145,7 +140,6 @@ commented list. Highlights:
 | `RESEND_API_KEY` / `EMAIL_FROM` | Sends verification/reset emails (else logged to console) |
 | `GOOGLE_CLIENT_ID` / `_SECRET`, `FACEBOOK_CLIENT_ID` / `_SECRET` | Social login |
 | `ANTHROPIC_API_KEY` | Enables the live AI co-pilot (Claude) |
-| `STRIPE_SECRET_KEY`, `STRIPE_PRICE_MONTHLY` / `_YEARLY` / `_LIFETIME`, `STRIPE_WEBHOOK_SECRET` | Real Stripe Checkout / portal / webhooks |
 
 See [DEPLOY.md](DEPLOY.md) for how to wire these up on Vercel.
 
@@ -174,5 +168,5 @@ latest published years.
 
 - React 18 + Vite + Recharts
 - Express + Neon Postgres (Drizzle ORM), per-owner state as a `jsonb` blob
-- Better Auth (email/password + Google + Facebook + guest mode) · Stripe billing · Claude AI co-pilot — billing and AI are optional, demo-mode by default
+- Better Auth (email/password + Google + Facebook + guest mode) · Claude AI co-pilot — AI is optional, demo-mode by default
 - Deployed as a Vercel serverless function, or via Docker (multi-stage build)

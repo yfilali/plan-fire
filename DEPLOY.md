@@ -8,7 +8,7 @@ is Better Auth (email/password + Google + Facebook).
 
 ```
 client/dist/**         → static assets served by Vercel
-/api/*  ── rewrite ──▶  api/index.js  (Express app: Better Auth + state + billing + AI)
+/api/*  ── rewrite ──▶  api/index.js  (Express app: Better Auth + state + AI)
                                 │
                                 ▼
                         Neon Postgres (DATABASE_URL)
@@ -49,7 +49,6 @@ In **Project → Settings → Environment Variables** (Production + Preview):
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | see step 5 |
 | `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | see step 6 |
 | `ANTHROPIC_API_KEY` | optional, for the live AI co-pilot |
-| `STRIPE_*` | optional, for real billing |
 
 > For preview deployments, set `BETTER_AUTH_URL` to the preview URL or add the
 > preview origins to `trustedOrigins` in `server/auth.js` if you test social

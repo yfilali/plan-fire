@@ -166,7 +166,7 @@ export default function SettingsView() {
 
 	return (
 		<div className="fade-in" style={{ display: "grid", gap: 16 }}>
-			<SectionTitle sub="Manage your profile, account, billing, and preferences.">
+			<SectionTitle sub="Manage your profile, account, and preferences.">
 				Settings
 			</SectionTitle>
 			<TabRow tab={activeTab} setTab={setTab} />

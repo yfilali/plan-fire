@@ -1,11 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { usePlanner } from "../../state/PlannerProvider.jsx";
 import { useMarketHistory, allocFromAssets, DEFAULT_ALLOC } from "../../lib/marketHistory.js";
 import { sliceSeries, classStats, blendedStats, normalizeAlloc } from "../../lib/backtest.js";
-import { usePro } from "../../lib/pro.js";
 import { Badge, Button } from "../ui.jsx";
-import UpgradeModal from "./UpgradeModal.jsx";
 
 const pct = (v, dp = 1) => `${v >= 0 ? "" : "−"}${Math.abs(v * 100).toFixed(dp)}%`;
 const mult = (v) => `${v.toFixed(v >= 10 ? 0 : 1)}×`;
@@ -146,8 +144,6 @@ function Stat({ label, value, color, S }) {
 /* ── Main panel ────────────────────────────────────────────────────────── */
 export default function TimeMachine() {
 	const S = useTheme();
-	const [pro, setPro] = usePro();
-	const [showUpgrade, setShowUpgrade] = useState(false);
 	const { data: hist, loaded, error } = useMarketHistory();
 	const {
 		backtestStart, setBacktestStart,
@@ -326,36 +322,6 @@ export default function TimeMachine() {
 			</div>
 		</div>
 	);
-
-	if (!pro) {
-		return (
-			<>
-				<div style={{ position: "relative", borderRadius: 12, overflow: "hidden" }}>
-					<div style={{ filter: "blur(5px)", pointerEvents: "none", userSelect: "none", opacity: 0.6, maxHeight: 360, overflow: "hidden" }}>
-						{panel}
-					</div>
-					<div style={{
-						position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-						alignItems: "center", justifyContent: "center", gap: 12, textAlign: "center",
-						padding: 24, background: `${S.surface}cc`, backdropFilter: "blur(1px)",
-					}}>
-						<div style={{ fontSize: 30 }}>⏳</div>
-						<div style={{ fontSize: 17, fontWeight: 750, color: S.text }}>Unlock the Time Machine</div>
-						<div style={{ fontSize: 13, color: S.textMuted, maxWidth: 360, lineHeight: 1.5 }}>
-							Replay any real market era — {meta.minYear}–{meta.maxYear} — across stocks, bonds, gold, real estate and cash, on your actual portfolio.
-						</div>
-						<Button variant="primary" size="lg" onClick={() => setShowUpgrade(true)}>Upgrade to PlanFIRE Pro</Button>
-					</div>
-				</div>
-				{showUpgrade && (
-					<UpgradeModal
-						onClose={() => setShowUpgrade(false)}
-						onUnlock={() => { setPro(true); setShowUpgrade(false); }}
-					/>
-				)}
-			</>
-		);
-	}
 
 	return panel;
 }
