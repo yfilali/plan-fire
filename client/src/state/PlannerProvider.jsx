@@ -190,6 +190,42 @@ function buildSeedPlans() {
 	}));
 }
 
+// A genuinely brand-new account (nothing persisted yet) should start from a
+// neutral slate, not the demo numbers in LEGACY (a $1.9M house, a $500K
+// second property, a $2400 mortgage, ...) — those are placeholders for
+// migrating this app's own historical single-user data, not sensible
+// defaults for a stranger signing up. The three plan shells stay (the
+// stay/sell/rent comparison is the app's core pitch), but with zeroed
+// housing config and no properties or expenses; onboarding fills in the
+// real numbers, and everything else stays editable in Assets/Expenses.
+const FRESH_PLAN_SHELLS = [
+	{ id: "stay", name: "Stay put", icon: "🏙️", tone: "danger", baseline: true },
+	{ id: "sell_move", name: "Sell + relocate", icon: "🌲", tone: "accent", baseline: false },
+	{ id: "rent_out", name: "Rent out + relocate", icon: "🏠", tone: "blue", baseline: false },
+];
+
+function buildFreshPlans() {
+	return FRESH_PLAN_SHELLS.map((p) => ({
+		...PLAN_INPUT_DEFAULTS,
+		id: p.id,
+		name: p.name,
+		icon: p.icon,
+		tone: p.tone,
+		baseline: p.baseline,
+		actions: {},
+		newHomeCost: 0,
+		transitionYears: 0,
+	}));
+}
+
+// A single liquid asset at $0 — the "Savings" onboarding step sets its real
+// value; skipping onboarding entirely just leaves it editable in Assets.
+function buildFreshAssets() {
+	return [
+		{ id: "portfolio", type: "investment", name: "Investment portfolio", value: 0, plans: ["all"] },
+	];
+}
+
 // ── Pure economics helpers ──
 const propSaleNet = (p) => Math.round((p.value || 0) * (1 - SELLING_COSTS) - (p.mortgage || 0));
 const propRentalNet = (p) => Math.round((p.rentMonthly || 0) * 12 * 0.95 - (p.rentCostsAnnual || 0));
@@ -451,9 +487,21 @@ export function PlannerProvider({ children }) {
 
 	// One-time migration/seed: runs once when store is loaded and schemaVersion !== 3.
 	// Chained: v1/legacy → v2 (flat plan model) → v3 (unified `assets` pool).
+	// Waits on isNewAccount so a brand-new account seeds neutrally instead of
+	// through the legacy-fallback path (see buildFreshPlans/buildFreshAssets).
 	useEffect(() => {
-		if (!loaded) return;
+		if (!loaded || isNewAccount === null) return;
 		if (store.schemaVersion === 3) return;
+
+		if (isNewAccount) {
+			setValue("plans", buildFreshPlans());
+			setValue("activePlanId", "stay");
+			setValue("expenses", []);
+			setValue("assets", buildFreshAssets());
+			setValue("categories", DEFAULT_CATEGORIES);
+			setValue("schemaVersion", 3);
+			return;
+		}
 
 		// Step 1 — ensure a v2-shaped base (plans / expenses / properties / categories).
 		let base;
@@ -487,7 +535,7 @@ export function PlannerProvider({ children }) {
 		if (store[V1_KEY_PLANS_MAP] != null) setValue(V1_KEY_PLANS_MAP, null);
 		if (store[V1_KEY_ACTIVE_ID] != null) setValue(V1_KEY_ACTIVE_ID, null);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [loaded, store.schemaVersion]);
+	}, [loaded, store.schemaVersion, isNewAccount]);
 
 	// Derive effective state (fall back to defaults while migration runs)
 	const effectivePlans = plans || buildSeedPlans();
