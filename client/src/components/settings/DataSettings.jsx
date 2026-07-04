@@ -34,6 +34,16 @@ export default function DataSettings() {
 		window.location.reload();
 	};
 
+	const handleRestartOnboarding = () => {
+		if (
+			!confirm(
+				"Restart guided setup? This clears your current plans, expenses, and assets so the wizard starts from a blank slate.",
+			)
+		)
+			return;
+		restartOnboarding();
+	};
+
 	const row = (title, desc, action) => (
 		<div
 			style={{
@@ -58,7 +68,7 @@ export default function DataSettings() {
 		<Card>
 			<CardHeader icon="⚙️" title="Data" subtitle="Back up, restore, or reset your plans. Data is saved to your server and mirrored locally." />
 
-			{row("Guided setup", "Re-run the step-by-step walkthrough for age, savings, and Social Security.", <Button onClick={restartOnboarding}>↺ Restart</Button>)}
+			{row("Guided setup", "Re-run the step-by-step walkthrough for age, savings, and Social Security. Clears current plans, expenses, and assets first.", <Button onClick={handleRestartOnboarding}>↺ Restart</Button>)}
 			{row("Export backup", "Download every plan as a JSON file.", <Button onClick={exportData}>⤓ Export</Button>)}
 			{row("Import backup", "Replace current data from a JSON file.", <Button onClick={() => fileRef.current?.click()}>⤒ Import</Button>)}
 			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "13px 0", flexWrap: "wrap" }}>

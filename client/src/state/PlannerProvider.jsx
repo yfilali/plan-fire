@@ -963,7 +963,20 @@ export function PlannerProvider({ children }) {
 		ready &&
 		(onboardingComplete === false || (onboardingComplete === null && isNewAccount === true));
 	const completeOnboarding = useCallback(() => setOnboardingComplete(true), [setOnboardingComplete]);
-	const restartOnboarding = useCallback(() => setOnboardingComplete(false), [setOnboardingComplete]);
+	// Restarting isn't additive — it wipes plans, expenses, and assets back to
+	// the same neutral seed a brand-new account gets (buildFreshPlans /
+	// buildFreshAssets), so the wizard's own inputs are the only non-zero
+	// numbers left. Otherwise a returning account would keep whatever demo or
+	// prior-run data it already had (old placeholders, seeded properties, ...)
+	// layered underneath the new answers.
+	const restartOnboarding = useCallback(() => {
+		setPlans(buildFreshPlans());
+		setActivePlanId("stay");
+		setExpenses([]);
+		setAssets(buildFreshAssets());
+		setCategories(DEFAULT_CATEGORIES);
+		setOnboardingComplete(false);
+	}, [setPlans, setActivePlanId, setExpenses, setAssets, setCategories, setOnboardingComplete]);
 
 	const value = {
 		ready,
