@@ -12,6 +12,7 @@ import MarketView from "./views/MarketView.jsx";
 import PlanView from "./views/PlanView.jsx";
 import SettingsView from "./views/SettingsView.jsx";
 import CopilotView from "./views/CopilotView.jsx";
+import OnboardingWizard from "./components/onboarding/OnboardingWizard.jsx";
 
 const VIEWS = {
 	dashboard: DashboardView,
@@ -61,7 +62,7 @@ function Loader({ label }) {
 // StateProvider + PlannerProvider. Assumes those providers are present.
 export default function AppShell() {
 	const { loaded } = useStoreStatus();
-	const { ready } = usePlanner();
+	const { ready, showOnboarding } = usePlanner();
 	const { loading: authLoading, user } = useAuth();
 	const [view, setView] = usePersistedState("view", "dashboard");
 	const [navOpen, setNavOpen] = useState(false);
@@ -98,6 +99,7 @@ export default function AppShell() {
 	if (!user && !guestContinued) return <Loader label="Redirecting…" />;
 	if (!loaded) return <Loader label="Loading your plan…" />;
 	if (!ready) return <Loader label="Preparing plans…" />;
+	if (showOnboarding) return <OnboardingWizard />;
 
 	const View = VIEWS[view] || DashboardView;
 

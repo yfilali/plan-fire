@@ -4,6 +4,7 @@ import {
 	useEffect,
 	useMemo,
 	useCallback,
+	useState,
 } from "react";
 import { usePersistedState, useStore } from "../usePersistedState.jsx";
 import {
@@ -187,6 +188,40 @@ function buildSeedPlans() {
 		newHomeCost: hp.newHomeCost,
 		transitionYears: hp.transitionYears,
 	}));
+}
+
+// A genuinely brand-new account (nothing persisted yet) should start from a
+// neutral slate, not the demo numbers in LEGACY (a $1.9M house, a $500K
+// second property, a $2400 mortgage, ...) — those are placeholders for
+// migrating this app's own historical single-user data, not sensible
+// defaults for a stranger signing up. Onboarding never asks about relocation
+// scenarios, so it seeds exactly one plan — not the stay/sell/rent trio —
+// with zeroed housing config and no properties or expenses; a user who wants
+// to compare scenarios adds more plans explicitly from the Plans page.
+export const FRESH_PLAN_ID = "plan1";
+
+function buildFreshPlans() {
+	return [
+		{
+			...PLAN_INPUT_DEFAULTS,
+			id: FRESH_PLAN_ID,
+			name: "My Plan",
+			icon: PLAN_ICONS[0],
+			tone: PLAN_TONES[0],
+			baseline: true,
+			actions: {},
+			newHomeCost: 0,
+			transitionYears: 0,
+		},
+	];
+}
+
+// A single liquid asset at $0 — the "Savings" onboarding step sets its real
+// value; skipping onboarding entirely just leaves it editable in Assets.
+function buildFreshAssets() {
+	return [
+		{ id: "portfolio", type: "investment", name: "Investment portfolio", value: 0, plans: ["all"] },
+	];
 }
 
 // ── Pure economics helpers ──
@@ -435,12 +470,36 @@ export function PlannerProvider({ children }) {
 	const [categories, setCategories] = usePersistedState("categories", null);
 	const [schemaVersion, setSchemaVersion] = usePersistedState("schemaVersion", null);
 	const [realDollars, setRealDollars] = usePersistedState("realDollars", false);
+	const [onboardingComplete, setOnboardingComplete] = usePersistedState("onboardingComplete", null);
+
+	// Snapshot whether this owner's store was empty the moment it loaded — i.e.
+	// before the migration effect below seeds v3 defaults into it. Only a
+	// genuinely brand-new account (guest or signed-up) starts empty, so this
+	// distinguishes "first ever visit" from "existing account, flag just unset".
+	const [isNewAccount, setIsNewAccount] = useState(null);
+	useEffect(() => {
+		if (!loaded || isNewAccount !== null) return;
+		setIsNewAccount(Object.keys(store).length === 0);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [loaded]);
 
 	// One-time migration/seed: runs once when store is loaded and schemaVersion !== 3.
 	// Chained: v1/legacy → v2 (flat plan model) → v3 (unified `assets` pool).
+	// Waits on isNewAccount so a brand-new account seeds neutrally instead of
+	// through the legacy-fallback path (see buildFreshPlans/buildFreshAssets).
 	useEffect(() => {
-		if (!loaded) return;
+		if (!loaded || isNewAccount === null) return;
 		if (store.schemaVersion === 3) return;
+
+		if (isNewAccount) {
+			setValue("plans", buildFreshPlans());
+			setValue("activePlanId", FRESH_PLAN_ID);
+			setValue("expenses", []);
+			setValue("assets", buildFreshAssets());
+			setValue("categories", DEFAULT_CATEGORIES);
+			setValue("schemaVersion", 3);
+			return;
+		}
 
 		// Step 1 — ensure a v2-shaped base (plans / expenses / properties / categories).
 		let base;
@@ -474,7 +533,7 @@ export function PlannerProvider({ children }) {
 		if (store[V1_KEY_PLANS_MAP] != null) setValue(V1_KEY_PLANS_MAP, null);
 		if (store[V1_KEY_ACTIVE_ID] != null) setValue(V1_KEY_ACTIVE_ID, null);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [loaded, store.schemaVersion]);
+	}, [loaded, store.schemaVersion, isNewAccount]);
 
 	// Derive effective state (fall back to defaults while migration runs)
 	const effectivePlans = plans || buildSeedPlans();
@@ -895,8 +954,33 @@ export function PlannerProvider({ children }) {
 	// ready = migration has completed and v3 root keys are populated
 	const ready = schemaVersion === 3 && Array.isArray(plans) && Array.isArray(assets);
 
+	// Show the guided setup wizard once, on a brand-new account's first visit
+	// (onboardingComplete still unset), until it's finished or skipped — or any
+	// time it's explicitly restarted from Settings (onboardingComplete: false).
+	const showOnboarding =
+		ready &&
+		(onboardingComplete === false || (onboardingComplete === null && isNewAccount === true));
+	const completeOnboarding = useCallback(() => setOnboardingComplete(true), [setOnboardingComplete]);
+	// Restarting isn't additive — it wipes plans, expenses, and assets back to
+	// the same neutral seed a brand-new account gets (buildFreshPlans /
+	// buildFreshAssets), so the wizard's own inputs are the only non-zero
+	// numbers left. Otherwise a returning account would keep whatever demo or
+	// prior-run data it already had (old placeholders, seeded properties, ...)
+	// layered underneath the new answers.
+	const restartOnboarding = useCallback(() => {
+		setPlans(buildFreshPlans());
+		setActivePlanId(FRESH_PLAN_ID);
+		setExpenses([]);
+		setAssets(buildFreshAssets());
+		setCategories(DEFAULT_CATEGORIES);
+		setOnboardingComplete(false);
+	}, [setPlans, setActivePlanId, setExpenses, setAssets, setCategories, setOnboardingComplete]);
+
 	const value = {
 		ready,
+		showOnboarding,
+		completeOnboarding,
+		restartOnboarding,
 		endAge: END_AGE,
 		realDollars,
 		setRealDollars,
