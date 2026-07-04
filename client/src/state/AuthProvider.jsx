@@ -11,15 +11,14 @@ import { authClient } from "../lib/authClient.js";
 //  AuthProvider — the spine's identity layer (Better Auth).
 //
 //  Auth actions go through the Better Auth client (email/password, Google,
-//  Facebook, password reset). Entitlement / guest / provider info comes from
-//  our own /api/me. The same-origin session cookie rides along automatically.
+//  Facebook, password reset). Guest / provider info comes from our own
+//  /api/me. The same-origin session cookie rides along automatically.
 //
 //  useAuth() exposes:
-//    { loading, user, entitlement, isPro, guest, providers,
+//    { loading, user, guest, providers,
 //      signUpEmail({name,email,password}), signInEmail({email,password}),
 //      signInSocial(provider), requestPasswordReset(email),
-//      resetPassword({token,newPassword}), signOut(), refresh(),
-//      checkout(plan), openPortal() }
+//      resetPassword({token,newPassword}), signOut(), refresh() }
 //  Auth-action methods resolve to { error } on failure (never throw).
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -35,7 +34,6 @@ const opts = (body) => ({
 export function AuthProvider({ children }) {
 	const [loading, setLoading] = useState(true);
 	const [user, setUser] = useState(null);
-	const [entitlement, setEntitlement] = useState(null);
 	const [guest, setGuest] = useState(true);
 	const [providers, setProviders] = useState({ google: false, facebook: false });
 
@@ -44,14 +42,12 @@ export function AuthProvider({ children }) {
 			const res = await fetch("/api/me", { credentials: "include" });
 			const data = await res.json();
 			setUser(data.user || null);
-			setEntitlement(data.entitlement || null);
 			setGuest(!!data.guest);
 			if (data.providers) setProviders(data.providers);
 			return data;
 		} catch {
 			// Server unreachable — treat as an anonymous guest so the app still loads.
 			setUser(null);
-			setEntitlement(null);
 			setGuest(true);
 			return null;
 		} finally {
@@ -158,47 +154,9 @@ export function AuthProvider({ children }) {
 		await refresh();
 	}, [refresh]);
 
-	// checkout(plan): POST /api/billing/checkout. A dev url points back at our
-	// own dev-activate endpoint — call it and refresh. A real Stripe url means we
-	// hand off to the hosted checkout page.
-	const checkout = useCallback(
-		async (plan) => {
-			try {
-				const res = await fetch("/api/billing/checkout", opts({ plan }));
-				const data = await res.json();
-				const url = data.url || "";
-				if (url.startsWith("/api/billing/dev-activate")) {
-					await fetch(url, opts({ plan }));
-					await refresh();
-					return;
-				}
-				if (url && url !== "#") window.location = url;
-			} catch (err) {
-				console.warn("checkout failed:", err);
-			}
-		},
-		[refresh],
-	);
-
-	const openPortal = useCallback(async () => {
-		try {
-			const res = await fetch("/api/billing/portal", opts());
-			const data = await res.json();
-			if (data.url && data.url !== "#") window.location = data.url;
-		} catch (err) {
-			console.warn("portal failed:", err);
-		}
-	}, []);
-
-	// Open-source: every feature is free and unlocked for everyone. No paid
-	// gating — isPro is always true, which also hides the (now-removed) upsells.
-	const isPro = true;
-
 	const value = {
 		loading,
 		user,
-		entitlement,
-		isPro,
 		guest,
 		providers,
 		signUpEmail,
@@ -208,8 +166,6 @@ export function AuthProvider({ children }) {
 		resetPassword: doResetPassword,
 		signOut,
 		refresh,
-		checkout,
-		openPortal,
 	};
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

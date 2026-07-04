@@ -1,9 +1,9 @@
 // ── Express app (shared by local server + Vercel function) ──────────────
 //
 // Builds and returns the configured Express app: Better Auth routes, the
-// per-request identity resolver, namespaced state, billing, and the AI
-// co-pilot. Static file serving and the SPA fallback live in the local
-// entrypoint (server/index.js); on Vercel those are served by the platform.
+// per-request identity resolver, namespaced state, and the AI co-pilot.
+// Static file serving and the SPA fallback live in the local entrypoint
+// (server/index.js); on Vercel those are served by the platform.
 
 import express from 'express';
 import { toNodeHandler } from 'better-auth/node';
@@ -15,7 +15,6 @@ import {
   deleteUserKey,
   resetUserState,
   replaceUserState,
-  getEntitlement,
   migrateGuestState,
 } from './store.js';
 import {
@@ -24,7 +23,6 @@ import {
   enabledProviders,
   GUEST_COOKIE,
 } from './auth.js';
-import { checkout, devActivate, webhook, portal } from './billing.js';
 import { chat } from './ai.js';
 
 function setCookie(res, name, value, maxAge) {
@@ -70,16 +68,8 @@ export function createApp() {
   //    read the raw request body itself. ──
   app.all('/api/auth/*', toNodeHandler(auth));
 
-  // JSON body parsing for our own routes. Capture the raw body so the Stripe
-  // webhook can verify its signature.
-  app.use(
-    express.json({
-      limit: '5mb',
-      verify: (req, _res, buf) => {
-        req.rawBody = buf.toString('utf8');
-      },
-    }),
-  );
+  // JSON body parsing for our own routes.
+  app.use(express.json({ limit: '5mb' }));
 
   // ── Resolve acting user (Better Auth session or persisted guest) ──
   app.use(async (req, res, next) => {
@@ -110,9 +100,8 @@ export function createApp() {
 
   // ── Identity ──
 
-  // GET /api/me — current identity + entitlement + which social providers work
+  // GET /api/me — current identity + which social providers work
   app.get('/api/me', async (req, res) => {
-    const ent = await getEntitlement(req.uid);
     const u = req.user
       ? {
           email: req.user.email,
@@ -123,7 +112,6 @@ export function createApp() {
       : null;
     res.json({
       user: u,
-      entitlement: ent,
       guest: req.guest,
       providers: enabledProviders(),
     });
@@ -180,35 +168,6 @@ export function createApp() {
   app.post('/api/import', async (req, res) => {
     await replaceUserState(req.uid, req.body || {});
     res.json({ ok: true, keys: Object.keys(req.body || {}).length });
-  });
-
-  // ── Billing ──
-
-  app.post('/api/billing/checkout', async (req, res) => {
-    try {
-      const { plan } = req.body || {};
-      const result = await checkout(req.uid, plan, req);
-      res.json(result);
-    } catch (err) {
-      console.error('checkout failed:', err.message);
-      res.status(500).json({ error: 'Checkout failed.' });
-    }
-  });
-
-  app.post('/api/billing/webhook', async (req, res) => {
-    const result = await webhook(req);
-    res.status(result.status).json(result.body);
-  });
-
-  app.post('/api/billing/dev-activate', async (req, res) => {
-    const plan = (req.body && req.body.plan) || req.query.plan || 'monthly';
-    const entitlement = await devActivate(req.uid, plan);
-    res.json({ ok: true, entitlement });
-  });
-
-  app.post('/api/billing/portal', async (req, res) => {
-    const result = await portal(req.uid, req);
-    res.json(result);
   });
 
   // ── AI co-pilot ──

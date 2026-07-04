@@ -4,8 +4,8 @@
 //   1. Better Auth core tables (user / session / account / verification).
 //      Column *property names* must match Better Auth's field names exactly
 //      (camelCase) — the Drizzle adapter maps by JS key, not SQL column name.
-//   2. App tables — per-owner planner state and entitlements, keyed by either
-//      a Better Auth user id or a guest id (both are opaque text ids).
+//   2. App tables — per-owner planner state, keyed by either a Better Auth
+//      user id or a guest id (both are opaque text ids).
 
 import {
   pgTable,
@@ -74,17 +74,5 @@ export const verification = pgTable('verification', {
 export const appState = pgTable('app_state', {
   ownerId: text('owner_id').primaryKey(),
   data: jsonb('data').notNull().default({}),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-
-// Pro entitlements, keyed by user id. Holds the Stripe customer id so the
-// billing portal can target a real customer.
-export const entitlements = pgTable('entitlements', {
-  ownerId: text('owner_id').primaryKey(),
-  tier: text('tier'),
-  status: text('status'),
-  renews: timestamp('renews'),
-  priceId: text('price_id'),
-  stripeCustomerId: text('stripe_customer_id'),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

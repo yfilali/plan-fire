@@ -8,6 +8,13 @@
       "when": 1782764582974,
       "tag": "0000_sharp_revanche",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783205910417,
+      "tag": "0001_drop_entitlements",
+      "breakpoints": true
     }
   ]
 }
