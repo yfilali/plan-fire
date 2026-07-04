@@ -209,6 +209,13 @@ function buildFreshPlans() {
 			icon: PLAN_ICONS[0],
 			tone: PLAN_TONES[0],
 			baseline: true,
+			// PLAN_INPUT_DEFAULTS.ssAnnual (40000) is a sensible starting point
+			// for a plan a user deliberately creates (e.g. "+ New plan"), but
+			// for a brand-new account it would be a fabricated $40K/yr benefit
+			// nobody entered — the one number here that reads as real user
+			// data rather than an engine/UI placeholder. Zeroed so someone
+			// who skips onboarding entirely sees $0, not an invented figure.
+			ssAnnual: 0,
 			actions: {},
 			newHomeCost: 0,
 			transitionYears: 0,
