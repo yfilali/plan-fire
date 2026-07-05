@@ -28,6 +28,7 @@ import DownturnCutControls from "../components/DownturnCutControls.jsx";
 import SuccessProbability from "../components/dashboard/SuccessProbability.jsx";
 import MilestonesCard from "../components/dashboard/Milestones.jsx";
 import RegimeSelector from "../components/dashboard/RegimeSelector.jsx";
+import GettingStarted from "../components/dashboard/GettingStarted.jsx";
 
 // Small uppercase eyebrow used to separate the controls / results sub-zones.
 function Eyebrow({ children, style }) {
@@ -73,12 +74,14 @@ export default function DashboardView() {
 		dispSpend70,
 		fullChartData,
 		fullReturnsTimeline,
+		planIsEmpty,
 	} = p;
 
 	// Unified verdict — one source of truth for headline color + wording, so a
 	// positive outcome is never painted alarm-red. Monte Carlo lives in its own
-	// card (SuccessProbability) and simply doesn't vote here.
-	const health = computePlanHealth({ runsOut, effWR });
+	// card (SuccessProbability) and simply doesn't vote here. An empty plan
+	// (onboarding skipped, nothing entered) reads as neutral "Not started".
+	const health = computePlanHealth({ runsOut, effWR, planIsEmpty });
 	const visual = healthVisual(health.status, S);
 
 	const [viewFrom, setViewFrom] = useState(age);
@@ -137,9 +140,11 @@ export default function DashboardView() {
 						<div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
 							<Icon name={visual.icon} size={20} color={visual.color} />
 							<span style={{ fontSize: FS.lg, fontWeight: FW.bold, color: visual.color }}>
-								{!runsOut
-									? "Your money lasts the whole plan"
-									: `Portfolio depletes at age ${runsOut.age}`}
+								{planIsEmpty
+									? "Your plan isn't set up yet"
+									: !runsOut
+										? "Your money lasts the whole plan"
+										: `Portfolio depletes at age ${runsOut.age}`}
 							</span>
 							<span
 								style={{
@@ -160,33 +165,45 @@ export default function DashboardView() {
 						<div style={{ fontSize: FS.sm, color: S.textMuted, marginTop: 5, lineHeight: 1.5 }}>
 							{health.reasons.join(" · ")}
 						</div>
-						<div style={{ fontSize: FS.xs, color: S.textDim, marginTop: 3 }}>
-							{housingLabel} · {projections.primaryLabel}
-							{retireAge > age && ` · Working until ${retireAge}`}
-						</div>
+						{!planIsEmpty && (
+							<div style={{ fontSize: FS.xs, color: S.textDim, marginTop: 3 }}>
+								{housingLabel} · {projections.primaryLabel}
+								{retireAge > age && ` · Working until ${retireAge}`}
+							</div>
+						)}
 					</div>
-					<div style={{ textAlign: "right" }}>
-						<div style={{ fontSize: FS.xs, color: S.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>
-							{projections.altLabel}
+					{/* Alt-regime survival readout is projection commentary — hidden
+					    while there is no projection to comment on. */}
+					{!planIsEmpty && (
+						<div style={{ textAlign: "right" }}>
+							<div style={{ fontSize: FS.xs, color: S.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>
+								{projections.altLabel}
+							</div>
+							<div
+								style={{
+									display: "inline-flex",
+									alignItems: "center",
+									gap: 6,
+									marginTop: 2,
+									fontSize: FS.md,
+									fontWeight: FW.bold,
+									color: altRunsOut ? S.danger : S.accent,
+								}}
+							>
+								<Icon name={altRunsOut ? "x-circle" : "check"} size={15} color={altRunsOut ? S.danger : S.accent} />
+								{altRunsOut ? `Runs out @ ${altRunsOut.age}` : "Survives"}
+							</div>
 						</div>
-						<div
-							style={{
-								display: "inline-flex",
-								alignItems: "center",
-								gap: 6,
-								marginTop: 2,
-								fontSize: FS.md,
-								fontWeight: FW.bold,
-								color: altRunsOut ? S.danger : S.accent,
-							}}
-						>
-							<Icon name={altRunsOut ? "x-circle" : "check"} size={15} color={altRunsOut ? S.danger : S.accent} />
-							{altRunsOut ? `Runs out @ ${altRunsOut.age}` : "Survives"}
-						</div>
-					</div>
+					)}
 				</div>
 			</Card>
 
+			{/* ── Empty plan: a getting-started checklist replaces the zero-filled
+			    stats, controls and charts until real numbers exist. ── */}
+			{planIsEmpty && <GettingStarted />}
+
+			{!planIsEmpty && (
+			<>
 			{/* ── Headline metrics ── */}
 			<div className="stat-grid stagger">
 				<StatCard label="Portfolio" value={fmt(projections.startPort)} sub="Post-transition" accent={S.blue} />
@@ -373,6 +390,8 @@ export default function DashboardView() {
 					<MilestonesCard />
 				</div>
 			</section>
+			</>
+			)}
 		</div>
 	);
 }

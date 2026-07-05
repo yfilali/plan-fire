@@ -53,10 +53,10 @@ export const NAV = [
 export default function Sidebar({ view, setView, open, onClose }) {
 	const S = useTheme();
 	const { serverOk } = useStoreStatus();
-	const { effWR, runsOut } = usePlanner();
+	const { effWR, runsOut, planIsEmpty } = usePlanner();
 	// Canonical verdict — keyed on the deterministic projection (runsOut) plus
 	// WR, so the sidebar agrees with the topbar badge and the dashboard banner.
-	const { status, label } = computePlanHealth({ runsOut, effWR });
+	const { status, label } = computePlanHealth({ runsOut, effWR, planIsEmpty });
 	const visual = healthVisual(status, S);
 
 	return (
@@ -130,15 +130,17 @@ export default function Sidebar({ view, setView, open, onClose }) {
 								<Icon name={visual.icon} size={16} color={visual.color} />
 								{label}
 							</span>
-							<span
-								style={{
-									fontSize: FS.sm,
-									color: S.textMuted,
-									fontFamily: S.mono,
-								}}
-							>
-								{effWR.toFixed(1)}% WR
-							</span>
+							{!planIsEmpty && (
+								<span
+									style={{
+										fontSize: FS.sm,
+										color: S.textMuted,
+										fontFamily: S.mono,
+									}}
+								>
+									{effWR.toFixed(1)}% WR
+								</span>
+							)}
 						</div>
 					</div>
 					<div

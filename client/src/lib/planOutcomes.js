@@ -88,10 +88,22 @@ function buildProjectionInputs(plan, ctx, econ) {
 	return { shared, transition, moveAge, startPortInput };
 }
 
+// A plan with no liquid savings and no expenses tagged to it has nothing to
+// project — mirrors PlannerProvider's planIsEmpty so the comparison matrix
+// shows the same neutral "Not started" verdict as the dashboard/topbar
+// instead of a false "At risk" (a $0 portfolio trips runsOut immediately).
+function planIsEmptyFor(plan, ctx) {
+	const hasExpense = (ctx.expenses || []).some(
+		(e) => !e.plans || e.plans.includes("all") || e.plans.includes(plan.id),
+	);
+	return ctx.liquidValueForPlan(plan.id) === 0 && !hasExpense;
+}
+
 // ── Export 1 — computePlanOutcome(plan, ctx) -> outcome ──
 export function computePlanOutcome(plan, ctx) {
 	const econ = planEconomics(plan, ctx.propertyAssets);
 	const { shared, transition, moveAge, startPortInput } = buildProjectionInputs(plan, ctx, econ);
+	const isEmpty = planIsEmptyFor(plan, ctx);
 
 	const primary = project({ ...shared, nomReturn: regimeReturns(plan) });
 
@@ -119,6 +131,7 @@ export function computePlanOutcome(plan, ctx) {
 		runsOut: runsOutAge != null ? { age: runsOutAge } : null,
 		effWR,
 		wrTarget: 4,
+		planIsEmpty: isEmpty,
 	});
 
 	const series = primary.map((d) => ({ age: d.age, balance: d.balance }));
@@ -145,6 +158,7 @@ export function computePlanOutcome(plan, ctx) {
 		runsOutAge,
 		effWR,
 		annualSpendAtRetire,
+		isEmpty,
 		health,
 		series,
 	};
