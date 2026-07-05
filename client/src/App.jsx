@@ -61,11 +61,13 @@ function Loader({ label }) {
 // The authenticated planner shell, rendered by Root at "/app" wrapped in
 // StateProvider + PlannerProvider. Assumes those providers are present.
 export default function AppShell() {
+	const S = useTheme();
 	const { loaded } = useStoreStatus();
 	const { ready, showOnboarding } = usePlanner();
 	const { loading: authLoading, user } = useAuth();
 	const [view, setView] = usePersistedState("view", "dashboard");
 	const [navOpen, setNavOpen] = useState(false);
+	const [justVerified, setJustVerified] = useState(false);
 	const guestContinued = (() => {
 		try {
 			return localStorage.getItem(GUEST_CONTINUE_KEY) === "1";
@@ -93,32 +95,83 @@ export default function AppShell() {
 		}
 	}, [authLoading, user, guestContinued]);
 
+	// The emailed verification link lands here as "/app?verified=1" (Better
+	// Auth signs the user in first). Show a one-time banner, then drop the
+	// query param so a refresh/share of the URL doesn't repeat it.
+	useEffect(() => {
+		const params = new URLSearchParams(window.location.search);
+		if (params.get("verified") !== "1") return;
+		setJustVerified(true);
+		params.delete("verified");
+		const query = params.toString();
+		window.history.replaceState({}, "", `/app${query ? `?${query}` : ""}`);
+	}, []);
+
 	if (authLoading) return <Loader label="Signing you in…" />;
 	// While the redirect above is in flight, render a spinner rather than the
 	// (unauthorized) planner.
 	if (!user && !guestContinued) return <Loader label="Redirecting…" />;
 	if (!loaded) return <Loader label="Loading your plan…" />;
 	if (!ready) return <Loader label="Preparing plans…" />;
-	if (showOnboarding) return <OnboardingWizard />;
+
+	// Shown above either branch below — onboarding or the main shell — so a
+	// brand-new signup that lands straight in onboarding still sees it.
+	const verifiedBanner = justVerified && (
+		<div
+			role="status"
+			style={{
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				gap: 10,
+				padding: "10px 16px",
+				background: S.accent,
+				color: S.onAccent || "#fff",
+				fontSize: 13,
+				fontWeight: 600,
+			}}
+		>
+			Email verified — you're all set.
+			<button
+				type="button"
+				onClick={() => setJustVerified(false)}
+				aria-label="Dismiss"
+				style={{ background: "none", border: "none", color: "inherit", fontSize: 15, cursor: "pointer", lineHeight: 1, opacity: 0.85 }}
+			>
+				×
+			</button>
+		</div>
+	);
+
+	if (showOnboarding)
+		return (
+			<>
+				{verifiedBanner}
+				<OnboardingWizard />
+			</>
+		);
 
 	const View = VIEWS[view] || DashboardView;
 
 	return (
-		<div className="app-shell">
-			<Sidebar
-				view={view}
-				setView={setView}
-				open={navOpen}
-				onClose={() => setNavOpen(false)}
-			/>
-			<div className="main">
-				<TopBar view={view} onMenu={() => setNavOpen((o) => !o)} />
-				<div className="content">
-					<div className="content-inner">
-						<View />
+		<>
+			{verifiedBanner}
+			<div className="app-shell">
+				<Sidebar
+					view={view}
+					setView={setView}
+					open={navOpen}
+					onClose={() => setNavOpen(false)}
+				/>
+				<div className="main">
+					<TopBar view={view} onMenu={() => setNavOpen((o) => !o)} />
+					<div className="content">
+						<div className="content-inner">
+							<View />
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
+		</>
 	);
 }

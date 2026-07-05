@@ -25,6 +25,11 @@ import { user, session, account, verification } from './db/schema.js';
 
 const RESEND_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes between resend requests
 const RESEND_MAX_ATTEMPTS = 3; // lifetime cap on explicit resend requests
+// Where a verification link lands once confirmed — the planner (Better Auth
+// signs the user in first, since autoSignInAfterVerification is on below),
+// flagged so AppShell can show a one-time confirmation banner. Signup's own
+// automatic send sets this same value client-side (see AuthProvider.jsx).
+const VERIFY_CALLBACK_URL = '/app?verified=1';
 
 export const GUEST_COOKIE = 'firly_guest';
 const GUEST_TTL = 60 * 24 * 60 * 60 * 1000; // 60 days
@@ -195,7 +200,9 @@ export async function requestVerificationResend(email) {
     return { ok: false, code: 'MAX_ATTEMPTS' };
   }
 
-  await auth.api.sendVerificationEmail({ body: { email: normalized } });
+  await auth.api.sendVerificationEmail({
+    body: { email: normalized, callbackURL: VERIFY_CALLBACK_URL },
+  });
   await db
     .update(user)
     .set({ verificationResendCount: row.verificationResendCount + 1 })
