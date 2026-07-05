@@ -302,6 +302,25 @@ button {
 	}
 }
 
+/* Inverse of .hide-sm — shown only at phone widths (e.g. the theme toggle,
+   which moves from the topbar into the sidebar drawer on small screens). */
+.show-sm {
+	display: none;
+}
+@media (max-width: 560px) {
+	.show-sm {
+		display: flex !important;
+	}
+}
+
+/* Site nav wordmark sheds its "Retirement Planner" tagline once the bar gets
+   tight, so the logo doesn't compete with the hamburger/CTA for width. */
+@media (max-width: 480px) {
+	.site-nav .brand-tagline {
+		display: none;
+	}
+}
+
 .fade-in {
 	animation: fadeIn 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
