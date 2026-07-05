@@ -49,6 +49,8 @@ In **Project → Settings → Environment Variables** (Production + Preview):
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | see step 5 |
 | `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | see step 6 |
 | `ANTHROPIC_API_KEY` | optional, for the live AI co-pilot |
+| `CRON_SECRET` | `openssl rand -base64 32` — see step 8 |
+| `UNVERIFIED_ACCOUNT_TTL_DAYS` | optional, defaults to `7` — see step 8 |
 
 > For preview deployments, set `BETTER_AUTH_URL` to the preview URL or add the
 > preview origins to `trustedOrigins` in `server/auth.js` if you test social
@@ -91,6 +93,24 @@ To change the schema later: edit `server/db/schema.js`, then
 ### 7. Resend (email)
 - Create an API key, and **verify your sending domain** so verification and
   reset emails don't land in spam. Set `EMAIL_FROM` to an address on that domain.
+
+### 8. Daily cleanup of unverified accounts
+- `vercel.json` defines a Vercel Cron Job (`crons`) that hits
+  `GET /api/cron/cleanup-unverified` once a day at 03:00 UTC. It deletes
+  accounts that signed up but never verified their email within
+  `UNVERIFIED_ACCOUNT_TTL_DAYS` (default 7), plus any expired verification
+  tokens. Cron config only takes effect after you deploy — pushing
+  `vercel.json` registers it.
+- **Set `CRON_SECRET`** in Project → Settings → Environment Variables. Vercel
+  automatically sends `Authorization: Bearer <CRON_SECRET>` on requests it
+  triggers for this project's cron jobs; the route rejects anything else (and
+  refuses to run at all if the var is unset), since it's otherwise a public,
+  destructive endpoint.
+- Vercel Cron Jobs work on every plan, but the **Hobby plan caps jobs to once
+  a day** (which is exactly what this needs) with a low limit on the number of
+  cron jobs per project; Pro/Enterprise allow finer schedules and more jobs.
+  See vercel.com/docs/cron-jobs for current limits.
+- To test it manually: `curl -H "Authorization: Bearer $CRON_SECRET" https://<your-domain>/api/cron/cleanup-unverified`.
 
 ---
 
