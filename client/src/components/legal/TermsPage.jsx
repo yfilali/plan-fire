@@ -136,8 +136,8 @@ export default function TermsPage() {
 						service or other users' data.
 					</li>
 					<li style={li}>
-						Reverse-engineer, scrape, or resell the service without
-						permission.
+						Scrape or resell access to the hosted service without
+						permission. (The source code is open — fork away.)
 					</li>
 					<li style={li}>
 						Use PlanFIRE for unlawful purposes or in violation of these
