@@ -147,10 +147,11 @@ export default function TermsPage() {
 
 				<h2 style={h2}>Intellectual property</h2>
 				<p style={p}>
-					PlanFIRE, including its software, design, and branding, is owned by
-					us and protected by applicable law. The financial data you enter
-					remains yours; you grant us only the limited rights needed to
-					operate the service for you.
+					The PlanFIRE source code is available on GitHub under the MIT
+					License — use it, fork it, self-host it. The PlanFIRE name and
+					logo aren't covered by that license and remain ours. The financial
+					data you enter remains yours; you grant us only the limited rights
+					needed to operate the service for you.
 				</p>
 
 				<h2 style={h2}>Disclaimers &amp; limitation of liability</h2>
