@@ -81,6 +81,17 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    // Fires when someone signs up with an email that already has an account.
+    // Better Auth always returns the same generic "created" response either
+    // way (so this can't be used to probe which emails are registered) — this
+    // hook is the one place we get the *real* existing user to act on behind
+    // that response. If they never verified, this is indistinguishable from
+    // them just wanting another link, so send one — through the same
+    // throttle (10min cooldown / 3 lifetime attempts) as the login screen's
+    // explicit resend button, since both draw from the same budget.
+    onExistingUserSignUp: async ({ user: u }) => {
+      await requestVerificationResend(u.email);
+    },
     sendResetPassword: async ({ user: u, url }) => {
       await sendEmail({
         to: u.email,
