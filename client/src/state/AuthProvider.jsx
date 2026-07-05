@@ -97,6 +97,10 @@ export function AuthProvider({ children }) {
 			name: name || email.split("@")[0],
 			email,
 			password,
+			// Where the emailed verification link lands after Better Auth confirms
+			// it and signs the user in — the planner, not the marketing homepage,
+			// with a flag AppShell uses to show a one-time confirmation banner.
+			callbackURL: "/app?verified=1",
 		});
 		if (error) return { error: error.message || "Could not create account." };
 		// With email verification on, there's no session yet — the user must
