@@ -62,7 +62,7 @@ export default function PlanSwitcher() {
 					color: S.text,
 					fontSize: 13,
 					fontWeight: 600,
-					maxWidth: 220,
+					maxWidth: "min(220px, 42vw)",
 				}}
 			>
 				<span

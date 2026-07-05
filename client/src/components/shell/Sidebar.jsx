@@ -5,6 +5,7 @@ import { computePlanHealth, healthVisual } from "../../lib/planHealth.js";
 import { FS, RAD } from "../../lib/styles.js";
 import Icon from "../Icon.jsx";
 import Brand from "./Brand.jsx";
+import ThemeToggle from "./ThemeToggle.jsx";
 
 const icon = (d) => (
 	<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
@@ -164,6 +165,15 @@ export default function Sidebar({ view, setView, open, onClose }) {
 							}}
 						/>
 						{serverOk ? "Synced to server" : "Offline — saved locally"}
+					</div>
+
+					{/* Phones only — desktop/tablet keep this in the topbar. */}
+					<div
+						className="show-sm"
+						style={{ alignItems: "center", justifyContent: "space-between", marginTop: 11 }}
+					>
+						<span style={{ fontSize: FS.xs, color: S.textDim }}>Theme</span>
+						<ThemeToggle />
 					</div>
 				</div>
 			</aside>

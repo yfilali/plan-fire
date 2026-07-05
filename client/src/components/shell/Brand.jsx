@@ -52,6 +52,7 @@ export default function Brand() {
 					</span>
 				</div>
 				<div
+					className="brand-tagline"
 					style={{
 						fontSize: 10,
 						color: S.textDim,

@@ -42,19 +42,19 @@ export default function TopBar({ view, onMenu }) {
 				{/* Depletion + WR are meaningless on an all-zero plan — badge
 				    reads just "Not started" until real numbers exist. */}
 				{!planIsEmpty && (
-					<>
-						<span className="hide-sm">
-							{" · "}
-							{runsOut ? `Depletes @ ${runsOut.age}` : "Money lasts"}
-						</span>
+					<span className="hide-sm">
+						{" · "}
+						{runsOut ? `Depletes @ ${runsOut.age}` : "Money lasts"}
 						{" · "}
 						{effWR.toFixed(1)}% WR
-					</>
+					</span>
 				)}
 			</Badge>
 
 			<PlanSwitcher />
-			<ThemeToggle />
+			<span className="hide-sm">
+				<ThemeToggle />
+			</span>
 		</header>
 	);
 }
