@@ -4,6 +4,7 @@ import "./theme/theme.css";
 import { ThemeProvider } from "./theme/ThemeProvider.jsx";
 import { AuthProvider } from "./state/AuthProvider.jsx";
 import Root from "./Root.jsx";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 // ThemeProvider + AuthProvider are global so the landing, auth, and legal
 // pages can use useTheme()/useAuth(). StateProvider + PlannerProvider are
@@ -14,6 +15,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 		<ThemeProvider>
 			<AuthProvider>
 				<Root />
+				<SpeedInsights />
 			</AuthProvider>
 		</ThemeProvider>
 	</React.StrictMode>,
