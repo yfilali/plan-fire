@@ -14,6 +14,7 @@ const COLUMNS = [
 		links: [
 			{ label: "Privacy", href: "/privacy" },
 			{ label: "Terms", href: "/terms" },
+			{ label: "GitHub", href: "https://github.com/yfilali/plan-fire", external: true },
 		],
 	},
 ];
@@ -22,6 +23,8 @@ function FooterLink({ link, S }) {
 	return (
 		<a
 			href={link.href}
+			target={link.external ? "_blank" : undefined}
+			rel={link.external ? "noopener noreferrer" : undefined}
 			style={{
 				color: S.textMuted,
 				textDecoration: "none",
