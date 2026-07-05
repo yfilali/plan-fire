@@ -1,22 +1,13 @@
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import Brand from "../shell/Brand.jsx";
 
-const COLUMNS = [
-	{
-		title: "Product",
-		links: [
-			{ label: "Features", href: "#features" },
-			{ label: "FAQ", href: "#faq" },
-		],
-	},
-	{
-		title: "Project",
-		links: [
-			{ label: "Privacy", href: "/privacy" },
-			{ label: "Terms", href: "/terms" },
-			{ label: "GitHub", href: "https://github.com/yfilali/plan-fire", external: true },
-		],
-	},
+const LINKS = [
+	{ label: "Features", href: "#features" },
+	{ label: "FAQ", href: "#faq" },
+	{ label: "Privacy", href: "/privacy" },
+	{ label: "Terms", href: "/terms" },
+	{ label: "GitHub", href: "https://github.com/yfilali/plan-fire", external: true },
+	{ label: "Threads", href: "https://www.threads.net/@yacfilali", external: true },
 ];
 
 function FooterLink({ link, S }) {
@@ -99,29 +90,14 @@ export default function Footer() {
 						style={{
 							display: "flex",
 							flexWrap: "wrap",
-							gap: "clamp(40px,8vw,88px)",
+							alignContent: "flex-start",
+							columnGap: 28,
+							rowGap: 10,
+							maxWidth: 360,
 						}}
 					>
-						{COLUMNS.map((col) => (
-							<div key={col.title}>
-								<div
-									style={{
-										fontSize: 12,
-										fontWeight: 700,
-										letterSpacing: 0.6,
-										textTransform: "uppercase",
-										color: S.textDim,
-										marginBottom: 12,
-									}}
-								>
-									{col.title}
-								</div>
-								<div style={{ display: "flex", flexDirection: "column" }}>
-									{col.links.map((link) => (
-										<FooterLink key={link.label} link={link} S={S} />
-									))}
-								</div>
-							</div>
+						{LINKS.map((link) => (
+							<FooterLink key={link.label} link={link} S={S} />
 						))}
 					</div>
 				</div>
