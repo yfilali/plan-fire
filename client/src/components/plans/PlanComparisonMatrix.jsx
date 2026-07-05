@@ -23,6 +23,7 @@ function healthFor(o, mcByPlan) {
 		runsOut: o.runsOutAge != null ? { age: o.runsOutAge } : null,
 		effWR: o.effWR,
 		mcSuccess: mcByPlan[o.planId]?.successRate,
+		planIsEmpty: o.isEmpty,
 	});
 }
 

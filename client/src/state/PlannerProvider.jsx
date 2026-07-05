@@ -807,6 +807,15 @@ export function PlannerProvider({ children }) {
 	);
 	const portfolio = liquidValueForPlan(activePlan?.id);
 
+	// "Empty" = nothing that gives the projection any signal: no liquid savings
+	// and no expenses anywhere in the pool. This is the state a brand-new
+	// account lands in when onboarding is skipped — the dashboard swaps its
+	// zero-filled charts for a getting-started checklist, and plan health reads
+	// "Not started" instead of a false "At risk" (a $0 portfolio trips runsOut
+	// on the very first projection row). Data-derived rather than flag-based so
+	// it also covers an account whose data was cleared later.
+	const planIsEmpty = portfolio === 0 && effectiveExpenses.length === 0;
+
 	// ── Active-plan economics ──
 	const activeEcon = useMemo(() => {
 		const e = planEconomics(activePlan, propertyAssets);
@@ -996,6 +1005,7 @@ export function PlannerProvider({ children }) {
 		// Portfolio is derived from liquid assets tagged to the active plan,
 		// so it must override the (now-unused) per-plan scalar from ...data.
 		portfolio,
+		planIsEmpty,
 		liquidValueForPlan,
 		// Per-plan input setters
 		...setters,

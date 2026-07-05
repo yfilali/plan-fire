@@ -12,17 +12,24 @@
 //                 the share of randomized market paths that never run dry.
 //                 May be omitted (undefined/null) when the simulation hasn't
 //                 run (e.g. non-Pro); in that case it simply doesn't vote.
+//
+// A fourth flag, planIsEmpty, short-circuits all of the above: a plan with no
+// liquid savings AND no expenses (e.g. onboarding was skipped) has nothing to
+// evaluate — its zero-balance projection trips runsOut on the very first row,
+// which would greet a brand-new user with a red "At risk" verdict about
+// numbers they never entered. Such a plan is "not started", not "at risk".
 
 // Monte Carlo thresholds, matching the SuccessProbability card's bands:
 // ≥85% reads as "On track", ≥70% as "Borderline", below that as "At risk".
 const MC_GOOD = 0.85;
 const MC_LOW = 0.7;
 
-const STATUS_LABELS = { healthy: "Healthy", caution: "Caution", atRisk: "At risk" };
+const STATUS_LABELS = { healthy: "Healthy", caution: "Caution", atRisk: "At risk", empty: "Not started" };
 
 // computePlanHealth — fold the three signals into one verdict.
 //
 // Precedence (most severe wins):
+//   0. Nothing entered yet (planIsEmpty)               → empty (neutral)
 //   1. Deterministic depletion (runsOut truthy)        → atRisk
 //   2. Very low Monte Carlo success (< MC_LOW)         → atRisk
 //   3. Money lasts but MC is only borderline (< MC_GOOD) → caution
@@ -30,10 +37,21 @@ const STATUS_LABELS = { healthy: "Healthy", caution: "Caution", atRisk: "At risk
 //   5. Everything clears                               → healthy
 //
 // Returns { status, label, reasons, wr } where status is one of
-// 'healthy' | 'caution' | 'atRisk', label is the human word, reasons is a
-// short string[] of plain-English explanations, and wr echoes the rate used.
-export function computePlanHealth({ runsOut, effWR, mcSuccess, wrTarget = 4 }) {
+// 'empty' | 'healthy' | 'caution' | 'atRisk', label is the human word,
+// reasons is a short string[] of plain-English explanations, and wr echoes
+// the rate used.
+export function computePlanHealth({ runsOut, effWR, mcSuccess, wrTarget = 4, planIsEmpty = false }) {
 	const wr = Number.isFinite(effWR) ? effWR : 0;
+
+	if (planIsEmpty) {
+		return {
+			status: "empty",
+			label: STATUS_LABELS.empty,
+			reasons: ["Add your savings and expenses to see a real projection"],
+			wr,
+		};
+	}
+
 	// Normalize MC: accept a 0–1 fraction; tolerate a 0–100 percent if a caller
 	// passes one. Treat anything non-numeric as "no MC signal".
 	const mc =
@@ -88,8 +106,11 @@ export function computePlanHealth({ runsOut, effWR, mcSuccess, wrTarget = 4 }) {
 //   healthy → S.accent  + 'check'
 //   caution → S.warning + 'alert'
 //   atRisk  → S.danger  + 'warning'
+//   empty   → S.blue    + 'alert'  (neutral, informational — not a verdict)
 export function healthVisual(status, S) {
 	switch (status) {
+		case "empty":
+			return { color: S.blue, icon: "alert", label: STATUS_LABELS.empty };
 		case "atRisk":
 			return { color: S.danger, icon: "warning", label: STATUS_LABELS.atRisk };
 		case "caution":

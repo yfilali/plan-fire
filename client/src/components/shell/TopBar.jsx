@@ -10,10 +10,10 @@ import ThemeToggle from "./ThemeToggle.jsx";
 
 export default function TopBar({ view, onMenu }) {
 	const S = useTheme();
-	const { effWR, runsOut } = usePlanner();
+	const { effWR, runsOut, planIsEmpty } = usePlanner();
 	// Canonical verdict — same inputs/precedence as the sidebar and dashboard
 	// banner, so the badge can never contradict them.
-	const { status } = computePlanHealth({ runsOut, effWR });
+	const { status } = computePlanHealth({ runsOut, effWR, planIsEmpty });
 	const visual = healthVisual(status, S);
 	const title = NAV.find((n) => n.id === view)?.label || "";
 
@@ -39,12 +39,18 @@ export default function TopBar({ view, onMenu }) {
 			<Badge color={visual.color}>
 				<Icon name={visual.icon} size={14} color={visual.color} />
 				<span style={{ fontWeight: 700 }}>{visual.label}</span>
-				<span className="hide-sm">
-					{" · "}
-					{runsOut ? `Depletes @ ${runsOut.age}` : "Money lasts"}
-				</span>
-				{" · "}
-				{effWR.toFixed(1)}% WR
+				{/* Depletion + WR are meaningless on an all-zero plan — badge
+				    reads just "Not started" until real numbers exist. */}
+				{!planIsEmpty && (
+					<>
+						<span className="hide-sm">
+							{" · "}
+							{runsOut ? `Depletes @ ${runsOut.age}` : "Money lasts"}
+						</span>
+						{" · "}
+						{effWR.toFixed(1)}% WR
+					</>
+				)}
 			</Badge>
 
 			<PlanSwitcher />
