@@ -725,6 +725,23 @@ export function PlannerProvider({ children }) {
 		[mutatePlans, activePlanId],
 	);
 
+	// Replay a historical era: sets the backtest window AND flips marketMode
+	// in one write. Calling setBacktestWindow then setMarketMode separately
+	// hits the same-tick clobbering issue described above — the second
+	// setter would revert the window change, so era selection would only
+	// ever "stick" the first time it's used.
+	const setHistoricalEra = useCallback(
+		(start, end) =>
+			mutatePlans((prev) =>
+				prev.map((pl) =>
+					pl.id === activePlanId
+						? { ...pl, backtestStart: start, backtestEnd: end, marketMode: "historical_period" }
+						: pl,
+				),
+			),
+		[mutatePlans, activePlanId],
+	);
+
 	// ── Assets ──
 	// Create a typed asset in a single atomic write. `init` overrides the
 	// type's blank defaults (id/type stay authoritative). Returns the new id.
@@ -1038,6 +1055,7 @@ export function PlannerProvider({ children }) {
 		removePlan,
 		setPlanAction,
 		setBacktestWindow,
+		setHistoricalEra,
 		// Spending
 		spendAt,
 		spendNow,

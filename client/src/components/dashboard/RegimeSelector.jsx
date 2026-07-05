@@ -7,7 +7,7 @@ import { useMarketHistory } from "../../lib/marketHistory.js";
 // dropdown to switch market regime, or replay a real era (Time Machine).
 export default function RegimeSelector() {
 	const S = useTheme();
-	const { marketMode, setMarketMode, backtestStart, backtestEnd, setBacktestWindow, projections } = usePlanner();
+	const { marketMode, setMarketMode, backtestStart, backtestEnd, setHistoricalEra, projections } = usePlanner();
 	const { data: hist } = useMarketHistory();
 	const [open, setOpen] = useState(false);
 	const ref = useRef(null);
@@ -28,8 +28,7 @@ export default function RegimeSelector() {
 
 	const pickRegime = (mode) => { setMarketMode(mode); setOpen(false); };
 	const pickEra = (e) => {
-		setBacktestWindow(e.years[0], e.years[1]);
-		setMarketMode("historical_period");
+		setHistoricalEra(e.years[0], e.years[1]);
 		setOpen(false);
 	};
 
