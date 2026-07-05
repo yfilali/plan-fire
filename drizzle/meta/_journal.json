@@ -15,6 +15,13 @@
       "when": 1783205910417,
       "tag": "0001_drop_entitlements",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783221422172,
+      "tag": "0002_add_verification_resend_throttle",
+      "breakpoints": true
     }
   ]
 }

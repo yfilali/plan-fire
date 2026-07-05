@@ -36,6 +36,8 @@ export default function LoginScreen({ initialMode = "login" }) {
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState(null);
 	const [notice, setNotice] = useState(null);
+	const [unverifiedEmail, setUnverifiedEmail] = useState(null);
+	const [resendBusy, setResendBusy] = useState(false);
 
 	const emailValid = /\S+@\S+\.\S+/.test(email);
 	const pwValid = password.length >= 8;
@@ -58,15 +60,17 @@ export default function LoginScreen({ initialMode = "login" }) {
 		setBusy(true);
 		setErr(null);
 		setNotice(null);
+		setUnverifiedEmail(null);
 		try {
 			if (mode === "login") {
 				const r = await signInEmail({ email, password });
 				if (r.error) {
-					setErr(
-						r.code === "EMAIL_NOT_VERIFIED"
-							? "Please verify your email first — check your inbox."
-							: r.error,
-					);
+					if (r.code === "EMAIL_NOT_VERIFIED") {
+						setErr("Please verify your email first — check your inbox.");
+						setUnverifiedEmail(email);
+					} else {
+						setErr(r.error);
+					}
 				}
 				else window.location.href = "/app"; // authenticated — go to planner
 			} else if (mode === "signup") {
@@ -88,6 +92,32 @@ export default function LoginScreen({ initialMode = "login" }) {
 			setErr("Something went wrong. Try again.");
 		} finally {
 			setBusy(false);
+		}
+	}
+
+	async function resendVerification() {
+		if (!unverifiedEmail || resendBusy) return;
+		setResendBusy(true);
+		setErr(null);
+		try {
+			const res = await fetch("/api/account/resend-verification", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ email: unverifiedEmail }),
+			});
+			const data = await res.json();
+			if (data.code === "RATE_LIMITED") {
+				const mins = Math.max(1, Math.ceil(data.retryAfterSeconds / 60));
+				setErr(`Please wait about ${mins} minute${mins === 1 ? "" : "s"} before requesting another email.`);
+			} else if (data.code === "MAX_ATTEMPTS") {
+				setErr("You've reached the limit for resending this email. Contact support if you still need help.");
+			} else {
+				setNotice("Verification email sent — check your inbox.");
+			}
+		} catch {
+			setErr("Something went wrong sending the email. Try again.");
+		} finally {
+			setResendBusy(false);
 		}
 	}
 
@@ -183,11 +213,21 @@ export default function LoginScreen({ initialMode = "login" }) {
 
 					{err && <div style={{ fontSize: 12, color: S.danger, textAlign: "center" }}>{err}</div>}
 					{notice && <div style={{ fontSize: 12.5, color: S.accent, textAlign: "center", lineHeight: 1.5 }}>{notice}</div>}
+					{unverifiedEmail && (
+						<button
+							type="button"
+							onClick={resendVerification}
+							disabled={resendBusy}
+							style={{ background: "none", border: "none", color: S.accent, fontSize: 12.5, fontWeight: 600, cursor: resendBusy ? "default" : "pointer", justifySelf: "center" }}
+						>
+							{resendBusy ? "Sending…" : "Resend verification email"}
+						</button>
+					)}
 
 					{mode === "login" && (
 						<button
 							type="button"
-							onClick={() => { setMode("forgot"); setErr(null); setNotice(null); }}
+							onClick={() => { setMode("forgot"); setErr(null); setNotice(null); setUnverifiedEmail(null); }}
 							style={{ background: "none", border: "none", color: S.textMuted, fontSize: 12, cursor: "pointer", justifySelf: "center" }}
 						>
 							Forgot your password?
@@ -197,7 +237,7 @@ export default function LoginScreen({ initialMode = "login" }) {
 					{mode !== "login" && (
 						<button
 							type="button"
-							onClick={() => { setMode("login"); setErr(null); setNotice(null); }}
+							onClick={() => { setMode("login"); setErr(null); setNotice(null); setUnverifiedEmail(null); }}
 							style={{ background: "none", border: "none", color: S.textMuted, fontSize: 12, cursor: "pointer", justifySelf: "center" }}
 						>
 							← Back to log in
@@ -224,7 +264,7 @@ export default function LoginScreen({ initialMode = "login" }) {
 				{mode === "login" && (
 					<div style={{ textAlign: "center", marginTop: 16, fontSize: 12.5, color: S.textMuted }}>
 						New to PlanFIRE?{" "}
-						<button onClick={() => { setMode("signup"); setErr(null); setNotice(null); }} style={{ background: "none", border: "none", color: S.accent, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+						<button onClick={() => { setMode("signup"); setErr(null); setNotice(null); setUnverifiedEmail(null); }} style={{ background: "none", border: "none", color: S.accent, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
 							Create an account
 						</button>
 					</div>

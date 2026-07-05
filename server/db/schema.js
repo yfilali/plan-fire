@@ -13,6 +13,7 @@ import {
   boolean,
   timestamp,
   jsonb,
+  integer,
 } from 'drizzle-orm/pg-core';
 
 // ── Better Auth ──────────────────────────────────────────────────────
@@ -25,6 +26,14 @@ export const user = pgTable('user', {
   image: text('image'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  // Throttle state for the "resend verification email" flow — the last time
+  // any verification email went out (signup or resend) and how many of those
+  // were explicit resends, so we can cap abuse (see requestVerificationResend
+  // in auth.js).
+  verificationEmailSentAt: timestamp('verification_email_sent_at'),
+  verificationResendCount: integer('verification_resend_count')
+    .notNull()
+    .default(0),
 });
 
 export const session = pgTable('session', {

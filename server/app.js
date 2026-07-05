@@ -21,9 +21,11 @@ import {
   auth,
   resolveUser,
   enabledProviders,
+  requestVerificationResend,
   GUEST_COOKIE,
 } from './auth.js';
 import { chat } from './ai.js';
+import { cleanupUnverifiedAccounts } from './cleanup.js';
 
 function setCookie(res, name, value, maxAge) {
   const parts = [
@@ -92,6 +94,24 @@ export function createApp() {
     }
   });
 
+  // GET /api/cron/cleanup-unverified — Vercel Cron hits this daily (see
+  // vercel.json). Vercel signs its own cron requests with `Authorization:
+  // Bearer $CRON_SECRET` when that env var is set; require it here so the
+  // (otherwise public, destructive) route can't be triggered by anyone else.
+  app.get('/api/cron/cleanup-unverified', async (req, res) => {
+    const secret = process.env.CRON_SECRET;
+    if (!secret) {
+      console.error('CRON_SECRET is not set — refusing to run cleanup.');
+      return res.status(500).json({ ok: false, error: 'CRON_SECRET not configured' });
+    }
+    if (req.headers.authorization !== `Bearer ${secret}`) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    const result = await cleanupUnverifiedAccounts();
+    console.log('Cleanup: unverified accounts', result);
+    res.json({ ok: true, ...result });
+  });
+
   // GET /api/market-history — read-only reference dataset.
   app.get('/api/market-history', (req, res) => {
     res.set('Cache-Control', 'public, max-age=86400');
@@ -115,6 +135,15 @@ export function createApp() {
       guest: req.guest,
       providers: enabledProviders(),
     });
+  });
+
+  // POST /api/account/resend-verification — for the login screen's
+  // EMAIL_NOT_VERIFIED case. Rate-limited server-side (see auth.js); the
+  // response never reveals whether the email actually has an account.
+  app.post('/api/account/resend-verification', async (req, res) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email : '';
+    if (!email) return res.status(400).json({ ok: false, code: 'INVALID_EMAIL' });
+    res.json(await requestVerificationResend(email));
   });
 
   // POST /api/account/claim-guest — fold pre-signup guest work into the account

@@ -19,8 +19,12 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { fromNodeHeaders } from 'better-auth/node';
 import { Resend } from 'resend';
+import { eq } from 'drizzle-orm';
 import { db } from './db/index.js';
 import { user, session, account, verification } from './db/schema.js';
+
+const RESEND_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes between resend requests
+const RESEND_MAX_ATTEMPTS = 3; // lifetime cap on explicit resend requests
 
 export const GUEST_COOKIE = 'firly_guest';
 const GUEST_TTL = 60 * 24 * 60 * 60 * 1000; // 60 days
@@ -105,6 +109,13 @@ export const auth = betterAuth({
           'Verify email',
         ),
       });
+      // Shared by signup's automatic send and requestVerificationResend below
+      // — stamping it here means the cooldown starts the moment ANY
+      // verification email goes out, not just explicit resends.
+      await db
+        .update(user)
+        .set({ verificationEmailSentAt: new Date() })
+        .where(eq(user.id, u.id));
     },
   },
 
@@ -145,6 +156,40 @@ export function enabledProviders() {
     google: !!process.env.GOOGLE_CLIENT_ID,
     facebook: !!process.env.FACEBOOK_CLIENT_ID,
   };
+}
+
+// Rate-limited "resend verification email", for the login screen's
+// EMAIL_NOT_VERIFIED case. Signing up never goes through this — that always
+// gets its one automatic email via sendOnSignUp above — this only gates
+// explicit resend requests: at most once every 10 minutes, 3 times ever.
+// Always resolves { ok: true } for an unknown/already-verified email so the
+// endpoint can't be used to probe which addresses have accounts.
+export async function requestVerificationResend(email) {
+  const normalized = email.trim().toLowerCase();
+  const [row] = await db.select().from(user).where(eq(user.email, normalized));
+  if (!row || row.emailVerified) return { ok: true };
+
+  const lastSent = row.verificationEmailSentAt
+    ? new Date(row.verificationEmailSentAt).getTime()
+    : 0;
+  const elapsed = Date.now() - lastSent;
+  if (lastSent && elapsed < RESEND_COOLDOWN_MS) {
+    return {
+      ok: false,
+      code: 'RATE_LIMITED',
+      retryAfterSeconds: Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000),
+    };
+  }
+  if (row.verificationResendCount >= RESEND_MAX_ATTEMPTS) {
+    return { ok: false, code: 'MAX_ATTEMPTS' };
+  }
+
+  await auth.api.sendVerificationEmail({ body: { email: normalized } });
+  await db
+    .update(user)
+    .set({ verificationResendCount: row.verificationResendCount + 1 })
+    .where(eq(user.id, row.id));
+  return { ok: true };
 }
 
 // Resolve the acting identity for an API request: the Better Auth session when
