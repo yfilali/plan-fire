@@ -100,28 +100,32 @@ export default function GettingStarted() {
 	return (
 		<Card pad={24}>
 			<div style={{ maxWidth: 560, margin: "0 auto", padding: "12px 0" }}>
-				<div
-					style={{
-						width: 46,
-						height: 46,
-						borderRadius: RAD.md,
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						background: S.accentGradient,
-						color: "#fff",
-						marginBottom: 14,
-					}}
-				>
-					<Icon name="sparkle" size={22} />
+				<div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
+					<div
+						style={{
+							width: 46,
+							height: 46,
+							borderRadius: RAD.md,
+							flexShrink: 0,
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							background: S.accentGradient,
+							color: "#fff",
+						}}
+					>
+						<Icon name="sparkle" size={22} />
+					</div>
+					<div>
+						<h2 style={{ fontSize: FS.xl, fontWeight: FW.bold, color: S.text, marginBottom: 4 }}>
+							Let's build your plan
+						</h2>
+						<p style={{ fontSize: FS.base, color: S.textMuted, lineHeight: 1.55 }}>
+							Your plan doesn't have any numbers yet, so there's nothing to project.
+							Add these and the dashboard comes to life — each takes about a minute.
+						</p>
+					</div>
 				</div>
-				<h2 style={{ fontSize: FS.xl, fontWeight: FW.bold, color: S.text, marginBottom: 6 }}>
-					Let's build your plan
-				</h2>
-				<p style={{ fontSize: FS.base, color: S.textMuted, lineHeight: 1.55, marginBottom: 18 }}>
-					Your plan doesn't have any numbers yet, so there's nothing to project.
-					Add these and the dashboard comes to life — each takes about a minute.
-				</p>
 				<div style={{ display: "grid", gap: 10 }}>
 					{steps.map((s) => (
 						<StepRow
