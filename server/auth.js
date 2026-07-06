@@ -9,12 +9,12 @@
 // through Resend; with no RESEND_API_KEY the link is logged to the console so
 // local dev stays self-service.
 //
-// Anonymous visitors still get a stable guest id (the `firly_guest` cookie) so
-// their work persists before they sign up; on first sign-in we fold that guest
-// state into the account (see migrateGuestState / the /api/account/claim-guest
-// route in app.js).
+// Guest mode is local-storage only by design — the server never stores or
+// even identifies anonymous visitors individually, so there is nothing here
+// for one guest to leak to another. On first sign-in, the client uploads its
+// local cache and we fold it into the new account (see the
+// /api/account/claim-guest route in app.js).
 
-import { randomBytes, createHmac, timingSafeEqual } from 'crypto';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { fromNodeHeaders } from 'better-auth/node';
@@ -30,39 +30,6 @@ const RESEND_MAX_ATTEMPTS = 3; // lifetime cap on explicit resend requests
 // flagged so AppShell can show a one-time confirmation banner. Signup's own
 // automatic send sets this same value client-side (see AuthProvider.jsx).
 const VERIFY_CALLBACK_URL = '/app?verified=1';
-
-export const GUEST_COOKIE = 'firly_guest';
-const GUEST_TTL = 60 * 24 * 60 * 60 * 1000; // 60 days
-
-// The guest cookie carries the row id used for that visitor's app_state, so
-// it must be tamper-proof: sign every value we hand out and refuse anything
-// on the way in that isn't a value we signed ourselves. Without this, any
-// unauthenticated request could set an arbitrary id (including a real
-// account's id) and read/write/claim that owner's data.
-const GUEST_SECRET =
-  process.env.BETTER_AUTH_SECRET ||
-  (process.env.NODE_ENV === 'production' ? '' : 'dev-insecure-secret');
-
-function signGuestId(id) {
-  const sig = createHmac('sha256', GUEST_SECRET).update(id).digest('hex');
-  return `${id}.${sig}`;
-}
-
-// Returns the verified guest id, or null if the cookie is missing, malformed,
-// or doesn't carry a valid signature.
-function verifyGuestCookie(value) {
-  if (!value || !GUEST_SECRET) return null;
-  const dot = value.lastIndexOf('.');
-  if (dot === -1) return null;
-  const id = value.slice(0, dot);
-  const sig = value.slice(dot + 1);
-  if (!id.startsWith('guest_')) return null;
-  const expected = createHmac('sha256', GUEST_SECRET).update(id).digest('hex');
-  const a = Buffer.from(sig);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  return id;
-}
 
 // ── Email transport ──
 const resend = process.env.RESEND_API_KEY
@@ -240,9 +207,11 @@ export async function requestVerificationResend(email) {
   return { ok: true };
 }
 
-// Resolve the acting identity for an API request: the Better Auth session when
-// signed in, otherwise a guest id from (or freshly minted into) the guest
-// cookie. Returns { uid, guest, user, setCookie? }.
+// Resolve the acting identity for an API request: the Better Auth session
+// when signed in, otherwise just "guest" — there is no server-side guest
+// identity at all, since guest data lives only in the browser. Returns
+// { uid, guest, user }; uid is null for guests (nothing server-side is keyed
+// on it).
 export async function resolveUser(req) {
   const result = await auth.api.getSession({
     headers: fromNodeHeaders(req.headers),
@@ -250,23 +219,5 @@ export async function resolveUser(req) {
   if (result?.user) {
     return { uid: result.user.id, guest: false, user: result.user };
   }
-
-  const cookies = req.cookies || {};
-  const existing = verifyGuestCookie(cookies[GUEST_COOKIE]);
-  if (existing) return { uid: existing, guest: true, user: null };
-
-  const fresh = 'guest_' + randomBytes(12).toString('hex');
-  return {
-    uid: fresh,
-    guest: true,
-    user: null,
-    setCookie: { name: GUEST_COOKIE, value: signGuestId(fresh), maxAge: GUEST_TTL },
-  };
-}
-
-// Used by the claim-guest route, which needs the id behind the same cookie
-// resolveUser just validated (or would validate) — never trust the raw
-// cookie value directly.
-export function verifiedGuestId(req) {
-  return verifyGuestCookie((req.cookies || {})[GUEST_COOKIE]);
+  return { uid: null, guest: true, user: null };
 }

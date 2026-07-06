@@ -138,6 +138,6 @@ buttons are hidden (the server reports which providers are configured via
   deployment accumulated real data there, export it and import per-user via
   `POST /api/import` after those users sign up (the schema is unchanged — it's
   the same KV blob, now in `app_state.data`).
-- Guests still work: anonymous visitors get a `firly_guest` cookie + their own
-  `app_state` row, and that work is folded into their account on first sign-in
-  (`/api/account/claim-guest`).
+- Guests still work: anonymous visitors are local-storage only (no server-side
+  row), and that local data is uploaded and folded into their account on first
+  sign-in (`/api/account/claim-guest`).

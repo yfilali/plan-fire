@@ -78,8 +78,8 @@ export const verification = pgTable('verification', {
 
 // ── App tables ───────────────────────────────────────────────────────
 
-// Per-owner planner KV blob. owner_id is a Better Auth user id for signed-in
-// users, or a guest id (`guest_…`) for anonymous visitors.
+// Per-owner planner KV blob. owner_id is a Better Auth user id. Guests never
+// get a row here — guest mode is local-storage only in the client.
 export const appState = pgTable('app_state', {
   ownerId: text('owner_id').primaryKey(),
   data: jsonb('data').notNull().default({}),

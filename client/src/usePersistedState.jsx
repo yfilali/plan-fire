@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, createContext, useContext, useCallback } from 'react';
+import { useAuth } from './state/AuthProvider.jsx';
+import { readLocalCache, writeLocalCache, clearLocalCache, downloadJson } from './lib/localCache.js';
 
 const API = '/api/state';
 const SAVE_DELAY = 500; // ms debounce for server writes
@@ -8,11 +10,13 @@ const SAVE_DELAY = 500; // ms debounce for server writes
 const StoreContext = createContext(null);
 
 /**
- * Wrap your app in <StateProvider> to enable server-synced persistence.
- * On mount, loads all state from server (falls back to localStorage).
- * On any change, debounces a bulk save to the server.
+ * Wrap your app in <StateProvider> to enable persistence. Guests are
+ * local-storage only by design — their data never leaves the browser, so it
+ * can never be exposed to anyone but them. Signed-in users load from/save to
+ * the server (falling back to the local cache if it's unreachable).
  */
 export function StateProvider({ children }) {
+  const { guest, loading: authLoading } = useAuth();
   const [store, setStore] = useState({});
   const [loaded, setLoaded] = useState(false);
   const [serverOk, setServerOk] = useState(true);
@@ -20,39 +24,40 @@ export function StateProvider({ children }) {
   const timerRef = useRef(null);
   const storeRef = useRef(store);
   storeRef.current = store;
+  const guestRef = useRef(guest);
+  guestRef.current = guest;
 
-  // Load initial state from server
+  // Load initial state. Wait for auth to resolve first — we can't decide
+  // whether to touch the server until we know if this is a guest.
   useEffect(() => {
+    if (authLoading) return;
+
+    if (guest) {
+      setStore(readLocalCache());
+      setServerOk(true);
+      setLoaded(true);
+      return;
+    }
+
     fetch(API)
       .then(r => r.json())
       .then(data => {
         setStore(data);
         setServerOk(true);
-        // Also cache in localStorage as fallback
-        Object.entries(data).forEach(([k, v]) => {
-          try { localStorage.setItem(`rp_${k}`, JSON.stringify(v)); } catch {}
-        });
+        writeLocalCache(data); // also cache locally as an offline fallback
         setLoaded(true);
       })
       .catch(() => {
-        // Server down — load from localStorage
         console.warn('Server unavailable, using localStorage fallback');
         setServerOk(false);
-        const local = {};
-        for (let i = 0; i < localStorage.length; i++) {
-          const lsKey = localStorage.key(i);
-          if (lsKey?.startsWith('rp_')) {
-            const key = lsKey.slice(3);
-            try { local[key] = JSON.parse(localStorage.getItem(lsKey)); } catch {}
-          }
-        }
-        setStore(local);
+        setStore(readLocalCache());
         setLoaded(true);
       });
-  }, []);
+  }, [authLoading, guest]);
 
-  // Debounced save to server
+  // Debounced save to server — never runs for guests.
   const flushToServer = useCallback(() => {
+    if (guestRef.current) return;
     if (dirtyRef.current.size === 0) return;
     const current = storeRef.current;
     const patch = {};
@@ -70,15 +75,12 @@ export function StateProvider({ children }) {
   }, []);
 
   const setValue = useCallback((key, value) => {
-    setStore(prev => {
-      const next = { ...prev, [key]: value };
-      return next;
-    });
+    setStore(prev => ({ ...prev, [key]: value }));
 
-    // Always cache in localStorage
+    // Always cache locally — for guests this *is* the persistence, not just a cache.
     try { localStorage.setItem(`rp_${key}`, JSON.stringify(value)); } catch {}
 
-    // Mark dirty and schedule server save
+    if (guestRef.current) return;
     dirtyRef.current.add(key);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(flushToServer, SAVE_DELAY);
@@ -92,7 +94,7 @@ export function StateProvider({ children }) {
   }, [flushToServer]);
 
   return (
-    <StoreContext.Provider value={{ store, setValue, loaded, serverOk }}>
+    <StoreContext.Provider value={{ store, setValue, loaded, serverOk, guest }}>
       {children}
     </StoreContext.Provider>
   );
@@ -126,7 +128,11 @@ export function usePersistedState(key, defaultValue) {
  */
 export function useStoreStatus() {
   const ctx = useContext(StoreContext);
-  return { loaded: ctx?.loaded ?? false, serverOk: ctx?.serverOk ?? false };
+  return {
+    loaded: ctx?.loaded ?? false,
+    serverOk: ctx?.serverOk ?? false,
+    guest: ctx?.guest ?? true,
+  };
 }
 
 /**
@@ -144,9 +150,15 @@ export function useStore() {
 }
 
 /**
- * Export all data (triggers download from server).
+ * Export all data (triggers a download). Guests are local-only, so their
+ * export is always built from the browser cache; signed-in users export from
+ * the server, falling back to the local cache if it's unreachable.
  */
-export async function exportData() {
+export async function exportData(guest) {
+  if (guest) {
+    downloadJson(readLocalCache());
+    return;
+  }
   try {
     const res = await fetch('/api/export');
     const blob = await res.blob();
@@ -157,28 +169,20 @@ export async function exportData() {
     a.click();
     URL.revokeObjectURL(url);
   } catch {
-    // Fallback: export from localStorage
-    const data = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k?.startsWith('rp_')) {
-        try { data[k.slice(3)] = JSON.parse(localStorage.getItem(k)); } catch {}
-      }
-    }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `retirement-plan-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadJson(readLocalCache());
   }
 }
 
 /**
- * Import data from JSON file.
+ * Import data from JSON file. Guests write straight to localStorage; signed-in
+ * users import to the server (falling back to localStorage if it's unreachable).
  */
-export async function importData(data) {
+export async function importData(data, guest) {
+  if (guest) {
+    writeLocalCache(data);
+    window.location.reload();
+    return;
+  }
   try {
     await fetch('/api/import', {
       method: 'POST',
@@ -186,34 +190,18 @@ export async function importData(data) {
       body: JSON.stringify(data),
     });
   } catch {
-    // Fallback: write to localStorage
-    Object.entries(data).forEach(([k, v]) => {
-      try { localStorage.setItem(`rp_${k}`, JSON.stringify(v)); } catch {}
-    });
+    writeLocalCache(data);
   }
   window.location.reload();
 }
 
 /**
- * Drop the local `rp_*` cache only, leaving server-side state untouched.
- * Used on sign-out so the next identity on this device/browser (another
- * account, or a fresh guest) never sees the previous identity's cached data.
+ * Clear all persisted data. For guests that's just the local cache; for
+ * signed-in users the server copy is wiped too.
  */
-export function clearLocalCache() {
-  const keys = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k?.startsWith('rp_')) keys.push(k);
+export async function clearAllData(guest) {
+  if (!guest) {
+    try { await fetch(API, { method: 'DELETE' }); } catch {}
   }
-  keys.forEach(k => localStorage.removeItem(k));
-}
-
-/**
- * Clear all persisted data, server-side included.
- */
-export async function clearAllData() {
-  try {
-    await fetch(API, { method: 'DELETE' });
-  } catch {}
   clearLocalCache();
 }

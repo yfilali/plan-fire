@@ -6,7 +6,7 @@ import {
 	useCallback,
 } from "react";
 import { authClient } from "../lib/authClient.js";
-import { clearLocalCache } from "../usePersistedState.jsx";
+import { readLocalCache, clearLocalCache } from "../lib/localCache.js";
 
 // ─────────────────────────────────────────────────────────────────────────
 //  AuthProvider — the spine's identity layer (Better Auth).
@@ -56,13 +56,18 @@ export function AuthProvider({ children }) {
 		}
 	}, []);
 
-	// Fold any pre-signup guest work into the account. Idempotent server-side
-	// (no-op once the guest cookie is consumed). Returns whether a merge ran.
+	// Fold any pre-signup guest work into the account. Guest mode is
+	// local-storage only (the server never stores or sees it beforehand), so
+	// the local cache itself is what we upload here; the server only accepts
+	// it if the account doesn't already have data, so this is safe to call on
+	// every sign-in. Returns whether a merge ran.
 	const claimGuest = useCallback(async () => {
 		try {
-			const res = await fetch("/api/account/claim-guest", opts());
-			const data = await res.json();
-			return !!data.migrated;
+			const data = readLocalCache();
+			if (Object.keys(data).length === 0) return false;
+			const res = await fetch("/api/account/claim-guest", opts({ data }));
+			const body = await res.json();
+			return !!body.migrated;
 		} catch {
 			return false; // non-fatal — the account is still usable without the merge
 		}

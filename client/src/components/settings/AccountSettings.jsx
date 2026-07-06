@@ -24,7 +24,7 @@ export default function AccountSettings() {
 		try {
 			await fetch("/api/account/delete", { method: "POST", credentials: "include" });
 		} catch { /* ignore — clearAllData below still wipes what it can reach */ }
-		await clearAllData();
+		await clearAllData(false);
 		try { await signOut(); } catch { /* ignore */ }
 		window.location.reload();
 	};
