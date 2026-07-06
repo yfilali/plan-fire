@@ -121,9 +121,11 @@ export default function PrivacyPage() {
 
 				<h2 style={h2}>Where it's stored</h2>
 				<p style={p}>
-					Your plans are stored server-side against your account so you can
-					reach them from any device. If you use PlanFIRE as a guest, your
-					data lives only in your own browser until you create an account.
+					Your plans are stored server-side — against your account once you
+					sign in, or against a temporary anonymous identifier while you're
+					using PlanFIRE as a guest — plus a local copy in your browser for
+					speed and offline access. Guest data is carried over automatically
+					when you create an account.
 				</p>
 
 				<h2 style={h2}>Cookies &amp; sessions</h2>

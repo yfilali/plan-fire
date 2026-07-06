@@ -195,17 +195,25 @@ export async function importData(data) {
 }
 
 /**
- * Clear all persisted data.
+ * Drop the local `rp_*` cache only, leaving server-side state untouched.
+ * Used on sign-out so the next identity on this device/browser (another
+ * account, or a fresh guest) never sees the previous identity's cached data.
  */
-export async function clearAllData() {
-  try {
-    await fetch(API, { method: 'DELETE' });
-  } catch {}
-  // Also clear localStorage
+export function clearLocalCache() {
   const keys = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (k?.startsWith('rp_')) keys.push(k);
   }
   keys.forEach(k => localStorage.removeItem(k));
+}
+
+/**
+ * Clear all persisted data, server-side included.
+ */
+export async function clearAllData() {
+  try {
+    await fetch(API, { method: 'DELETE' });
+  } catch {}
+  clearLocalCache();
 }

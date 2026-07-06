@@ -6,6 +6,7 @@ import {
 	useCallback,
 } from "react";
 import { authClient } from "../lib/authClient.js";
+import { clearLocalCache } from "../usePersistedState.jsx";
 
 // ─────────────────────────────────────────────────────────────────────────
 //  AuthProvider — the spine's identity layer (Better Auth).
@@ -153,10 +154,15 @@ export function AuthProvider({ children }) {
 		try {
 			await authClient.signOut();
 		} catch {
-			// ignore — refresh() will reflect the real state
+			// ignore — the reload below reflects the real state either way
 		}
-		await refresh();
-	}, [refresh]);
+		// Drop the cached rp_* keys and force a full remount (like the
+		// guest-claim merge below) so neither the in-memory store nor
+		// localStorage can show this identity's data to whoever uses the
+		// browser next.
+		clearLocalCache();
+		window.location.reload();
+	}, []);
 
 	const value = {
 		loading,

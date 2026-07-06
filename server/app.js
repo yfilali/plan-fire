@@ -22,10 +22,14 @@ import {
   resolveUser,
   enabledProviders,
   requestVerificationResend,
+  verifiedGuestId,
   GUEST_COOKIE,
 } from './auth.js';
 import { chat } from './ai.js';
 import { cleanupUnverifiedAccounts } from './cleanup.js';
+import { eq } from 'drizzle-orm';
+import { db } from './db/index.js';
+import { user as userTable } from './db/schema.js';
 
 function setCookie(res, name, value, maxAge) {
   const parts = [
@@ -150,13 +154,23 @@ export function createApp() {
   // on first sign-in. No-op for guests or when the account already has data.
   app.post('/api/account/claim-guest', async (req, res) => {
     if (req.guest) return res.json({ ok: true, migrated: false });
-    const guestId = req.cookies[GUEST_COOKIE];
+    const guestId = verifiedGuestId(req);
     let migrated = false;
     if (guestId) {
       migrated = await migrateGuestState(guestId, req.uid);
       clearCookie(res, GUEST_COOKIE);
     }
     res.json({ ok: true, migrated });
+  });
+
+  // POST /api/account/delete — permanently remove the signed-in account (and
+  // its state). Session/account rows cascade off the user row.
+  app.post('/api/account/delete', async (req, res) => {
+    if (req.guest) return res.status(401).json({ ok: false, error: 'not signed in' });
+    await resetUserState(req.uid);
+    await db.delete(userTable).where(eq(userTable.id, req.uid));
+    clearCookie(res, GUEST_COOKIE);
+    res.json({ ok: true });
   });
 
   // ── Namespaced state (per resolved uid) ──
