@@ -1,8 +1,9 @@
 // ── Postgres-backed store (Neon via Drizzle) ────────────────────────────
 //
 // Replaces the old single-JSON-file store. Per-owner planner state lives in
-// `app_state.data` (a jsonb blob), keyed by a Better Auth user id or a guest
-// id. All functions are async.
+// `app_state.data` (a jsonb blob), keyed by a Better Auth user id. Guests
+// never reach this table — guest mode is local-storage only. All functions
+// are async.
 //
 // Shallow-merge semantics of the previous in-memory store are preserved with
 // Postgres jsonb operators (`||` for merge, `-` for key delete).
@@ -87,16 +88,4 @@ export async function userHasState(ownerId) {
     .where(eq(appState.ownerId, ownerId));
   const data = rows[0]?.data;
   return !!data && Object.keys(data).length > 0;
-}
-
-// Move a guest's state into a user's row when the user has none yet. Used on
-// first sign-in so anonymous work is not lost. Returns true if a merge ran.
-export async function migrateGuestState(guestId, userId) {
-  if (!guestId || !userId || guestId === userId) return false;
-  if (await userHasState(userId)) return false;
-  if (!(await userHasState(guestId))) return false;
-  const guest = await getUserState(guestId);
-  await replaceUserState(userId, guest);
-  await resetUserState(guestId);
-  return true;
 }

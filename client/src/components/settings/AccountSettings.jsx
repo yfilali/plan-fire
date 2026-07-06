@@ -21,7 +21,10 @@ export default function AccountSettings() {
 
 	const handleDelete = async () => {
 		if (!confirm("Delete your account and ALL plan data? This cannot be undone. A backup is recommended first.")) return;
-		await clearAllData();
+		try {
+			await fetch("/api/account/delete", { method: "POST", credentials: "include" });
+		} catch { /* ignore — clearAllData below still wipes what it can reach */ }
+		await clearAllData(false);
 		try { await signOut(); } catch { /* ignore */ }
 		window.location.reload();
 	};

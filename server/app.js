@@ -15,56 +15,22 @@ import {
   deleteUserKey,
   resetUserState,
   replaceUserState,
-  migrateGuestState,
+  userHasState,
 } from './store.js';
 import {
   auth,
   resolveUser,
   enabledProviders,
   requestVerificationResend,
-  GUEST_COOKIE,
 } from './auth.js';
 import { chat } from './ai.js';
 import { cleanupUnverifiedAccounts } from './cleanup.js';
-
-function setCookie(res, name, value, maxAge) {
-  const parts = [
-    `${name}=${encodeURIComponent(value)}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-  ];
-  if (process.env.NODE_ENV === 'production') parts.push('Secure');
-  if (maxAge != null) parts.push(`Max-Age=${Math.floor(maxAge / 1000)}`);
-  res.append('Set-Cookie', parts.join('; '));
-}
-
-function clearCookie(res, name) {
-  res.append(
-    'Set-Cookie',
-    `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
-  );
-}
+import { eq } from 'drizzle-orm';
+import { db } from './db/index.js';
+import { user as userTable } from './db/schema.js';
 
 export function createApp() {
   const app = express();
-
-  // ── Tiny cookie parser (no deps) ──
-  app.use((req, _res, next) => {
-    const header = req.headers.cookie;
-    const out = {};
-    if (header) {
-      for (const part of header.split(';')) {
-        const idx = part.indexOf('=');
-        if (idx === -1) continue;
-        const k = part.slice(0, idx).trim();
-        const v = part.slice(idx + 1).trim();
-        if (k) out[k] = decodeURIComponent(v);
-      }
-    }
-    req.cookies = out;
-    next();
-  });
 
   // ── Better Auth — owns /api/auth/*. Mounted BEFORE express.json so it can
   //    read the raw request body itself. ──
@@ -73,21 +39,13 @@ export function createApp() {
   // JSON body parsing for our own routes.
   app.use(express.json({ limit: '5mb' }));
 
-  // ── Resolve acting user (Better Auth session or persisted guest) ──
+  // ── Resolve acting user (Better Auth session, or guest) ──
   app.use(async (req, res, next) => {
     try {
       const resolved = await resolveUser(req);
       req.uid = resolved.uid;
       req.guest = resolved.guest;
       req.user = resolved.user;
-      if (resolved.setCookie) {
-        setCookie(
-          res,
-          resolved.setCookie.name,
-          resolved.setCookie.value,
-          resolved.setCookie.maxAge,
-        );
-      }
       next();
     } catch (err) {
       next(err);
@@ -146,41 +104,61 @@ export function createApp() {
     res.json(await requestVerificationResend(email));
   });
 
-  // POST /api/account/claim-guest — fold pre-signup guest work into the account
-  // on first sign-in. No-op for guests or when the account already has data.
+  // POST /api/account/claim-guest — fold pre-signup guest work into the
+  // account on first sign-in. Guest mode is local-storage only, so the
+  // client uploads its local cache as `data`; we only accept it if the
+  // account doesn't already have state, so this is safe to call idempotently.
   app.post('/api/account/claim-guest', async (req, res) => {
     if (req.guest) return res.json({ ok: true, migrated: false });
-    const guestId = req.cookies[GUEST_COOKIE];
+    const data = req.body?.data;
     let migrated = false;
-    if (guestId) {
-      migrated = await migrateGuestState(guestId, req.uid);
-      clearCookie(res, GUEST_COOKIE);
+    if (data && typeof data === 'object' && Object.keys(data).length && !(await userHasState(req.uid))) {
+      await replaceUserState(req.uid, data);
+      migrated = true;
     }
     res.json({ ok: true, migrated });
   });
 
+  // POST /api/account/delete — permanently remove the signed-in account (and
+  // its state). Session/account rows cascade off the user row.
+  app.post('/api/account/delete', async (req, res) => {
+    if (req.guest) return res.status(401).json({ ok: false, error: 'not signed in' });
+    await resetUserState(req.uid);
+    await db.delete(userTable).where(eq(userTable.id, req.uid));
+    res.json({ ok: true });
+  });
+
   // ── Namespaced state (per resolved uid) ──
+  //
+  // Guests have no server-side state at all (guest mode is local-storage
+  // only in the client) — these routes no-op for them rather than persisting
+  // or returning anything, so there is nothing here for one guest to ever
+  // read, overwrite, or collide with another's.
 
   app.get('/api/state', async (req, res) => {
-    res.json(await getUserState(req.uid));
+    res.json(req.guest ? {} : await getUserState(req.uid));
   });
 
   app.put('/api/state', async (req, res) => {
+    if (req.guest) return res.json({ ok: true, keys: 0 });
     const n = await putUserState(req.uid, req.body || {});
     res.json({ ok: true, keys: n });
   });
 
   app.put('/api/state/:key', async (req, res) => {
+    if (req.guest) return res.json({ ok: true });
     await setUserKey(req.uid, req.params.key, req.body.value);
     res.json({ ok: true });
   });
 
   app.delete('/api/state/:key', async (req, res) => {
+    if (req.guest) return res.json({ ok: true });
     await deleteUserKey(req.uid, req.params.key);
     res.json({ ok: true });
   });
 
   app.delete('/api/state', async (req, res) => {
+    if (req.guest) return res.json({ ok: true });
     await resetUserState(req.uid);
     res.json({ ok: true });
   });
@@ -191,10 +169,11 @@ export function createApp() {
       'Content-Disposition',
       `attachment; filename="retirement-plan-${dateStr}.json"`,
     );
-    res.json(await getUserState(req.uid));
+    res.json(req.guest ? {} : await getUserState(req.uid));
   });
 
   app.post('/api/import', async (req, res) => {
+    if (req.guest) return res.json({ ok: true, keys: 0 });
     await replaceUserState(req.uid, req.body || {});
     res.json({ ok: true, keys: Object.keys(req.body || {}).length });
   });

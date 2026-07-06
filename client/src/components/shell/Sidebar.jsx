@@ -53,7 +53,7 @@ export const NAV = [
 
 export default function Sidebar({ view, setView, open, onClose }) {
 	const S = useTheme();
-	const { serverOk } = useStoreStatus();
+	const { serverOk, guest } = useStoreStatus();
 	const { effWR, runsOut, planIsEmpty } = usePlanner();
 	// Canonical verdict — keyed on the deterministic projection (runsOut) plus
 	// WR, so the sidebar agrees with the topbar badge and the dashboard banner.
@@ -160,11 +160,11 @@ export default function Sidebar({ view, setView, open, onClose }) {
 								width: 7,
 								height: 7,
 								borderRadius: 4,
-								background: serverOk ? S.accent : S.warning,
-								boxShadow: `0 0 6px ${serverOk ? S.accent : S.warning}`,
+								background: !guest && !serverOk ? S.warning : S.accent,
+								boxShadow: `0 0 6px ${!guest && !serverOk ? S.warning : S.accent}`,
 							}}
 						/>
-						{serverOk ? "Synced to server" : "Offline — saved locally"}
+						{guest ? "Saved on this device" : serverOk ? "Synced to server" : "Offline — saved locally"}
 					</div>
 
 					{/* Phones only — desktop/tablet keep this in the topbar. */}
