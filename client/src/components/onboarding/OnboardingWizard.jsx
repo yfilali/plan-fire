@@ -259,24 +259,26 @@ export default function OnboardingWizard() {
 			case "welcome":
 				return (
 					<>
-						<div
-							style={{
-								width: 52,
-								height: 52,
-								borderRadius: 16,
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								background: S.accentGradient,
-								color: "#fff",
-								marginBottom: 18,
-							}}
-						>
-							<Icon name="sparkle" size={24} />
+						<div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+							<div
+								style={{
+									width: 52,
+									height: 52,
+									borderRadius: 16,
+									flexShrink: 0,
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "center",
+									background: S.accentGradient,
+									color: "#fff",
+								}}
+							>
+								<Icon name="sparkle" size={24} />
+							</div>
+							<h1 style={{ fontSize: 22, fontWeight: 750, color: S.text }}>
+								Let's set up your plan
+							</h1>
 						</div>
-						<h1 style={{ fontSize: 22, fontWeight: 750, color: S.text, marginBottom: 8 }}>
-							Let's set up your plan
-						</h1>
 						<p style={{ fontSize: 13.5, color: S.textMuted, lineHeight: 1.55, marginBottom: 6 }}>
 							A few quick questions — under a minute — and you'll have a real
 							projection. Everything here can be refined later.
