@@ -4,6 +4,7 @@ import { fmt } from "../../engine.js";
 import { btnBase } from "../../lib/styles.js";
 import { Modal, Field, TextInput, Segmented, Button } from "../ui.jsx";
 import { planColor } from "../../lib/planMeta.js";
+import SliderRow from "../SliderRow.jsx";
 
 const ACTIONS = [
 	{ value: "keep", label: "Keep" },
@@ -58,6 +59,86 @@ export default function PlanEditor({ planId, onClose }) {
 				</div>
 
 				<div>
+					<div style={{ fontSize: 12.5, fontWeight: 600, color: S.text, marginBottom: 4 }}>Retirement &amp; Social Security</div>
+					<div style={{ fontSize: 11.5, color: S.textMuted, marginBottom: 10 }}>
+						When this plan retires and what Social Security looks like — the two biggest levers in the projection.
+					</div>
+					<SliderRow
+						label="Retirement age"
+						value={plan.retireAge}
+						onChange={(v) => set({ retireAge: v })}
+						min={30}
+						max={95}
+						step={1}
+						editMax={110}
+						format={(v) => (v === plan.age ? `${v} (now)` : v < plan.age ? `${v} (retired)` : `${v}`)}
+					/>
+					<div className="col-2">
+						<SliderRow
+							label="Social Security start age"
+							value={plan.ssAge}
+							onChange={(v) => set({ ssAge: v })}
+							min={62}
+							max={70}
+							step={1}
+							format={(v) => `${v}`}
+						/>
+						<SliderRow
+							label="Social Security annual"
+							value={plan.ssAnnual}
+							onChange={(v) => set({ ssAnnual: v })}
+							min={0}
+							max={100000}
+							step={1000}
+							format={fmt}
+						/>
+					</div>
+				</div>
+
+				<div>
+					<div style={{ fontSize: 12.5, fontWeight: 600, color: S.text, marginBottom: 4 }}>Downturn spending controls</div>
+					<div style={{ fontSize: 11.5, color: S.textMuted, marginBottom: 10 }}>
+						How deep this plan cuts discretionary and luxury spending when markets crash.
+					</div>
+					<div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+						<span style={{ fontSize: 12, color: S.textMuted, fontWeight: 550 }}>Apply cuts</span>
+						<Segmented
+							size="sm"
+							value={plan.cutMode}
+							onChange={(v) => set({ cutMode: v })}
+							options={[
+								{ value: "down_recovery", label: "Downturn + recovery" },
+								{ value: "all", label: "All years" },
+							]}
+						/>
+					</div>
+					<div className="col-2">
+						<SliderRow
+							label="Discretionary cut"
+							value={plan.discretionaryCut}
+							onChange={(v) => set({ discretionaryCut: v })}
+							min={0}
+							max={1}
+							step={0.05}
+							editScale={100}
+							editMax={1}
+							format={(v) => `${(v * 100).toFixed(0)}%`}
+						/>
+						<SliderRow
+							label="Luxury cut"
+							value={plan.luxuryCut}
+							onChange={(v) => set({ luxuryCut: v })}
+							min={0}
+							max={1}
+							step={0.05}
+							editScale={100}
+							editMax={1}
+							format={(v) => `${(v * 100).toFixed(0)}%`}
+						/>
+					</div>
+				</div>
+
+				<div>
 					<div style={{ fontSize: 12.5, fontWeight: 600, color: S.text, marginBottom: 4 }}>What happens to each property</div>
 					<div style={{ fontSize: 11.5, color: S.textMuted, marginBottom: 10 }}>
 						Sell adds net proceeds to the portfolio; rent adds its annual cash flow.
@@ -101,7 +182,7 @@ export default function PlanEditor({ planId, onClose }) {
 					</span>
 				</div>
 				<div style={{ fontSize: 12, color: S.textDim }}>
-					Profile inputs for this plan are edited under <strong style={{ color: S.textMuted }}>Settings → Profile</strong>, and market assumptions under <strong style={{ color: S.textMuted }}>Markets</strong>, while it is the active plan.
+					Current age is edited under <strong style={{ color: S.textMuted }}>Settings → Profile</strong>, and return/inflation/market regime under <strong style={{ color: S.textMuted }}>Markets</strong> — both while this plan is active.
 				</div>
 			</div>
 		</Modal>

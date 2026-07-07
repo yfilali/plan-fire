@@ -49,6 +49,33 @@ export default function PlanComparisonMatrix({ outcomes, mcByPlan, activePlanId,
 	// whether higher or lower wins. metric===null means the row isn't ranked.
 	const rows = [
 		{
+			key: "retire",
+			label: "Retirement age",
+			cell: (o) => <span style={{ fontFamily: S.mono }}>{o.retireAge}</span>,
+			// An assumption this plan makes, not an outcome — never ranked.
+			metric: null,
+		},
+		{
+			key: "ss",
+			label: "Social Security",
+			cell: (o) => (
+				<span style={{ fontFamily: S.mono }}>
+					{fmt(o.ssAnnual || 0)}/yr @ {o.ssAge}
+				</span>
+			),
+			metric: null,
+		},
+		{
+			key: "cuts",
+			label: "Downturn cuts",
+			cell: (o) => (
+				<span style={{ fontFamily: S.mono }}>
+					{Math.round((o.discretionaryCut || 0) * 100)}% / {Math.round((o.luxuryCut || 0) * 100)}%
+				</span>
+			),
+			metric: null,
+		},
+		{
 			key: "health",
 			label: "Health",
 			cell: (o) => {
