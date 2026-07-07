@@ -25,6 +25,11 @@ export const NAV = [
 		icon: icon(<><path d="M12 2a7 7 0 0 1 7 7c0 3-2 5-2 7H7c0-2-2-4-2-7a7 7 0 0 1 7-7zM9 21h6M10 18v3M14 18v3" /></>),
 	},
 	{
+		id: "income",
+		label: "Income",
+		icon: icon(<><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></>),
+	},
+	{
 		id: "expenses",
 		label: "Expenses",
 		icon: icon(<><path d="M3 6h18M3 12h18M3 18h12" /></>),

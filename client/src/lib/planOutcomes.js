@@ -76,6 +76,7 @@ function buildProjectionInputs(plan, ctx, econ) {
 		ssAnnual: plan.ssAnnual,
 		inflation: plan.inflation,
 		expenses: ctx.expenses,
+		incomes: ctx.incomes || [],
 		portfolio: startPortInput,
 		planId: plan.id,
 		baselinePlanId: ctx.baselinePlanId,

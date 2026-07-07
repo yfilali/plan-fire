@@ -16,6 +16,7 @@ export default function PlanView() {
 		plans,
 		properties,
 		expenses,
+		incomes,
 		propertyAssets,
 		liquidValueForPlan,
 		baselinePlan,
@@ -38,12 +39,13 @@ export default function PlanView() {
 	const ctx = useMemo(
 		() => ({
 			expenses,
+			incomes,
 			propertyAssets,
 			liquidValueForPlan,
 			baselinePlanId: baselinePlan.id,
 			endAge,
 		}),
-		[expenses, propertyAssets, liquidValueForPlan, baselinePlan, endAge],
+		[expenses, incomes, propertyAssets, liquidValueForPlan, baselinePlan, endAge],
 	);
 
 	const outcomes = useMemo(

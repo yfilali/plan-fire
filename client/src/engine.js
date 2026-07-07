@@ -94,6 +94,74 @@ export function monthlySpendAtAge(
 		}, 0);
 }
 
+// Generate a vesting schedule — an array of { age, amount } tranches — for
+// an equity grant. "equal" splits the grant evenly across each vest year;
+// "backloaded" mirrors the common 5/15/40/40 four-year tech-company pattern
+// (new-hire cliff + refreshers), falling back to equal for other durations
+// since that specific ramp doesn't generalize cleanly.
+export function buildVestingSchedule({ grantValue, startAge, years, pattern = "equal" }) {
+	const n = Math.max(1, Math.round(years));
+	const fractions =
+		pattern === "backloaded" && n === 4
+			? [0.05, 0.15, 0.4, 0.4]
+			: Array.from({ length: n }, () => 1 / n);
+	return fractions.map((f, i) => ({
+		age: startAge + i,
+		amount: Math.round(grantValue * f),
+	}));
+}
+
+/**
+ * Calculate active monthly recurring pre-retirement income (salary, bonus,
+ * RSU vesting, ...) for a given age + plan, with the same age-range/plan
+ * tagging and per-item growth-rate accumulation as monthlySpendAtAge.
+ * Growth defaults to the global inflation rate when an item doesn't set its
+ * own (mirrors expenses' inflOverride: null = follow inflation, 0 = flat).
+ *
+ * An item with a `schedule` (built by buildVestingSchedule, or hand-edited)
+ * ignores amount/ageMin/ageMax/growth entirely — it pays out exactly its
+ * tranche amount in the tranche's age-year, nothing before or after. This
+ * models an equity grant, where each vest is a fixed dollar amount already
+ * known at grant time rather than a recurring, inflating paycheck.
+ */
+export function monthlyIncomeAtAge(
+	incomes,
+	age,
+	planId,
+	startAge = null,
+	globalInflation = null,
+) {
+	return incomes
+		.filter((inc) => {
+			const planMatch =
+				!inc.plans ||
+				inc.plans.includes("all") ||
+				inc.plans.includes(planId);
+			if (!planMatch) return false;
+			if (Array.isArray(inc.schedule)) return inc.schedule.some((t) => t.age === age);
+			const ageMatch =
+				(inc.ageMin == null || age >= inc.ageMin) &&
+				(inc.ageMax == null || age <= inc.ageMax);
+			return ageMatch;
+		})
+		.reduce((sum, inc) => {
+			if (Array.isArray(inc.schedule)) {
+				const tranche = inc.schedule.find((t) => t.age === age);
+				return sum + (tranche ? tranche.amount / 12 : 0);
+			}
+			let amount;
+			if (startAge !== null && globalInflation !== null) {
+				const yearsPassed = Math.max(0, age - startAge);
+				const rate = inc.growth != null ? inc.growth : globalInflation;
+				amount = inc.amount * (1 + rate) ** yearsPassed;
+			} else {
+				amount = inc.amount;
+			}
+			sum += amount;
+			return sum;
+		}, 0);
+}
+
 /**
  * Full projection with per-expense inflation tracking and nominal returns.
  * Portfolio grows at nominal return. Each expense inflates at its own rate
@@ -112,7 +180,7 @@ export function project({
 	ssAnnual,
 	rentalNet = 0,
 	transition = null,
-	workIncome = 0,
+	incomes = [],
 	discretionaryCut = 0,
 	luxuryCut = 0,
 	cutMode = "down_recovery",
@@ -138,6 +206,13 @@ export function project({
 	const inflAccum = {};
 	expenses.forEach((_, i) => {
 		inflAccum[i] = 1;
+	});
+
+	// Per-income cumulative growth accumulators (year 0 = base), same pattern
+	// as inflAccum above but keyed to each item's own growth rate.
+	const incomeAccum = {};
+	incomes.forEach((_, i) => {
+		incomeAccum[i] = 1;
 	});
 
 	// Social Security COLA accumulator, in lockstep with expenses (year 0 = base).
@@ -205,15 +280,46 @@ export function project({
 		const isRetired = a >= retireAge;
 		const ssIncome = a >= ssAge ? ssAnnual * ssInflAccum : 0;
 
-		// Accumulate inflation for next year (expenses + SS COLA, in lockstep)
+		// Recurring pre-retirement income (salary, bonus, RSU vesting, ...),
+		// tagged to plans/age ranges like expenses. Hard-stops at retirement
+		// regardless of each item's own ageMax.
+		let monthlyIncome = 0;
+		if (!isRetired) {
+			incomes.forEach((inc, i) => {
+				const planMatch =
+					!inc.plans ||
+					inc.plans.includes("all") ||
+					inc.plans.includes(activePlanId);
+				if (!planMatch) return;
+				// Vesting-schedule items (RSUs, ...) pay only their tranche amount
+				// in the tranche's own age-year — no recurring amount, no growth.
+				if (Array.isArray(inc.schedule)) {
+					const tranche = inc.schedule.find((t) => t.age === a);
+					if (tranche) monthlyIncome += tranche.amount / 12;
+					return;
+				}
+				const ageMatch =
+					(inc.ageMin == null || a >= inc.ageMin) &&
+					(inc.ageMax == null || a <= inc.ageMax);
+				if (ageMatch) monthlyIncome += inc.amount * incomeAccum[i];
+			});
+		}
+		const workIncome = monthlyIncome * 12;
+
+		// Accumulate inflation/growth for next year (expenses + SS COLA + income,
+		// in lockstep)
 		expenses.forEach((e, i) => {
 			const rate = e.inflOverride != null ? e.inflOverride : inflation;
 			inflAccum[i] *= 1 + rate;
 		});
+		incomes.forEach((inc, i) => {
+			const rate = inc.growth != null ? inc.growth : inflation;
+			incomeAccum[i] *= 1 + rate;
+		});
 		ssInflAccum *= 1 + inflation;
 		// Rental income applies once you're living the active plan (post-move).
 		const rental = activePlanId === planId ? rentalNet : 0;
-		const income = (isRetired ? 0 : workIncome) + ssIncome + rental;
+		const income = workIncome + ssIncome + rental;
 
 		// Net withdrawal
 		if (isRetired) {
@@ -311,6 +417,15 @@ export const DEFAULT_CATEGORIES = [
 	{ id: "transport", label: "Transportation", icon: "🚗", color: "#f59e0b" },
 	{ id: "travel", label: "Travel", icon: "✈️", color: "#14b8a6" },
 	{ id: "utils", label: "Utilities", icon: "⚡", color: "#f97316" },
+];
+
+// Recurring pre-retirement income types — fixed set (unlike expense
+// categories) since these map to well-known compensation components.
+export const INCOME_TYPES = [
+	{ id: "salary", label: "Salary", icon: "💼" },
+	{ id: "bonus", label: "Bonus", icon: "🎁" },
+	{ id: "rsu", label: "RSU / Equity", icon: "📈" },
+	{ id: "other", label: "Other income", icon: "💰" },
 ];
 
 export const DEFAULT_EXPENSES = [

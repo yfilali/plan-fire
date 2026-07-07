@@ -28,7 +28,15 @@ const EXPENSE_IDS = {
 // without asking a 4th question.
 const post65Estimate = (pre65Amount) => Math.round((pre65Amount * 0.35) / 50) * 50;
 
-const STEPS = ["welcome", "age", "savings", "expenses", "income", "review"];
+const STEPS = ["welcome", "age", "savings", "expenses", "work", "income", "review"];
+
+// Fixed ids for the wizard's own pre-retirement income lines — same rationale
+// as EXPENSE_IDS: lets "Restart" find-and-update exactly these entries.
+const INCOME_IDS = {
+	salary: "onboarding_salary",
+	bonus: "onboarding_bonus",
+	rsu: "onboarding_rsu",
+};
 
 function StepDots({ index }) {
 	const S = useTheme();
@@ -162,6 +170,8 @@ export default function OnboardingWizard() {
 		updateAsset,
 		expenses,
 		setExpenses,
+		incomes,
+		setIncomes,
 		categories,
 		runsOut,
 		endAge,
@@ -246,6 +256,47 @@ export default function OnboardingWizard() {
 	const chooseLater = () => {
 		setExpenseMode("later");
 		applyExpensePatch([], Object.values(EXPENSE_IDS));
+	};
+
+	// Pre-retirement income (salary, bonus, RSU vesting): three optional
+	// monthly-average fields, each independently upserted/removed by its fixed
+	// id — same one-setIncomes-call-per-invocation rule as expenses above.
+	const findOnboardingIncome = (id, fallback) => incomes.find((i) => i.id === id)?.amount ?? fallback;
+	const [salary, setSalary] = useState(() => findOnboardingIncome(INCOME_IDS.salary, 0));
+	const [bonus, setBonus] = useState(() => findOnboardingIncome(INCOME_IDS.bonus, 0));
+	const [rsu, setRsu] = useState(() => findOnboardingIncome(INCOME_IDS.rsu, 0));
+
+	const applyIncomePatch = (upserts = [], removeIds = []) => {
+		setIncomes((prev) => {
+			const base = (prev || []).filter(
+				(i) => !removeIds.includes(i.id) && !upserts.some((u) => u.id === i.id),
+			);
+			return [...base, ...upserts];
+		});
+	};
+	const applySalary = (amount) => {
+		setSalary(amount);
+		if (amount > 0) {
+			applyIncomePatch([{ id: INCOME_IDS.salary, type: "salary", name: "Salary", amount, plans: ["all"] }]);
+		} else {
+			applyIncomePatch([], [INCOME_IDS.salary]);
+		}
+	};
+	const applyBonus = (amount) => {
+		setBonus(amount);
+		if (amount > 0) {
+			applyIncomePatch([{ id: INCOME_IDS.bonus, type: "bonus", name: "Bonus", amount, plans: ["all"] }]);
+		} else {
+			applyIncomePatch([], [INCOME_IDS.bonus]);
+		}
+	};
+	const applyRsu = (amount) => {
+		setRsu(amount);
+		if (amount > 0) {
+			applyIncomePatch([{ id: INCOME_IDS.rsu, type: "rsu", name: "RSU vesting (est.)", amount, plans: ["all"] }]);
+		} else {
+			applyIncomePatch([], [INCOME_IDS.rsu]);
+		}
 	};
 
 	const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
@@ -430,6 +481,55 @@ export default function OnboardingWizard() {
 						)}
 					</>
 				);
+			case "work":
+				return (
+					<>
+						<h2 style={{ fontSize: 17, fontWeight: 700, color: S.text, marginBottom: 4 }}>
+							Income while you're still working
+						</h2>
+						<p style={{ fontSize: 12.5, color: S.textMuted, marginBottom: 18 }}>
+							Salary, bonus, and RSU vesting compound into your savings for every
+							year you keep working — leave any of these at $0 if they don't apply,
+							or if you're already retired.
+						</p>
+						<div style={{ display: "grid", gap: 16 }}>
+							<SliderRow
+								label="Salary (take-home, monthly)"
+								value={salary}
+								onChange={applySalary}
+								min={0}
+								max={30000}
+								step={250}
+								format={fmt}
+								editMax={300000}
+							/>
+							<SliderRow
+								label="Bonus (spread monthly)"
+								value={bonus}
+								onChange={applyBonus}
+								min={0}
+								max={10000}
+								step={100}
+								format={fmt}
+								editMax={200000}
+							/>
+							<SliderRow
+								label="RSU vesting (spread monthly)"
+								value={rsu}
+								onChange={applyRsu}
+								min={0}
+								max={10000}
+								step={100}
+								format={fmt}
+								editMax={200000}
+							/>
+						</div>
+						<div style={{ fontSize: 11, color: S.textDim, marginTop: 10 }}>
+							Has a multi-year vesting schedule instead of a flat average? Add it
+							later under <b style={{ color: S.textMuted }}>Income</b>.
+						</div>
+					</>
+				);
 			case "income":
 				return (
 					<>
@@ -484,6 +584,9 @@ export default function OnboardingWizard() {
 								</>
 							) : (
 								<ReviewRow label="Monthly spending" value="Add later in Expenses" />
+							)}
+							{salary + bonus + rsu > 0 && (
+								<ReviewRow label="Work income" value={`${fmt(salary + bonus + rsu)}/mo until ${retireAge}`} />
 							)}
 							<ReviewRow label="Social Security" value={`${fmt(ssAnnual)}/yr at ${ssAge}`} />
 						</div>

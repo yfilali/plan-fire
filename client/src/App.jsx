@@ -6,6 +6,7 @@ import { useAuth } from "./state/AuthProvider.jsx";
 import Sidebar from "./components/shell/Sidebar.jsx";
 import TopBar from "./components/shell/TopBar.jsx";
 import DashboardView from "./views/DashboardView.jsx";
+import IncomeView from "./views/IncomeView.jsx";
 import ExpensesView from "./views/ExpensesView.jsx";
 import AssetsView from "./views/AssetsView.jsx";
 import MarketView from "./views/MarketView.jsx";
@@ -17,6 +18,7 @@ import OnboardingWizard from "./components/onboarding/OnboardingWizard.jsx";
 const VIEWS = {
 	dashboard: DashboardView,
 	copilot: CopilotView,
+	income: IncomeView,
 	expenses: ExpensesView,
 	assets: AssetsView,
 	markets: MarketView,
