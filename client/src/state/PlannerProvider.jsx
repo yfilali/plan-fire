@@ -11,6 +11,7 @@ import {
 	project,
 	buildReturns,
 	monthlySpendAtAge,
+	monthlyIncomeAtAge,
 	returnForYear,
 	deflate,
 	uid,
@@ -473,6 +474,10 @@ export function PlannerProvider({ children }) {
 	const [plans, setPlans] = usePersistedState("plans", null);
 	const [activePlanId, setActivePlanId] = usePersistedState("activePlanId", null);
 	const [expenses, setExpenses] = usePersistedState("expenses", null);
+	// Recurring pre-retirement income (salary, bonus, RSU vesting, ...) — an
+	// additive pool alongside expenses. Falls back to [] for every existing
+	// account (see effectiveIncomes below), so no schema migration is needed.
+	const [incomes, setIncomes] = usePersistedState("incomes", null);
 	const [assets, setAssets] = usePersistedState("assets", null);
 	const [categories, setCategories] = usePersistedState("categories", null);
 	const [schemaVersion, setSchemaVersion] = usePersistedState("schemaVersion", null);
@@ -545,6 +550,7 @@ export function PlannerProvider({ children }) {
 	// Derive effective state (fall back to defaults while migration runs)
 	const effectivePlans = plans || buildSeedPlans();
 	const effectiveExpenses = expenses || SHARED_DEFAULTS.expenses;
+	const effectiveIncomes = incomes || [];
 	const effectiveAssets = assets || SHARED_DEFAULTS.assets;
 	// Categories are always presented alphabetically by label so the picker,
 	// edit dropdown, manager list, and grouped sections share one stable order
@@ -684,6 +690,15 @@ export function PlannerProvider({ children }) {
 					if (!a.plans?.includes(id)) return a;
 					const left = a.plans.filter((t) => t !== id);
 					return { ...a, plans: left.length ? left : ["all"] };
+				}),
+			);
+
+			// Strip id from income.plans (fall back to ["all"] if the list empties)
+			setIncomes((prev) =>
+				(prev || effectiveIncomes).map((inc) => {
+					if (!inc.plans?.includes(id)) return inc;
+					const left = inc.plans.filter((t) => t !== id);
+					return { ...inc, plans: left.length ? left : ["all"] };
 				}),
 			);
 
@@ -883,11 +898,29 @@ export function PlannerProvider({ children }) {
 		[effectiveExpenses, activePlan, data, spendReturns],
 	);
 
+	// Recurring pre-retirement income (salary, bonus, RSU, ...) at a given age.
+	// Zeroed once retired, matching project()'s hard stop at retireAge.
+	const incomeAt = useCallback(
+		(a, planId) =>
+			a >= data.retireAge
+				? 0
+				: monthlyIncomeAtAge(
+						effectiveIncomes,
+						a,
+						planId || activePlan?.id,
+						data.age,
+						data.inflation,
+					) * 12,
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[effectiveIncomes, activePlan, data],
+	);
+
 	// Before a future relocation, spending reflects the baseline plan's expenses.
 	const preMovePlanId = activeEcon.transitionYears > 0 && activeEcon.relocates ? baselinePlan.id : activePlan?.id;
 	const spendNow = spendAt(data.age, preMovePlanId);
 	const spend65 = spendAt(65, activePlan?.id);
 	const spend70 = spendAt(70, activePlan?.id);
+	const incomeNow = incomeAt(data.age, preMovePlanId);
 	const dispSpend65 = realDollars ? deflate(spend65, 65 - data.age, data.inflation) : spend65;
 	const dispSpend70 = realDollars ? deflate(spend70, 70 - data.age, data.inflation) : spend70;
 
@@ -908,6 +941,7 @@ export function PlannerProvider({ children }) {
 			ssAnnual: data.ssAnnual,
 			inflation: data.inflation,
 			expenses: effectiveExpenses,
+			incomes: effectiveIncomes,
 		};
 		const econ = planEconomics(activePlan, propertyAssets);
 		const moveAge = data.age + econ.transitionYears;
@@ -943,7 +977,7 @@ export function PlannerProvider({ children }) {
 			altLabel: isPeriod ? "Steady average" : data.marketMode === "lost_decade" ? "Historical Avg" : "Lost Decade",
 			startPort: atPost?.balance || startPort,
 		};
-	}, [data, backtest, portfolio, propertyAssets, effectiveExpenses, activePlan, baselinePlan]);
+	}, [data, backtest, portfolio, propertyAssets, effectiveExpenses, effectiveIncomes, activePlan, baselinePlan]);
 
 	const runsOut = projections.primary.find((d) => d.balance <= 0 && d.age >= data.retireAge);
 	const altRunsOut = projections.alt.find((d) => d.balance <= 0 && d.age >= data.retireAge);
@@ -1004,10 +1038,11 @@ export function PlannerProvider({ children }) {
 		setPlans(buildFreshPlans());
 		setActivePlanId(FRESH_PLAN_ID);
 		setExpenses([]);
+		setIncomes([]);
 		setAssets(buildFreshAssets());
 		setCategories(DEFAULT_CATEGORIES);
 		setOnboardingComplete(false);
-	}, [setPlans, setActivePlanId, setExpenses, setAssets, setCategories, setOnboardingComplete]);
+	}, [setPlans, setActivePlanId, setExpenses, setIncomes, setAssets, setCategories, setOnboardingComplete]);
 
 	const value = {
 		ready,
@@ -1033,6 +1068,9 @@ export function PlannerProvider({ children }) {
 		removeCategory,
 		expenses: effectiveExpenses,
 		setExpenses,
+		// Recurring pre-retirement income (unified pool, tagged like expenses)
+		incomes: effectiveIncomes,
+		setIncomes,
 		// Assets (unified pool, tagged like expenses)
 		assets: effectiveAssets,
 		propertyAssets,
@@ -1063,6 +1101,9 @@ export function PlannerProvider({ children }) {
 		spend70,
 		dispSpend65,
 		dispSpend70,
+		// Income
+		incomeAt,
+		incomeNow,
 		// Projections
 		projections,
 		runsOut,

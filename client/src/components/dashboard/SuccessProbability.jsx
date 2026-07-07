@@ -21,6 +21,7 @@ export default function SuccessProbability() {
 		retireAge,
 		portfolio,
 		expenses,
+		incomes,
 		inflation,
 		nomReturn,
 		ssAge,
@@ -40,6 +41,7 @@ export default function SuccessProbability() {
 			retireAge,
 			portfolio,
 			expenses,
+			incomes,
 			planId: activePlan?.id,
 			inflation,
 			ssAge,
@@ -63,7 +65,7 @@ export default function SuccessProbability() {
 		};
 		return runMonteCarlo({ trials: TRIALS, years, mean: nomReturn, vol: VOLATILITY, seed: 0x1234abcd, simulate });
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [age, endAge, retireAge, portfolio, expenses, inflation, nomReturn, ssAge, ssAnnual, activePlan, discretionaryCut, luxuryCut, cutMode]);
+	}, [age, endAge, retireAge, portfolio, expenses, incomes, inflation, nomReturn, ssAge, ssAnnual, activePlan, discretionaryCut, luxuryCut, cutMode]);
 
 	const pct = Math.round(mc.successRate * 100);
 	const tone = pct >= 85 ? S.accent : pct >= 70 ? S.warning : S.danger;

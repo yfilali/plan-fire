@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
 	project,
 	monthlySpendAtAge,
+	monthlyIncomeAtAge,
+	buildVestingSchedule,
 	buildReturns,
 	returnForYear,
 	deflate,
@@ -278,6 +280,126 @@ describe("project — inflation-aware with nominal returns", () => {
 		const at60Loss = lossResult.find((d) => d.age === 60);
 		const at60Zero = zeroResult.find((d) => d.age === 60);
 		expect(at60Loss.balance).toBeLessThan(at60Zero.balance);
+	});
+});
+
+describe("monthlyIncomeAtAge / buildVestingSchedule", () => {
+	it("applies plan tagging and age range like expenses", () => {
+		const incomes = [
+			{ id: "s", amount: 5000, plans: ["all"] },
+			{ id: "b", amount: 1000, plans: ["stay"], ageMax: 55 },
+		];
+		expect(monthlyIncomeAtAge(incomes, 50, "stay")).toBe(6000);
+		expect(monthlyIncomeAtAge(incomes, 50, "sell_move")).toBe(5000);
+		expect(monthlyIncomeAtAge(incomes, 56, "stay")).toBe(5000);
+	});
+
+	it("grows a recurring income item at its own rate, defaulting to inflation", () => {
+		const incomes = [{ id: "s", amount: 5000, plans: ["all"] }];
+		const later = monthlyIncomeAtAge(incomes, 59, "all", 49, 0.03);
+		expect(later).toBeCloseTo(5000 * 1.03 ** 10, 0);
+	});
+
+	it("builds an equal vesting schedule that sums to the grant value", () => {
+		const schedule = buildVestingSchedule({ grantValue: 100000, startAge: 40, years: 4, pattern: "equal" });
+		expect(schedule).toEqual([
+			{ age: 40, amount: 25000 },
+			{ age: 41, amount: 25000 },
+			{ age: 42, amount: 25000 },
+			{ age: 43, amount: 25000 },
+		]);
+	});
+
+	it("builds a back-loaded 4-year schedule (5/15/40/40)", () => {
+		const schedule = buildVestingSchedule({ grantValue: 200000, startAge: 30, years: 4, pattern: "backloaded" });
+		expect(schedule.map((t) => t.amount)).toEqual([10000, 30000, 80000, 80000]);
+	});
+
+	it("a schedule-based item only pays out in its tranche age-years", () => {
+		const incomes = [
+			{ id: "rsu", amount: 0, plans: ["all"], schedule: buildVestingSchedule({ grantValue: 48000, startAge: 40, years: 4 }) },
+		];
+		expect(monthlyIncomeAtAge(incomes, 39, "all")).toBe(0);
+		expect(monthlyIncomeAtAge(incomes, 40, "all")).toBe(1000); // 12000 / 12
+		expect(monthlyIncomeAtAge(incomes, 44, "all")).toBe(0);
+	});
+});
+
+describe("project — recurring pre-retirement income", () => {
+	const expenses = [{ id: "e", amount: 3000, plans: ["all"] }];
+
+	it("compounds a salary surplus into the portfolio before retirement", () => {
+		const withIncome = project({
+			startAge: 40,
+			endAge: 50,
+			retireAge: 65,
+			ssAge: 70,
+			ssAnnual: 0,
+			portfolio: 500000,
+			expenses,
+			planId: "stay",
+			nomReturn: 0.05,
+			inflation: 0.03,
+			incomes: [{ id: "s", type: "salary", amount: 8000, plans: ["all"] }],
+		});
+		const withoutIncome = project({
+			startAge: 40,
+			endAge: 50,
+			retireAge: 65,
+			ssAge: 70,
+			ssAnnual: 0,
+			portfolio: 500000,
+			expenses,
+			planId: "stay",
+			nomReturn: 0.05,
+			inflation: 0.03,
+			incomes: [],
+		});
+		const at50With = withIncome.find((d) => d.age === 50);
+		const at50Without = withoutIncome.find((d) => d.age === 50);
+		expect(at50With.balance).toBeGreaterThan(at50Without.balance);
+	});
+
+	it("stops all income at retirement, regardless of an item's own ageMax", () => {
+		const result = project({
+			startAge: 60,
+			endAge: 70,
+			retireAge: 65,
+			ssAge: 70,
+			ssAnnual: 0,
+			portfolio: 500000,
+			expenses,
+			planId: "stay",
+			nomReturn: 0.05,
+			inflation: 0.03,
+			incomes: [{ id: "s", type: "salary", amount: 8000, plans: ["all"], ageMax: 68 }],
+		});
+		const preRetire = result.find((d) => d.age === 64);
+		const postRetire = result.find((d) => d.age === 66);
+		expect(preRetire.income).toBeGreaterThan(0);
+		expect(postRetire.income).toBe(0);
+	});
+
+	it("pays out an RSU vesting schedule only in its tranche years", () => {
+		const result = project({
+			startAge: 40,
+			endAge: 45,
+			retireAge: 65,
+			ssAge: 70,
+			ssAnnual: 0,
+			portfolio: 100000,
+			expenses: [],
+			planId: "stay",
+			nomReturn: 0,
+			inflation: 0.03,
+			incomes: [
+				{ id: "rsu", type: "rsu", amount: 0, plans: ["all"], schedule: buildVestingSchedule({ grantValue: 48000, startAge: 41, years: 4 }) },
+			],
+		});
+		expect(result.find((d) => d.age === 40).income).toBe(0);
+		expect(result.find((d) => d.age === 41).income).toBe(12000);
+		expect(result.find((d) => d.age === 44).income).toBe(12000);
+		expect(result.find((d) => d.age === 45).income).toBe(0);
 	});
 });
 
