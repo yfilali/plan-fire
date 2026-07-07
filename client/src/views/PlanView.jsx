@@ -56,10 +56,8 @@ export default function PlanView() {
 	}, [plans, ctx]);
 
 	const summarize = (plan) => {
-		if (plan.baseline && Object.values(plan.actions || {}).every((a) => a === "keep") && !plan.newHomeCost) {
-			return "Your current situation — keep everything as-is.";
-		}
-		const parts = [];
+		const parts = [`Retire at ${plan.retireAge}`];
+		if (plan.ssAnnual) parts.push(`SS ${fmt(plan.ssAnnual)}/yr @ ${plan.ssAge}`);
 		let sold = 0;
 		let rent = 0;
 		for (const p of properties) {
@@ -71,7 +69,7 @@ export default function PlanView() {
 		if (rent) parts.push(`${rent >= 0 ? "+" : ""}${fmt(rent)}/yr rental`);
 		if (plan.newHomeCost) parts.push(`buy ${fmt(plan.newHomeCost)}`);
 		if (plan.transitionYears) parts.push(`in ${plan.transitionYears} yr`);
-		return parts.length ? parts.join(" · ") : "No property changes.";
+		return parts.join(" · ");
 	};
 
 	return (

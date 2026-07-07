@@ -145,6 +145,12 @@ export function computePlanOutcome(plan, ctx) {
 		age: plan.age,
 		inflation: plan.inflation,
 		endAge: ctx.endAge,
+		retireAge: plan.retireAge,
+		ssAge: plan.ssAge,
+		ssAnnual: plan.ssAnnual,
+		discretionaryCut: plan.discretionaryCut,
+		luxuryCut: plan.luxuryCut,
+		cutMode: plan.cutMode,
 		econ: {
 			soldNet: econ.soldNet,
 			rentalNet: econ.rentalNet,

@@ -136,7 +136,26 @@ function buildRows(S, a, b) {
 	// Annual spending at retirement — neutral (lifestyle vs. burn-rate trade-off).
 	const spendD = (a.annualSpendAtRetire || 0) - (b.annualSpendAtRetire || 0);
 
+	// Retirement age / SS — assumptions each plan makes, not outcomes, so the
+	// delta is informational only (neutral color, no "better" judgment).
+	const retD = (a.retireAge || 0) - (b.retireAge || 0);
+	const ssD = (a.ssAnnual || 0) - (b.ssAnnual || 0);
+
 	return [
+		{
+			label: "Retirement age",
+			aVal: `${a.retireAge}`,
+			bVal: `${b.retireAge}`,
+			deltaText: retD === 0 ? "same" : (retD > 0 ? "+" : "−") + Math.abs(retD) + "y",
+			deltaColor: S.textMuted,
+		},
+		{
+			label: "Social Security",
+			aVal: `${fmt(a.ssAnnual || 0)} @ ${a.ssAge}`,
+			bVal: `${fmt(b.ssAnnual || 0)} @ ${b.ssAge}`,
+			deltaText: ssD === 0 ? "same" : signedMoney(ssD),
+			deltaColor: S.textMuted,
+		},
 		{
 			label: "Ending balance",
 			aVal: fmt(a.endingBalanceNominal || 0),
