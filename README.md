@@ -4,6 +4,43 @@
 
 PlanFIRE is a FIRE-native retirement planning dashboard — model your runway, compare housing plans, and stress-test against down markets, with server-side persistence.
 
+## Take the tour
+
+A full **User Guide** ships inside the app (the *Guide* tab) with screen-by-screen walkthroughs and short demo clips. Here's the short version.
+
+<p align="center">
+  <img src="client/public/guide/dashboard.png" alt="PlanFIRE dashboard" width="860">
+</p>
+
+The dashboard is home base: a plain-language health verdict, your withdrawal rate and depletion age, live spending controls, and a full projection with FIRE milestones and Monte-Carlo odds — all recomputed the instant you change an input.
+
+### 🏷️ Tag expenses & assets to plans
+
+One dataset, many futures. Every expense and asset carries an **“Applies to which plans?”** control, so a mortgage tagged only to *Stay put* vanishes the moment you compare *Sell & downsize* — no duplicate scenarios, no re-entry. Real estate goes further: each plan independently marks a property **keep / sell / rent** with its own sale and rental economics.
+
+<p align="center">
+  <img src="client/public/guide/expenses.png" alt="Expenses tagged to plans" width="425">
+  <img src="client/public/guide/assets.png" alt="Assets tagged to plans" width="425">
+</p>
+
+### 📉 Flex spend controls
+
+Real retirees tighten the belt in a downturn — so your plan shouldn't be judged on rigid worst-case spending. Tier each expense **Essential / Discretionary / Luxury**, then set how deep discretionary and luxury spending flex when markets drop, and whether cuts apply only through the downturn + recovery or across all years.
+
+<p align="center">
+  <img src="client/public/guide/flex-spend.png" alt="Downturn spending controls" width="760">
+</p>
+
+### ⏳ Time Machine
+
+Averages hide the thing that actually breaks retirements: the *order* returns arrive in. Replay any real market era since 1928 on *your* portfolio — pick a famous window (Stagflation, the Long Bull, the GFC…) or a custom span, set your allocation, and watch the actual year-by-year highs, crashes and recoveries drive your projection.
+
+<p align="center">
+  <img src="client/public/guide/time-machine.png" alt="Time Machine" width="860">
+</p>
+
+> 🎬 The app also has short looping demos of [tagging in action](client/public/guide/tagging.webm) and the [Time Machine](client/public/guide/time-machine.webm) — open them in the *Guide* tab.
+
 ## Architecture
 
 ```
@@ -26,6 +63,7 @@ See [DEPLOY.md](DEPLOY.md) for the full Vercel + Neon setup guide.
 
 ## Features
 
+- **📖 In-app User Guide** — a *Guide* tab with screen-by-screen walkthroughs, real screenshots, and short demo clips of the headline features
 - **Multi-scenario planning** — create, duplicate, rename and switch between named plans; each is an independent snapshot of every input
 - **Light / dark / system theming** — follows the OS by default, with a manual toggle; persisted across sessions
 - **Fully responsive** — sidebar navigation collapses to a drawer on mobile; grids and charts reflow
