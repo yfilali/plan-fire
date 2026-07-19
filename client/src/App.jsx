@@ -13,6 +13,7 @@ import MarketView from "./views/MarketView.jsx";
 import PlanView from "./views/PlanView.jsx";
 import SettingsView from "./views/SettingsView.jsx";
 import CopilotView from "./views/CopilotView.jsx";
+import GuideView from "./views/GuideView.jsx";
 import OnboardingWizard from "./components/onboarding/OnboardingWizard.jsx";
 
 const VIEWS = {
@@ -23,6 +24,7 @@ const VIEWS = {
 	assets: AssetsView,
 	markets: MarketView,
 	plan: PlanView,
+	guide: GuideView,
 	settings: SettingsView,
 };
 
