@@ -6,7 +6,7 @@ PlanFIRE is a FIRE-native retirement planning dashboard — model your runway, c
 
 ## Take the tour
 
-A full **User Guide** ships inside the app (the *Guide* tab) with screen-by-screen walkthroughs and short demo clips. Here's the short version.
+A full **User Guide** ships inside the app (the *Guide* tab) with screen-by-screen walkthroughs and short demo clips — and it's mirrored here on GitHub in **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)**. Here's the short version.
 
 <p align="center">
   <img src="client/public/guide/dashboard.png" alt="PlanFIRE dashboard" width="860">
