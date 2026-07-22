@@ -92,6 +92,8 @@ const PATHS = {
 			<path d="M18.5 14v3M20 15.5h-3" />
 		</>
 	),
+	// collapse/expand affordance
+	"chevron-down": <path d="M6 9l6 6 6-6" />,
 };
 
 export default function Icon({ name, size = 16, color, style, ...rest }) {

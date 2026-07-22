@@ -15,6 +15,7 @@ import {
 	Area,
 } from "recharts";
 import { useTheme } from "../theme/ThemeProvider.jsx";
+import { usePersistedState } from "../usePersistedState.jsx";
 import { usePlanner } from "../state/PlannerProvider.jsx";
 import { fmt, deflate } from "../engine.js";
 import { wrColor } from "../lib/status.js";
@@ -83,6 +84,8 @@ export default function DashboardView() {
 	// (onboarding skipped, nothing entered) reads as neutral "Not started".
 	const health = computePlanHealth({ runsOut, effWR, planIsEmpty });
 	const visual = healthVisual(health.status, S);
+
+	const [controlsOpen, setControlsOpen] = usePersistedState("dashControlsOpen", true);
 
 	const [viewFrom, setViewFrom] = useState(age);
 	const [viewTo, setViewTo] = useState(endAge);
@@ -219,53 +222,92 @@ export default function DashboardView() {
 				<StatCard label="Balance @ 90" value={fmt(at90)} sub={dollarsLabel} color={at90 > 0 ? S.accent : S.danger} />
 			</div>
 
-			{/* ════ CONTROLS ════ Inputs that reshape every result below. */}
+			{/* ════ CONTROLS ════ Inputs that reshape every result below. Collapsible so */}
+			{/* the assumptions can be tucked away once dialed in, giving results more room. */}
 			<section>
-				<SectionTitle sub="Adjust the view and stress assumptions — every result below reacts to these.">
-					Controls
-				</SectionTitle>
-				<div style={{ display: "grid", gap: 12 }}>
-					<div
+				<Card pad={0} style={{ overflow: "hidden" }}>
+					<button
+						type="button"
+						onClick={() => setControlsOpen((v) => !v)}
+						aria-expanded={controlsOpen}
 						style={{
+							width: "100%",
 							display: "flex",
-							alignItems: "center",
-							gap: 14,
-							flexWrap: "wrap",
-							padding: "10px 14px",
-							background: S.card,
-							border: `1px solid ${S.border}`,
-							borderRadius: RAD.md,
+							alignItems: "flex-start",
+							justifyContent: "space-between",
+							gap: 12,
+							padding: "16px 20px",
+							background: "none",
+							border: "none",
+							cursor: "pointer",
+							textAlign: "left",
+							font: "inherit",
+							color: "inherit",
 						}}
 					>
-						<Eyebrow>Zoom</Eyebrow>
-						<AgeRangeSlider
-							from={effFrom}
-							to={effTo}
-							min={age}
-							max={endAge}
-							onChangeFrom={setViewFrom}
-							onChangeTo={setViewTo}
-							bg={S.border}
-							active={S.accent}
-							mono={S.mono}
-							labelColor={S.text}
+						<div style={{ flex: "1 1 260px", minWidth: 0 }}>
+							<h2 style={{ fontSize: 20, fontWeight: 700, color: S.text }}>Controls</h2>
+							<p style={{ fontSize: 13, color: S.textMuted, marginTop: 4 }}>
+								Adjust the view and stress assumptions — every result below reacts to these.
+							</p>
+						</div>
+						<Icon
+							name="chevron-down"
+							size={18}
+							color={S.textMuted}
+							style={{
+								flexShrink: 0,
+								marginTop: 4,
+								transform: controlsOpen ? "rotate(180deg)" : "rotate(0deg)",
+								transition: "transform .15s ease",
+							}}
 						/>
-						<span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
-							<Eyebrow>Dollars</Eyebrow>
-							<InfoTip term="real vs nominal dollars" />
-							<Segmented
-								size="sm"
-								value={realDollars}
-								onChange={setRealDollars}
-								options={[
-									{ value: false, label: "Nominal $" },
-									{ value: true, label: "Today's $" },
-								]}
-							/>
-						</span>
-					</div>
-					<DownturnCutControls />
-				</div>
+					</button>
+					{controlsOpen && (
+						<div style={{ display: "grid", gap: 12, padding: "0 20px 20px" }}>
+							<div
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: 14,
+									flexWrap: "wrap",
+									padding: "10px 14px",
+									background: S.bg,
+									border: `1px solid ${S.border}`,
+									borderRadius: RAD.md,
+								}}
+							>
+								<Eyebrow>Zoom</Eyebrow>
+								<AgeRangeSlider
+									from={effFrom}
+									to={effTo}
+									min={age}
+									max={endAge}
+									onChangeFrom={setViewFrom}
+									onChangeTo={setViewTo}
+									bg={S.border}
+									active={S.accent}
+									mono={S.mono}
+									labelColor={S.text}
+								/>
+								<span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+									<Eyebrow>Dollars</Eyebrow>
+									<InfoTip term="real vs nominal dollars" />
+									<Segmented
+										size="sm"
+										value={realDollars}
+										onChange={setRealDollars}
+										options={[
+											{ value: false, label: "Nominal $" },
+											{ value: true, label: "Today's $" },
+										]}
+									/>
+								</span>
+							</div>
+							<DownturnCutControls />
+						</div>
+					)}
+				</Card>
 			</section>
 
 			{/* ════ RESULTS ════ Everything the controls produce. */}
