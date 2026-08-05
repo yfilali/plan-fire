@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { useAuth } from "../../state/AuthProvider.jsx";
 import { clearAllData } from "../../usePersistedState.jsx";
-import { Card, CardHeader, Button } from "../ui.jsx";
+import { Card, CardHeader, Button, ConfirmDialog } from "../ui.jsx";
 
 function Row({ S, title, desc, children, danger }) {
 	return (
@@ -18,9 +19,9 @@ function Row({ S, title, desc, children, danger }) {
 export default function AccountSettings() {
 	const S = useTheme();
 	const { user, guest, signOut } = useAuth();
+	const [confirmingDelete, setConfirmingDelete] = useState(false);
 
 	const handleDelete = async () => {
-		if (!confirm("Delete your account and ALL plan data? This cannot be undone. A backup is recommended first.")) return;
 		try {
 			await fetch("/api/account/delete", { method: "POST", credentials: "include" });
 		} catch { /* ignore — clearAllData below still wipes what it can reach */ }
@@ -67,8 +68,21 @@ export default function AccountSettings() {
 					<div style={{ fontSize: 13.5, fontWeight: 600, color: S.danger }}>Delete account & data</div>
 					<div style={{ fontSize: 12, color: S.textMuted, marginTop: 2 }}>Permanently remove every plan. Export a backup first.</div>
 				</div>
-				<Button variant="danger" onClick={handleDelete}>Delete account</Button>
+				<Button variant="danger" onClick={() => setConfirmingDelete(true)}>Delete account</Button>
 			</div>
+
+			{confirmingDelete && (
+				<ConfirmDialog
+					title="Delete account?"
+					message="Delete your account and ALL plan data? This cannot be undone. A backup is recommended first."
+					confirmLabel="Delete account"
+					onConfirm={() => {
+						setConfirmingDelete(false);
+						handleDelete();
+					}}
+					onCancel={() => setConfirmingDelete(false)}
+				/>
+			)}
 		</Card>
 	);
 }
