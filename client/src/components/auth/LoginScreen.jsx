@@ -173,10 +173,41 @@ export default function LoginScreen({ initialMode = "login" }) {
 					</div>
 				</div>
 
+				{/* Guest is a first-class path, not a fallback: it's the app's actual
+				    frictionless entry (marketing promises "try it free" and "private
+				    by design"), so it gets the same size/weight as the log-in action
+				    rather than a small link buried under the form. Hidden in "forgot"
+				    mode — that flow is for someone who already knows they have an
+				    account. */}
+				{mode !== "forgot" && (
+					<>
+						<Button
+							type="button"
+							onClick={continueAsGuest}
+							variant="primary"
+							size="lg"
+							full
+							style={{ minHeight: 44 }}
+						>
+							Try it — no account needed →
+						</Button>
+						<div style={{ fontSize: 11.5, color: S.textDim, textAlign: "center", marginTop: 8, lineHeight: 1.45 }}>
+							No email required — your data stays on this device until you choose to save it.
+						</div>
+
+						<div style={{ display: "flex", alignItems: "center", gap: 10, margin: "20px 0 16px", color: S.textDim, fontSize: 11.5 }}>
+							<div style={{ flex: 1, height: 1, background: S.border }} />
+							or {mode === "signup" ? "create an account" : "log in"}
+							<div style={{ flex: 1, height: 1, background: S.border }} />
+						</div>
+					</>
+				)}
+
 				<form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
 					{mode === "signup" && (
 						<input
 							type="text"
+							autoComplete="name"
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							placeholder="Your name (optional)"
@@ -186,6 +217,7 @@ export default function LoginScreen({ initialMode = "login" }) {
 					<input
 						type="email"
 						autoFocus
+						autoComplete="email"
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
 						placeholder="you@email.com"
@@ -194,6 +226,9 @@ export default function LoginScreen({ initialMode = "login" }) {
 					{mode !== "forgot" && (
 						<input
 							type="password"
+							// "new-password" for signup so browsers offer to generate/save a
+							// new one instead of autofilling an existing credential.
+							autoComplete={mode === "signup" ? "new-password" : "current-password"}
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							placeholder={mode === "signup" ? "Create a password (8+ chars)" : "Password"}
@@ -201,7 +236,12 @@ export default function LoginScreen({ initialMode = "login" }) {
 						/>
 					)}
 
-					<Button type="submit" variant="primary" size="lg" full disabled={!canSubmit}>
+					{/* Secondary (not primary) when the guest button above is showing —
+					    two adjacent gradient CTAs would fight for attention instead of
+					    guiding the eye. Still a full-size button, not a shrunken link:
+					    "forgot" mode has no guest button above it, so it's the sole
+					    action and stays primary. */}
+					<Button type="submit" variant={mode === "forgot" ? "primary" : "secondary"} size="lg" full disabled={!canSubmit}>
 						{busy
 							? "Working…"
 							: mode === "signup"
@@ -269,12 +309,6 @@ export default function LoginScreen({ initialMode = "login" }) {
 						</button>
 					</div>
 				)}
-
-				<div style={{ textAlign: "center", marginTop: 18 }}>
-					<button onClick={continueAsGuest} style={{ background: "none", border: "none", color: S.textDim, fontSize: 12.5, cursor: "pointer", textDecoration: "underline" }}>
-						Continue as guest
-					</button>
-				</div>
 
 				<div style={{ fontSize: 10.5, color: S.textDim, textAlign: "center", marginTop: 18, lineHeight: 1.5 }}>
 					Your numbers are private. We never sell financial data.
