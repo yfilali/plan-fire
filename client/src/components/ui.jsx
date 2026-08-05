@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef } from "react";
 import { useTheme } from "../theme/ThemeProvider.jsx";
 import { btnBase, makeInput, RAD } from "../lib/styles.js";
 import { fmt } from "../engine.js";
@@ -384,8 +385,63 @@ export function Select({ style, children, ...rest }) {
 
 /* ── Modal ───────────────────────────────────────────────────────────── */
 
+const FOCUSABLE_SELECTOR =
+	'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+// Modals can stack (e.g. a ConfirmDialog opened from within another modal).
+// Only the top-most one should react to Escape/Tab, so each mounted Modal
+// registers itself here and checks it's still on top before acting.
+let modalStack = [];
+
 export function Modal({ title, onClose, children, width = 520, footer }) {
 	const S = useTheme();
+	const panelRef = useRef(null);
+	const titleId = useId();
+	// Keep the handler closing over the *latest* onClose without re-running
+	// the mount effect every render (call sites typically pass a fresh arrow
+	// function each time, which would otherwise re-grab focus repeatedly).
+	const onCloseRef = useRef(onClose);
+	onCloseRef.current = onClose;
+
+	useEffect(() => {
+		const id = {};
+		modalStack.push(id);
+		const previouslyFocused = document.activeElement;
+
+		// Don't steal focus from a field that already claimed it via autoFocus.
+		if (panelRef.current && !panelRef.current.contains(document.activeElement)) {
+			panelRef.current.focus();
+		}
+
+		const onKeyDown = (e) => {
+			if (modalStack[modalStack.length - 1] !== id) return; // not the top-most modal
+			if (e.key === "Escape") {
+				onCloseRef.current();
+				return;
+			}
+			if (e.key !== "Tab" || !panelRef.current) return;
+			const els = panelRef.current.querySelectorAll(FOCUSABLE_SELECTOR);
+			if (!els.length) return;
+			const first = els[0];
+			const last = els[els.length - 1];
+			if (e.shiftKey && document.activeElement === first) {
+				e.preventDefault();
+				last.focus();
+			} else if (!e.shiftKey && document.activeElement === last) {
+				e.preventDefault();
+				first.focus();
+			}
+		};
+
+		document.addEventListener("keydown", onKeyDown);
+		return () => {
+			document.removeEventListener("keydown", onKeyDown);
+			modalStack = modalStack.filter((x) => x !== id);
+			// Return focus to whatever opened the modal (a button, usually).
+			if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+		};
+	}, []);
+
 	return (
 		<div
 			onClick={onClose}
@@ -403,8 +459,13 @@ export function Modal({ title, onClose, children, width = 520, footer }) {
 			}}
 		>
 			<div
+				ref={panelRef}
 				onClick={(e) => e.stopPropagation()}
 				className="modal-pop"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby={titleId}
+				tabIndex={-1}
 				style={{
 					background: S.surface,
 					borderRadius: 18,
@@ -415,6 +476,7 @@ export function Modal({ title, onClose, children, width = 520, footer }) {
 					maxHeight: "85vh",
 					display: "flex",
 					flexDirection: "column",
+					outline: "none",
 				}}
 			>
 				<div
@@ -426,7 +488,7 @@ export function Modal({ title, onClose, children, width = 520, footer }) {
 						borderBottom: `1px solid ${S.border}`,
 					}}
 				>
-					<h3 style={{ fontSize: 17, fontWeight: 700, color: S.text }}>{title}</h3>
+					<h3 id={titleId} style={{ fontSize: 17, fontWeight: 700, color: S.text }}>{title}</h3>
 					<IconButton title="Close" onClick={onClose}>
 						✕
 					</IconButton>
@@ -449,6 +511,55 @@ export function Modal({ title, onClose, children, width = 520, footer }) {
 		</div>
 	);
 }
+
+/* ── Confirm dialog ──────────────────────────────────────────────────── */
+
+// Shared replacement for native confirm() on every destructive action —
+// gets Escape-to-cancel, scrim-click-to-cancel, and focus trapping for free
+// by building on Modal. `danger` controls whether the confirm button reads
+// as destructive (red) or a plain affirmative action.
+export function ConfirmDialog({
+	title = "Are you sure?",
+	message,
+	children,
+	confirmLabel = "Confirm",
+	cancelLabel = "Cancel",
+	danger = true,
+	onConfirm,
+	onCancel,
+}) {
+	const S = useTheme();
+	return (
+		<Modal
+			title={title}
+			width={440}
+			onClose={onCancel}
+			footer={
+				<>
+					<Button variant="ghost" onClick={onCancel}>
+						{cancelLabel}
+					</Button>
+					<Button variant={danger ? "danger" : "primary"} onClick={onConfirm}>
+						{confirmLabel}
+					</Button>
+				</>
+			}
+		>
+			{message && (
+				<p style={{ fontSize: 13, color: S.textMuted, lineHeight: 1.55, margin: 0 }}>
+					{message}
+				</p>
+			)}
+			{children}
+		</Modal>
+	);
+}
+
+// Shared copy for plan deletion so the card ✕ (PlanView) and the switcher's
+// "Delete current" (PlanSwitcher) can't drift into two different messages —
+// see UX review M3/M4.
+export const planDeleteMessage = (name) =>
+	`Delete plan "${name}"? Expenses and assets tagged to it will revert to All plans.`;
 
 /* ── Recharts tooltip ────────────────────────────────────────────────── */
 

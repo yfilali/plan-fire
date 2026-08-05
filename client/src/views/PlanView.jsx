@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useTheme } from "../theme/ThemeProvider.jsx";
 import { usePlanner } from "../state/PlannerProvider.jsx";
 import { fmt } from "../engine.js";
-import { SectionTitle, Card, CardHeader, StatCard, Button } from "../components/ui.jsx";
+import { SectionTitle, Card, CardHeader, StatCard, Button, ConfirmDialog, planDeleteMessage } from "../components/ui.jsx";
 import PlanCard from "../components/plans/PlanCard.jsx";
 import PlanEditor from "../components/plans/PlanEditor.jsx";
 import { computePlanOutcome, computePlanMonteCarlo } from "../lib/planOutcomes.js";
@@ -35,6 +35,7 @@ export default function PlanView() {
 	} = usePlanner();
 
 	const [editing, setEditing] = useState(null);
+	const [confirmDeletePlan, setConfirmDeletePlan] = useState(null);
 
 	const ctx = useMemo(
 		() => ({
@@ -93,9 +94,7 @@ export default function PlanView() {
 						outcome={outcomes.find((o) => o.planId === plan.id)}
 						onSelect={() => setActivePlanId(plan.id)}
 						onEdit={() => setEditing(plan.id)}
-						onDelete={() => {
-							if (confirm(`Delete plan "${plan.name}"? Expenses and assets tagged to it will revert to All plans.`)) removePlan(plan.id);
-						}}
+						onDelete={() => setConfirmDeletePlan(plan)}
 						canDelete={plans.length > 1}
 					/>
 				))}
@@ -142,6 +141,19 @@ export default function PlanView() {
 			</Card>
 
 			{editing && <PlanEditor planId={editing} onClose={() => setEditing(null)} />}
+
+			{confirmDeletePlan && (
+				<ConfirmDialog
+					title="Delete plan?"
+					message={planDeleteMessage(confirmDeletePlan.name)}
+					confirmLabel="Delete"
+					onConfirm={() => {
+						removePlan(confirmDeletePlan.id);
+						setConfirmDeletePlan(null);
+					}}
+					onCancel={() => setConfirmDeletePlan(null)}
+				/>
+			)}
 		</div>
 	);
 }

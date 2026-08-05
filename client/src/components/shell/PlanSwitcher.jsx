@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { usePlanner } from "../../state/PlannerProvider.jsx";
 import { btnBase } from "../../lib/styles.js";
-import { Button, Modal, TextInput, Field } from "../ui.jsx";
+import { Button, Modal, TextInput, Field, ConfirmDialog, planDeleteMessage } from "../ui.jsx";
 
 const Chevron = (
 	<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -24,6 +24,7 @@ export default function PlanSwitcher() {
 
 	const [open, setOpen] = useState(false);
 	const [dialog, setDialog] = useState(null); // {mode:'new'|'rename'|'duplicate', name}
+	const [confirmDelete, setConfirmDelete] = useState(false);
 	const ref = useRef(null);
 
 	useEffect(() => {
@@ -204,8 +205,7 @@ export default function PlanSwitcher() {
 					{plans.length > 1 && (
 						<button
 							onClick={() => {
-								if (confirm(`Delete plan "${activePlan?.name}"?`))
-									removePlan(activePlanId);
+								setConfirmDelete(true);
 								setOpen(false);
 							}}
 							style={{
@@ -261,6 +261,19 @@ export default function PlanSwitcher() {
 						/>
 					</Field>
 				</Modal>
+			)}
+
+			{confirmDelete && (
+				<ConfirmDialog
+					title="Delete plan?"
+					message={planDeleteMessage(activePlan?.name)}
+					confirmLabel="Delete"
+					onConfirm={() => {
+						removePlan(activePlanId);
+						setConfirmDelete(false);
+					}}
+					onCancel={() => setConfirmDelete(false)}
+				/>
 			)}
 		</div>
 	);
