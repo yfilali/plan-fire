@@ -283,6 +283,71 @@ describe("project — inflation-aware with nominal returns", () => {
 	});
 });
 
+describe("project — openingBalance (withdrawal-rate denominator)", () => {
+	// $40k/yr of flat spending against $1M — a textbook 4% draw.
+	const flatSpend = [{ id: "a", amount: 40000 / 12, plans: ["all"], inflOverride: 0 }];
+	const retiredAt49 = {
+		startAge: 49,
+		endAge: 59,
+		retireAge: 49,
+		ssAge: 70,
+		ssAnnual: 0,
+		portfolio: 1000000,
+		expenses: flatSpend,
+		planId: "stay",
+		nomReturn: 0.07,
+		inflation: 0,
+	};
+
+	it("reports the starting portfolio as year one's opening balance", () => {
+		const rows = project(retiredAt49);
+		// No growth applied yet — unlike `balance`, which is already a year ahead.
+		expect(rows[0].openingBalance).toBe(1000000);
+		expect(rows[0].balance).toBe(1030000); // 1M * 1.07 - 40k
+	});
+
+	it("chains each year's opening balance to the prior year's close", () => {
+		const rows = project(retiredAt49);
+		for (let i = 1; i < rows.length; i++) {
+			expect(rows[i].openingBalance).toBe(rows[i - 1].balance);
+		}
+	});
+
+	it("yields exactly 4.0% for a 4% draw, where end-of-year balance does not", () => {
+		const first = project(retiredAt49)[0];
+		expect((first.netWithdrawal / first.openingBalance) * 100).toBeCloseTo(4.0, 6);
+		// The old denominator: a year of growth ahead and already net of this
+		// same withdrawal, so it understates the rate.
+		expect((first.netWithdrawal / first.balance) * 100).toBeCloseTo(3.883, 3);
+	});
+
+	it("counts sale proceeds in the opening balance of the year they land", () => {
+		const rows = project({
+			...retiredAt49,
+			startAge: 50,
+			endAge: 60,
+			retireAge: 50,
+			transition: { moveAge: 55, netProceeds: 500000, newHomeCost: 200000 },
+		});
+		const beforeMove = rows.find((d) => d.age === 54);
+		const moveYear = rows.find((d) => d.age === 55);
+		// Proceeds are spendable the year they arrive, so a downsize lowers the
+		// withdrawal rate immediately rather than a year late.
+		expect(moveYear.openingBalance).toBe(beforeMove.balance + 300000);
+	});
+
+	it("is zero once the portfolio is spent, so no rate is reported", () => {
+		const rows = project({
+			...retiredAt49,
+			portfolio: 50000,
+			expenses: [{ id: "a", amount: 10000, plans: ["all"], inflOverride: 0 }],
+		});
+		const spent = rows.filter((d) => d.balance === 0);
+		expect(spent.length).toBeGreaterThan(0);
+		expect(spent[spent.length - 1].openingBalance).toBe(0);
+	});
+});
+
 describe("monthlyIncomeAtAge / buildVestingSchedule", () => {
 	it("applies plan tagging and age range like expenses", () => {
 		const incomes = [

@@ -988,7 +988,11 @@ export function PlannerProvider({ children }) {
 	const getD = useCallback((a, d = projections.primary) => d.find((x) => x.age === a) || {}, [projections]);
 
 	const postData = getD(Math.max(data.retireAge, data.age + (activeEcon.relocates ? activeEcon.transitionYears : 0)));
-	const effWR = postData.balance > 0 ? (postData.netWithdrawal / postData.balance) * 100 : 0;
+	// Against the opening balance of that year — what the withdrawal is actually
+	// drawn from. postData.balance is end-of-year: a year of growth ahead and
+	// already reduced by this withdrawal, so it answers a different question than
+	// the 4% guideline this rate is scored against.
+	const effWR = postData.openingBalance > 0 ? (postData.netWithdrawal / postData.openingBalance) * 100 : 0;
 
 	const fullChartData = useMemo(
 		() =>
@@ -1001,7 +1005,12 @@ export function PlannerProvider({ children }) {
 					spending: adj(d.annualSpend),
 					income: adj(d.income),
 					netWithdrawal: adj(d.netWithdrawal),
-					wdRate: d.balance > 0 && d.netWithdrawal > 0 ? (d.netWithdrawal / d.balance) * 100 : d.balance > 0 ? 0 : null,
+					// Same opening-balance denominator as effWR above, so the plotted
+					// line and the headline "% now" agree. The null gap stays keyed to
+					// the closing balance: once the portfolio is spent the series
+					// breaks, as the card's "gaps appear after depletion" promises.
+					// A positive closing balance guarantees a positive opening one.
+					wdRate: d.balance > 0 ? (d.netWithdrawal > 0 ? (d.netWithdrawal / d.openingBalance) * 100 : 0) : null,
 				};
 			}),
 		[projections, realDollars, data.age, data.inflation],

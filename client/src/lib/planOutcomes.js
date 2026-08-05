@@ -123,10 +123,13 @@ export function computePlanOutcome(plan, ctx) {
 	const runsOutAge = runsOutRow ? runsOutRow.age : null;
 
 	// Effective withdrawal rate at the first "settled retirement" year: the later
-	// of retirement and (if relocating) the move age.
+	// of retirement and (if relocating) the move age. Measured against that year's
+	// opening balance, not its end-of-year `balance` — the latter is a year of
+	// growth ahead and net of the very withdrawal being measured, which is not
+	// what the 4% guideline the number is judged against refers to.
 	const wrAge = Math.max(plan.retireAge, plan.age + (econ.relocates ? econ.transitionYears : 0));
 	const wrRow = primary.find((d) => d.age === wrAge) || {};
-	const effWR = wrRow.balance > 0 ? (wrRow.netWithdrawal / wrRow.balance) * 100 : 0;
+	const effWR = wrRow.openingBalance > 0 ? (wrRow.netWithdrawal / wrRow.openingBalance) * 100 : 0;
 	const annualSpendAtRetire = wrRow.annualSpend ?? 0;
 
 	const health = computePlanHealth({
