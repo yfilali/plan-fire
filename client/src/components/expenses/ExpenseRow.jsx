@@ -33,9 +33,18 @@ const TIER_META = {
 	luxury: { tone: "danger", icon: "💎" },
 };
 
-export default function ExpenseRow({ exp, categories, plans, active, editing, onEdit, onDone, onUpdate, onRemove }) {
+export default function ExpenseRow({ exp, categories, plans, age, inPlan, ageActive, editing, onEdit, onDone, onUpdate, onRemove }) {
 	const S = useTheme();
 	const tier = TIER_META[exp.tier || "essential"];
+
+	// Grey means one thing only: "doesn't apply to this plan". An age-gated
+	// row that just hasn't kicked in yet is still counted here, so it stays
+	// full-contrast and gets a distinct chip instead (see ageChip below).
+	// If a row is excluded from the plan AND age-inactive, exclusion wins —
+	// it's the more consequential fact, so the age state doesn't also need
+	// to compete for attention on an already-greyed row.
+	const dimmed = !inPlan;
+	const agePending = inPlan && !ageActive;
 
 	const togglePlan = (s) => {
 		const curr = exp.plans || ["all"];
@@ -61,7 +70,7 @@ export default function ExpenseRow({ exp, categories, plans, active, editing, on
 		borderRadius: 10,
 		border: `1px solid ${S.border}`,
 		marginBottom: 4,
-		opacity: active ? 1 : 0.42,
+		opacity: dimmed ? 0.42 : 1,
 		flexWrap: "wrap",
 	};
 
@@ -107,17 +116,44 @@ export default function ExpenseRow({ exp, categories, plans, active, editing, on
 	}
 
 	const tagTone = tier.tone === "accent" ? S.accent : tier.tone === "warning" ? S.warning : S.danger;
+
+	// Plain range chip once a row is live; a distinct "not yet/no longer"
+	// chip while it's in-plan but outside its age window — same border
+	// weight as Tag but solid (not alpha-washed) and icon-prefixed, so the
+	// difference doesn't depend on being able to tell two colors apart.
+	const ageChip = (exp.ageMin != null || exp.ageMax != null) && (
+		agePending ? (
+			<span
+				title="Counted in this plan, just not active at your current age"
+				style={{
+					display: "inline-block",
+					padding: "1px 7px",
+					borderRadius: 6,
+					fontSize: 10,
+					fontWeight: 700,
+					color: S.warning,
+					background: S.warning + "26",
+					border: `1.5px solid ${S.warning}`,
+					verticalAlign: "middle",
+					lineHeight: "16px",
+				}}
+			>
+				⏳ {exp.ageMin != null && age < exp.ageMin ? `starts @${exp.ageMin}` : `ended @${exp.ageMax}`}
+			</span>
+		) : (
+			<Tag color={S.blue}>{exp.ageMin ?? ""}–{exp.ageMax ?? ""}</Tag>
+		)
+	);
+
 	return (
-		<div className={active ? "row-hover" : ""} style={rowStyle}>
+		<div className={dimmed ? "" : "row-hover"} style={rowStyle}>
 			<span style={{ fontSize: 12.5, color: S.text, flex: 1, minWidth: 110 }}>{exp.name}</span>
 			<Tag color={tagTone}>{tier.icon}</Tag>
 			{exp.plans && !exp.plans.includes("all") &&
 				exp.plans.map((s) => (
 					<Tag key={s} color={tagColor(S, s, plans)}>{tagLabel(s, plans)}</Tag>
 				))}
-			{(exp.ageMin != null || exp.ageMax != null) && (
-				<Tag color={S.blue}>{exp.ageMin ?? ""}–{exp.ageMax ?? ""}</Tag>
-			)}
+			{ageChip}
 			<span style={{ fontSize: 12.5, fontWeight: 650, fontFamily: S.mono, color: S.text }}>${exp.amount.toLocaleString()}</span>
 			<IconButton
 				title={`Edit ${exp.name}`}
