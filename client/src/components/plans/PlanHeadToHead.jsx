@@ -18,9 +18,13 @@ export default function PlanHeadToHead({ outcomes, plans }) {
 	// Only well-formed outcomes can be compared (guard the loading window).
 	const valid = (outcomes || []).filter((o) => o && o.planId != null);
 
-	// Default A = baseline (else first); B = the next distinct plan.
+	// Default A = baseline (else first); B = the newest OTHER plan (UX review
+	// L5) — `valid` is in plan-creation order (new plans are appended), so the
+	// last non-A entry is the most recently created one. Picking the first
+	// other plan instead would anchor B to whichever plan happens to be
+	// oldest, which is rarely the one a user just made to compare against.
 	const defA = valid.find((o) => o.baseline) || valid[0];
-	const defB = valid.find((o) => o !== defA);
+	const defB = [...valid].reverse().find((o) => o !== defA);
 
 	const [aId, setAId] = useState(defA?.planId);
 	const [bId, setBId] = useState(defB?.planId);

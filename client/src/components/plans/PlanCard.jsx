@@ -6,7 +6,7 @@ import { healthVisual } from "../../lib/planHealth.js";
 import Icon from "../Icon.jsx";
 import { fmt } from "../../engine.js";
 
-export default function PlanCard({ plan, active, summary, outcome, onSelect, onEdit, onDelete, canDelete }) {
+export default function PlanCard({ plan, active, summary, outcome, onSelect, onEdit, onDuplicate, onDelete, canDelete }) {
 	const S = useTheme();
 	const c = planColor(S, plan);
 	const hv = outcome ? healthVisual(outcome.health.status, S) : null;
@@ -118,6 +118,18 @@ export default function PlanCard({ plan, active, summary, outcome, onSelect, onE
 					style={{ ...btnBase, flex: 1, padding: "6px 0", borderRadius: 8, border: `1px solid ${S.border}`, background: "transparent", color: S.textMuted, fontSize: 12, fontWeight: 550 }}
 				>
 					Edit
+				</button>
+				{/* Duplicate surfaced here so it isn't only discoverable in the
+				    top-bar plan switcher (UX review M3) — this is also the shortest
+				    path to the Guide's recommended "duplicate then tweak one
+				    variable" workflow. */}
+				<button
+					onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+					title="Duplicate plan"
+					aria-label="Duplicate plan"
+					style={{ ...btnBase, padding: "6px 12px", borderRadius: 8, border: `1px solid ${S.border}`, background: "transparent", color: S.textMuted, fontSize: 12 }}
+				>
+					⧉
 				</button>
 				{canDelete && (
 					<button
