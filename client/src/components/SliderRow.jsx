@@ -71,22 +71,48 @@ export default function SliderRow({
 						}}
 					/>
 				) : (
+					// Boxed like a real field (not just dashed-underline text) so the
+					// affordance reads as "editable" at a glance, not only on hover or
+					// via the tooltip — same shape/background as the input it becomes
+					// on click, just unfocused. The pencil glyph reinforces that read.
 					<button
 						onClick={start}
 						title="Click to type an exact value"
 						style={{
-							background: "none",
-							border: "none",
-							borderBottom: `1px dashed ${S.border}`,
+							display: "flex",
+							alignItems: "center",
+							gap: 5,
+							background: S.bg,
+							border: `1px solid ${S.border}`,
+							borderRadius: 6,
 							cursor: "text",
 							fontSize: 13,
 							fontWeight: 650,
 							fontFamily: S.mono,
 							color: beyond ? S.warning : S.text,
-							padding: "0 0 1px",
+							padding: "2px 7px",
+							transition: "border-color .14s ease",
 						}}
+						onMouseEnter={(e) => { e.currentTarget.style.borderColor = S.accent; }}
+						onMouseLeave={(e) => { e.currentTarget.style.borderColor = S.border; }}
 					>
 						{format(value)}
+						<svg
+							width="11"
+							height="11"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2.2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							aria-hidden="true"
+							focusable="false"
+							style={{ flexShrink: 0, opacity: 0.55 }}
+						>
+							<path d="M12 20h9" />
+							<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+						</svg>
 					</button>
 				)}
 			</div>

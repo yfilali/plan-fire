@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { usePlanner } from "../../state/PlannerProvider.jsx";
 import { Card, Button, Segmented, Tag } from "../ui.jsx";
@@ -179,6 +179,20 @@ export default function OnboardingWizard() {
 	} = usePlanner();
 
 	const [step, setStep] = useState(0);
+
+	// PlannerProvider's neutral defaults for a fresh/just-restarted account put
+	// retireAge===age (reads as "retire now", a degenerate first projection)
+	// and ssAge at 70 (max benefit, but a surprising default — most users claim
+	// at 67, Full Retirement Age). Nudge both to more realistic starting points
+	// the moment the wizard opens, once, so nothing here overwrites an answer
+	// a user already gave: buildFreshPlans() guarantees every account that can
+	// reach this wizard starts in exactly that untouched state.
+	useEffect(() => {
+		if (retireAge === age) setRetireAge(Math.max(age + 10, 55));
+		if (ssAge === 70) setSsAge(67);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
 	const portfolioAsset = assets.find((a) => a.type === "investment");
 
 	const setPortfolio = (v) => {
