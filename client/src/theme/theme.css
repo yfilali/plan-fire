@@ -17,7 +17,12 @@
    usages app-wide), so only those two static weights are vendored — latin
    subset only, since the app has no accented-Latin or non-Latin copy.
    font-display: swap means body text in the fallback stack below is never
-   invisible while these load. */
+   invisible while these load.
+
+   Both families are SIL Open Font License 1.1. Self-hosting is redistribution
+   under that license, so the copyright notices and license body ship beside
+   the binaries in public/fonts/OFL.txt — keep that file with them if these
+   ever move. Upstream: github.com/google/fonts/tree/main/ofl/{dmsans,dmmono}. */
 @font-face {
 	font-family: "DM Sans";
 	font-style: normal;
