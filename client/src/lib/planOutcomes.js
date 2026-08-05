@@ -109,10 +109,11 @@ export function computePlanOutcome(plan, ctx) {
 	const primary = project({ ...shared, nomReturn: regimeReturns(plan) });
 
 	// Balance at/after the transition event (the meaningful "starting" balance
-	// once any relocation has settled).
-	const postTransAge = transition ? transition.moveAge : plan.age;
-	const atPost = primary.find((d) => d.age === postTransAge);
-	const startPort = atPost?.balance ?? startPortInput;
+	// once any relocation has settled). project() rows are end-of-year, so the
+	// row at plan.age is already a year of growth ahead of today — with no
+	// transition, startPortInput is the only honest "starting" figure.
+	const atPost = transition ? primary.find((d) => d.age === transition.moveAge) : null;
+	const startPort = transition ? (atPost?.balance ?? startPortInput) : startPortInput;
 
 	const last = primary[primary.length - 1];
 	const endingBalanceNominal = last ? last.balance : 0;

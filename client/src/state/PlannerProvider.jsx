@@ -964,8 +964,11 @@ export function PlannerProvider({ children }) {
 		};
 		const primary = project({ ...shared, nomReturn: activeR });
 		const alt = project({ ...shared, nomReturn: altR });
-		const postTransAge = trans ? trans.moveAge : data.age;
-		const atPost = primary.find((d) => d.age === postTransAge);
+		// project() rows are all end-of-year — the row at data.age already carries a
+		// full year of growth, so it must never stand in for "today". Only a real
+		// transition has a meaningful post-event row; otherwise startPort above is
+		// already the true investable total (and matches what Assets displays).
+		const atPost = trans ? primary.find((d) => d.age === trans.moveAge) : null;
 		return {
 			primary,
 			alt,
@@ -975,7 +978,8 @@ export function PlannerProvider({ children }) {
 					? "Lost Decade"
 					: "Historical Avg",
 			altLabel: isPeriod ? "Steady average" : data.marketMode === "lost_decade" ? "Historical Avg" : "Lost Decade",
-			startPort: atPost?.balance || startPort,
+			startPort: trans ? (atPost?.balance ?? startPort) : startPort,
+			hasTransition: !!trans,
 		};
 	}, [data, backtest, portfolio, propertyAssets, effectiveExpenses, effectiveIncomes, activePlan, baselinePlan]);
 

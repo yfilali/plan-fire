@@ -232,7 +232,7 @@ export default function MarketView() {
 				<StatCard
 					label="Real growth / yr"
 					value={`${fmt(Math.round(projections.startPort * realRet))}`}
-					sub={`On ${fmt(projections.startPort)} today`}
+					sub={`On ${fmt(projections.startPort)} ${projections.hasTransition ? "post-transition" : "today"}`}
 					accent={S.blue}
 					color={S.blue}
 				/>

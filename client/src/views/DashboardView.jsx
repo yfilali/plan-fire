@@ -209,7 +209,12 @@ export default function DashboardView() {
 			<>
 			{/* ── Headline metrics ── */}
 			<div className="stat-grid stagger">
-				<StatCard label="Portfolio" value={fmt(projections.startPort)} sub="Post-transition" accent={S.blue} />
+				<StatCard
+					label="Portfolio"
+					value={fmt(projections.startPort)}
+					sub={projections.hasTransition ? "Post-transition" : "Investable today"}
+					accent={S.blue}
+				/>
 				<StatCard label={`Spend @ ${age}`} value={fmt(spendNow)} sub="Current / yr" />
 				<StatCard
 					label="Spend @ 65"
