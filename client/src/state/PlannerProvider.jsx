@@ -484,7 +484,16 @@ export function PlannerProvider({ children }) {
 	const [assets, setAssets] = usePersistedState("assets", null);
 	const [categories, setCategories] = usePersistedState("categories", null);
 	const [schemaVersion, setSchemaVersion] = usePersistedState("schemaVersion", null);
-	const [realDollars, setRealDollars] = usePersistedState("realDollars", false);
+	// Nominal balances at long horizons read as absurd ("$80.7M" for a 45-year-
+	// old with $800K) and bury the figure users actually reason in. Default to
+	// today's purchasing power; Nominal $ stays one click away for anyone who
+	// wants it. Existing accounts that never touched the toggle pick this up
+	// too (usePersistedState falls back to the default whenever the key is
+	// absent from the store) — a deliberate change in what they see, not a
+	// bug, since the whole point is that nobody should have been reasoning in
+	// nominal dollars by default. Anyone who explicitly chose Nominal $ before
+	// keeps that choice, since their store already has the key set to false.
+	const [realDollars, setRealDollars] = usePersistedState("realDollars", true);
 	const [onboardingComplete, setOnboardingComplete] = usePersistedState("onboardingComplete", null);
 
 	// Snapshot whether this owner's store was empty the moment it loaded — i.e.

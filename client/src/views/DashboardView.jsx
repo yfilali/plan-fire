@@ -282,7 +282,7 @@ export default function DashboardView() {
 									borderRadius: RAD.md,
 								}}
 							>
-								<Eyebrow>Zoom</Eyebrow>
+								<Eyebrow>Age range</Eyebrow>
 								<AgeRangeSlider
 									from={effFrom}
 									to={effTo}

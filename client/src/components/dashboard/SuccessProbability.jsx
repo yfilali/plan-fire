@@ -70,6 +70,12 @@ export default function SuccessProbability() {
 	const pct = Math.round(mc.successRate * 100);
 	const tone = pct >= 85 ? S.accent : pct >= 70 ? S.warning : S.danger;
 	const verdict = pct >= 85 ? "On track" : pct >= 70 ? "Borderline" : "At risk";
+	// 400 finite paths rounding to a flat "100%" reads as a guarantee, which a
+	// retirement tool should never visually promise — cap what's DISPLAYED
+	// (label and bar) just under the ceiling. mc.successRate itself, and the
+	// tone/verdict thresholds above, are untouched.
+	const pctLabel = pct >= 100 ? ">99%" : `${pct}%`;
+	const barPct = Math.min(pct, 99);
 
 	// Terminal wealth lands at the end of the horizon in NOMINAL dollars. Lead
 	// with today's-dollars (governed by the same toggle as the projection) so the
@@ -99,7 +105,7 @@ export default function SuccessProbability() {
 			<div>
 				<div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
 					<span style={{ fontSize: 46, fontWeight: 800, color: tone, fontFamily: S.mono, lineHeight: 1 }}>
-						{pct}%
+						{pctLabel}
 					</span>
 					<span style={{ fontSize: FS.base, color: S.textMuted }}>
 						of paths your portfolio outlives you (to {endAge})
@@ -108,7 +114,7 @@ export default function SuccessProbability() {
 
 				{/* Probability bar */}
 				<div style={{ height: 8, borderRadius: RAD.sm, background: S.bg, marginTop: 14, overflow: "hidden", border: `1px solid ${S.border}` }}>
-					<div style={{ width: `${pct}%`, height: "100%", background: tone, transition: "width .3s ease" }} />
+					<div style={{ width: `${barPct}%`, height: "100%", background: tone, transition: "width .3s ease" }} />
 				</div>
 
 				{/* Terminal-wealth band */}
