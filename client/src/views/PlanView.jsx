@@ -35,7 +35,17 @@ export default function PlanView() {
 	} = usePlanner();
 
 	const [editing, setEditing] = useState(null);
+	// A plan created via "+ New plan" or a card's Duplicate lives in `plans`
+	// (so PlanEditor can address it) but isn't confirmed yet (UX review H3) —
+	// hidden from the grid/comparison surfaces below until the user commits,
+	// so nothing recomputes against an unconfigured plan the user hasn't seen.
+	const [pendingNewPlanId, setPendingNewPlanId] = useState(null);
 	const [confirmDeletePlan, setConfirmDeletePlan] = useState(null);
+
+	const visiblePlans = useMemo(
+		() => plans.filter((p) => p.id !== pendingNewPlanId),
+		[plans, pendingNewPlanId],
+	);
 
 	const ctx = useMemo(
 		() => ({
@@ -50,13 +60,36 @@ export default function PlanView() {
 	);
 
 	const outcomes = useMemo(
-		() => plans.map((p) => computePlanOutcome(p, ctx)),
-		[plans, ctx],
+		() => visiblePlans.map((p) => computePlanOutcome(p, ctx)),
+		[visiblePlans, ctx],
 	);
 
 	const mcByPlan = useMemo(() => {
-		return Object.fromEntries(plans.map((p) => [p.id, computePlanMonteCarlo(p, ctx)]));
-	}, [plans, ctx]);
+		return Object.fromEntries(visiblePlans.map((p) => [p.id, computePlanMonteCarlo(p, ctx)]));
+	}, [visiblePlans, ctx]);
+
+	const closeEditor = () => {
+		setEditing(null);
+		setPendingNewPlanId(null);
+	};
+
+	// Inherits every field from the currently active plan (UX review H3b) —
+	// makes "duplicate then tweak one variable", the workflow the in-app Guide
+	// recommends, the natural default instead of a blank/degenerate plan.
+	const startNewPlan = () => {
+		const id = addPlan(undefined, { duplicateFrom: activePlanId });
+		setPendingNewPlanId(id);
+		setEditing(id);
+	};
+
+	// Card-level Duplicate (UX review M3) — same confirm-before-activate flow
+	// as "+ New plan", just seeded from the specific plan that was clicked
+	// rather than whichever plan happens to be active.
+	const startDuplicate = (plan) => {
+		const id = addPlan(`${plan.name} copy`, { duplicateFrom: plan.id });
+		setPendingNewPlanId(id);
+		setEditing(id);
+	};
 
 	const summarize = (plan) => {
 		const parts = [`Retire at ${plan.retireAge}`];
@@ -79,13 +112,13 @@ export default function PlanView() {
 		<div className="fade-in">
 			<SectionTitle
 				sub="Each plan is a full alternative you can compare: its own housing configuration, profile inputs, and the expenses/assets tagged to it. Select one to drive the dashboard."
-				right={<Button variant="primary" onClick={() => { const id = addPlan(); setEditing(id); }}>＋ New plan</Button>}
+				right={<Button variant="primary" onClick={startNewPlan}>＋ New plan</Button>}
 			>
 				Plans
 			</SectionTitle>
 
 			<div className="col-3" style={{ marginBottom: 20 }}>
-				{plans.map((plan) => (
+				{visiblePlans.map((plan) => (
 					<PlanCard
 						key={plan.id}
 						plan={plan}
@@ -94,8 +127,9 @@ export default function PlanView() {
 						outcome={outcomes.find((o) => o.planId === plan.id)}
 						onSelect={() => setActivePlanId(plan.id)}
 						onEdit={() => setEditing(plan.id)}
+						onDuplicate={() => startDuplicate(plan)}
 						onDelete={() => setConfirmDeletePlan(plan)}
-						canDelete={plans.length > 1}
+						canDelete={visiblePlans.length > 1}
 					/>
 				))}
 			</div>
@@ -122,7 +156,7 @@ export default function PlanView() {
 				/>
 			</div>
 			<div style={{ marginBottom: 20 }}>
-				<PlanHeadToHead outcomes={outcomes} plans={plans} />
+				<PlanHeadToHead outcomes={outcomes} plans={visiblePlans} />
 			</div>
 
 			{/* Impact of the selected plan */}
@@ -140,7 +174,9 @@ export default function PlanView() {
 				</p>
 			</Card>
 
-			{editing && <PlanEditor planId={editing} onClose={() => setEditing(null)} />}
+			{editing && (
+				<PlanEditor planId={editing} isNew={editing === pendingNewPlanId} onClose={closeEditor} />
+			)}
 
 			{confirmDeletePlan && (
 				<ConfirmDialog

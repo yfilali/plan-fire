@@ -91,7 +91,10 @@ const SEED_HOUSING = upgradeData({});
 // Per-plan defaults: inputs each plan owns independently.
 const PLAN_INPUT_DEFAULTS = {
 	age: 49,
-	retireAge: 49,
+	// Deliberately distinct from `age`: equal to it, a freshly-seeded plan
+	// reads as "retire now" the moment it's created (UX review H3/M7) — the
+	// very first projection a new plan shows would be degenerate.
+	retireAge: 65,
 	portfolio: 3000000,
 	ssAge: 70,
 	ssAnnual: 40000,
@@ -616,6 +619,12 @@ export function PlannerProvider({ children }) {
 	}, [activePlanId, setPlans]);
 
 	// ── Plan CRUD ──
+	// Deliberately does NOT activate the new plan (UX review H3) — creating a
+	// plan and adopting it as the one driving the dashboard/health chip are
+	// separate decisions. Callers that want the old "create and switch"
+	// behavior (e.g. the plan-switcher's own Create button, which already
+	// required an explicit name + confirm) call setActivePlanId themselves
+	// once they're sure. Returns the new id either way.
 	const addPlan = useCallback(
 		(name, { duplicateFrom } = {}) => {
 			const id = uid();
@@ -641,10 +650,9 @@ export function PlannerProvider({ children }) {
 				}
 				return [...prev, newPlan];
 			});
-			setActivePlanId(id);
 			return id;
 		},
-		[mutatePlans, setActivePlanId],
+		[mutatePlans],
 	);
 
 	const updatePlan = useCallback(

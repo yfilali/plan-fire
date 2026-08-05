@@ -39,9 +39,12 @@ export default function PlanSwitcher() {
 	const submitDialog = () => {
 		const name = dialog.name.trim();
 		if (!name) return;
-		if (dialog.mode === "new") addPlan(name);
+		// addPlan no longer activates on its own (UX review H3) — but typing a
+		// name and clicking Create here already IS the user's confirmation, so
+		// switch to it immediately, same as before.
+		if (dialog.mode === "new") setActivePlanId(addPlan(name));
 		else if (dialog.mode === "duplicate")
-			addPlan(name, { duplicateFrom: activePlanId });
+			setActivePlanId(addPlan(name, { duplicateFrom: activePlanId }));
 		else updatePlan(activePlanId, { name });
 		setDialog(null);
 		setOpen(false);

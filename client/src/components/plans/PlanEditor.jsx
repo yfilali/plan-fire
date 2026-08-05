@@ -12,16 +12,39 @@ const ACTIONS = [
 	{ value: "rent", label: "Rent" },
 ];
 
-export default function PlanEditor({ planId, onClose }) {
+// `isNew` marks a plan that exists in the `plans` array but hasn't been
+// confirmed yet (UX review H3) — created via "+ New plan" or a card's
+// Duplicate action, and not yet the active plan. Every way of leaving this
+// modal without an explicit "Create plan" (Cancel, Escape, scrim click, the
+// × button) discards it via removePlan, so no orphan plan is ever left
+// behind. Editing an existing plan keeps the old live-write, single "Done"
+// behavior — every field already saves as you type via updatePlan.
+export default function PlanEditor({ planId, isNew, onClose }) {
 	const S = useTheme();
-	const { plans, properties, updatePlan, setPlanAction, propSaleNet, propRentalNet } = usePlanner();
+	const { plans, properties, updatePlan, removePlan, setActivePlanId, setPlanAction, propSaleNet, propRentalNet } = usePlanner();
 	const plan = plans.find((p) => p.id === planId);
 	if (!plan) return null;
 
 	const set = (patch) => updatePlan(plan.id, patch);
+	const discard = () => { removePlan(plan.id); onClose(); };
+	const confirmCreate = () => { setActivePlanId(plan.id); onClose(); };
 
 	return (
-		<Modal title="Edit plan" width={560} onClose={onClose} footer={<Button variant="primary" onClick={onClose}>Done</Button>}>
+		<Modal
+			title={isNew ? "New plan" : "Edit plan"}
+			width={560}
+			onClose={isNew ? discard : onClose}
+			footer={
+				isNew ? (
+					<>
+						<Button variant="ghost" onClick={discard}>Cancel</Button>
+						<Button variant="primary" onClick={confirmCreate}>Create plan</Button>
+					</>
+				) : (
+					<Button variant="primary" onClick={onClose}>Done</Button>
+				)
+			}
+		>
 			<div style={{ display: "grid", gap: 18 }}>
 				<div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
 					<Field label="Plan name" style={{ flex: 1, minWidth: 180 }}>

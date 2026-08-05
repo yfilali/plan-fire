@@ -145,7 +145,12 @@ export default function PlanComparisonMatrix({ outcomes, mcByPlan, activePlanId,
 			cell: (o) => {
 				const sr = mcByPlan[o.planId]?.successRate;
 				if (sr == null) return <span style={{ color: S.textDim }}>—</span>;
-				return <span style={{ fontFamily: S.mono, fontWeight: 650 }}>{Math.round(sr * 100)}%</span>;
+				// 400 finite paths rounding to a flat "100%" reads as a guarantee —
+				// cap the DISPLAY just under the ceiling (matches SuccessProbability.jsx
+				// on the dashboard, M6, so the two surfaces never disagree). The
+				// underlying successRate used for ranking (metric below) is untouched.
+				const pct = Math.round(sr * 100);
+				return <span style={{ fontFamily: S.mono, fontWeight: 650 }}>{pct >= 100 ? ">99%" : `${pct}%`}</span>;
 			},
 			metric: (o) => (mcByPlan[o.planId]?.successRate ?? null),
 			dir: "max",
