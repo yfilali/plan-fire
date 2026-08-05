@@ -228,12 +228,23 @@ export function project({
 				: nomReturn[nomReturn.length - 1]
 			: nomReturn;
 
+		// Capital this year's spending is actually drawn from: last year's closing
+		// balance (the starting portfolio in year one) plus any sale proceeds
+		// landing this year. Captured before growth and before the withdrawal, so
+		// a rate built on it means "the share of what you hold entering the year"
+		// — the 4%-rule convention. `balance` below is end-of-year and cannot
+		// stand in for it: it is a year of compounding ahead and has already had
+		// this year's withdrawal taken out.
+		let opening = b;
+
 		// Grow portfolio at nominal return
 		b *= 1 + thisNom;
 
 		// Real estate transition event
 		if (transition && a === transition.moveAge) {
-			b += transition.netProceeds - transition.newHomeCost;
+			const netProceeds = transition.netProceeds - transition.newHomeCost;
+			b += netProceeds;
+			opening += netProceeds;
 			transitionHappened = true;
 			if (planId === "sell_move") {
 				reHouse = 0;
@@ -339,6 +350,7 @@ export function project({
 		data.push({
 			age: a,
 			balance: Math.round(b),
+			openingBalance: Math.round(opening),
 			annualSpend: Math.round(annualSpend),
 			income: Math.round(income),
 			netWithdrawal: Math.round(

@@ -148,6 +148,23 @@ describe("computePlanOutcome", () => {
 		expect(o.runsOutAge).not.toBeNull();
 		expect(o.runsOutAge).toBeGreaterThanOrEqual(brokePlan.retireAge);
 		expect(o.health.status).toBe("atRisk");
+		// The draw exceeds the whole portfolio, and effWR must say so. Measured
+		// against the year-end balance this read 0% — the portfolio was already
+		// at zero — which rendered as a reassuring green tile on a dead plan.
+		expect(o.effWR).toBeGreaterThan(100);
+	});
+
+	it("measures effWR against the opening balance, not the year-end one", () => {
+		const o = computePlanOutcome(keepPlan, CTX);
+		const wrRow = o.series.find((p) => p.age === keepPlan.retireAge);
+		const prev = o.series.find((p) => p.age === keepPlan.retireAge - 1);
+		// Reconstruct the rate from the balance entering the retirement year;
+		// keepPlan never relocates, so no proceeds land to shift the opening.
+		const spendFromPortfolio = (o.effWR / 100) * prev.balance;
+		expect(spendFromPortfolio).toBeGreaterThan(0);
+		// Same withdrawal over the year-end balance would give a different (and
+		// in a growing year, lower) number — the bug this pins shut.
+		expect((spendFromPortfolio / wrRow.balance) * 100).not.toBeCloseTo(o.effWR, 3);
 	});
 });
 

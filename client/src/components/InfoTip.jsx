@@ -12,7 +12,7 @@ import { useTheme } from "../theme/ThemeProvider.jsx";
 
 // Concise, plain-language definitions for the jargon the app surfaces.
 export const GLOSSARY = {
-	WR: "Withdrawal rate — the share of your portfolio you spend in a year. A lower rate makes your savings last longer.",
+	WR: "Withdrawal rate — what you spend in a year as a share of the portfolio you started that year with. A lower rate makes your savings last longer.",
 	"4% rule":
 		"A rule of thumb: withdraw 4% of your starting portfolio in year one, then adjust that amount for inflation each year. Historically this lasted ~30 years.",
 	"sequence risk":

@@ -411,7 +411,7 @@ export default function DashboardView() {
 					<Card>
 						<CardHeader
 							title="Withdrawal rate"
-							subtitle="Net withdrawal (spending minus income) as a share of the portfolio. Gaps appear after depletion."
+							subtitle="Net withdrawal (spending minus income) as a share of the portfolio you start the year with. Gaps appear after depletion."
 							right={
 								<span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
 									<span style={{ fontSize: FS.base, fontWeight: FW.bold, color: wrColor(S, effWR) }}>
