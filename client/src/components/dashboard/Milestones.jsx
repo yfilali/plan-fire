@@ -33,6 +33,14 @@ export default function MilestonesCard() {
 		return computeMilestones(rows, { age, retireAge, fiNumber, realRet });
 	}, [projections, age, retireAge, realRet, spendNow]);
 
+	// A healthy plan reaches Coast-FIRE, FI, and the net-worth marks all at once
+	// ("age 45 · now" x3) — three rows that carry no information once they're
+	// behind you. Depletion is excluded even when "reached": that means the
+	// portfolio already ran dry, which is the opposite of good news and must
+	// stay in the primary list, not get filed away as an achievement.
+	const reachedCrossings = crossings.filter((m) => m.reached && m.key !== "depletion");
+	const activeCrossings = crossings.filter((m) => !(m.reached && m.key !== "depletion"));
+
 	// Calendar-driven dates. Each carries a colorblind-safe Icon glyph.
 	const fixed = [
 		...(activeEcon.relocates ? [{ a: activeEcon.moveAge, l: "Relocate", icon: "relocate" }] : []),
@@ -57,7 +65,7 @@ export default function MilestonesCard() {
 				<InfoTip term="4% rule" />
 			</GroupLabel>
 			<div style={{ display: "grid", gap: 4 }}>
-				{crossings.map((m) => {
+				{activeCrossings.map((m) => {
 					const isNever = m.age == null;
 					const isDepletion = m.key === "depletion";
 					const reached = m.reached;
@@ -119,6 +127,38 @@ export default function MilestonesCard() {
 					);
 				})}
 			</div>
+
+			{/* ── Already reached — collapsed to compact pills so a healthy plan's
+			    Coast-FIRE / FI / net-worth marks (all "age 45 · now") don't repeat
+			    themselves as three full-weight rows above. ── */}
+			{reachedCrossings.length > 0 && (
+				<>
+					<GroupLabel style={{ marginTop: 18 }}>
+						<Icon name="check" size={12} color={S.accent} />
+						Already reached
+					</GroupLabel>
+					<div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+						{reachedCrossings.map((m) => (
+							<div
+								key={m.key}
+								style={{
+									display: "inline-flex",
+									alignItems: "center",
+									gap: 7,
+									padding: "5px 11px",
+									borderRadius: RAD.pill,
+									border: `1px solid ${S.border}`,
+									background: S.bg,
+									fontSize: FS.sm,
+								}}
+							>
+								<span style={{ fontWeight: FW.medium, color: S.text }}>{m.label}</span>
+								<span style={{ fontFamily: S.mono, color: S.textMuted }}>age {m.age}</span>
+							</div>
+						))}
+					</div>
+				</>
+			)}
 
 			{/* ── Fixed ages ── */}
 			<GroupLabel style={{ marginTop: 18 }}>Fixed ages</GroupLabel>
