@@ -52,7 +52,7 @@ export default function ExpensesView() {
 			{showCatManager && <CategoryManager onClose={() => setShowCatManager(false)} />}
 
 			<SectionTitle
-				sub={`Add what you spend each month, then tag it to the plans it belongs to and how essential it is. Greyed-out rows don't apply to "${activePlan?.name}".`}
+				sub={`Add what you spend each month, then tag it to the plans it belongs to and how essential it is. Greyed-out rows don't apply to "${activePlan?.name}"; a highlighted age tag means a row counts here but hasn't started yet (or has already ended).`}
 				right={
 					<div style={{ display: "flex", gap: 10, alignItems: "center" }}>
 						<Button variant="secondary" onClick={() => setShowCatManager(true)}>🏷️ Categories</Button>
@@ -150,7 +150,9 @@ export default function ExpensesView() {
 									exp={exp}
 									categories={categories}
 									plans={plans}
-									active={planActive && ageActive}
+									age={age}
+									inPlan={planActive}
+									ageActive={ageActive}
 									editing={editingId === exp.id}
 									onEdit={setEditingId}
 									onDone={() => setEditingId(null)}
