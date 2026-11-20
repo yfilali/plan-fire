@@ -9,10 +9,8 @@ import {
 import { usePersistedState, useStore } from "../usePersistedState.jsx";
 import {
 	project,
-	buildReturns,
 	monthlySpendAtAge,
 	monthlyIncomeAtAge,
-	returnForYear,
 	deflate,
 	uid,
 	DEFAULT_CATEGORIES,
@@ -20,7 +18,7 @@ import {
 } from "../engine.js";
 import { isLiquid, assetInPlan } from "../lib/assetMeta.js";
 import { useMarketHistory, DEFAULT_ALLOC } from "../lib/marketHistory.js";
-import { sliceSeries, blendedReturns, padReturns } from "../lib/backtest.js";
+import { eraReturns, regimeSequence, LOST_DECADE_YEARS, LOST_DECADE_LABEL } from "../lib/backtest.js";
 
 /* ──────────────────────────────────────────────────────────────────────
    Planner state — unified flat Plan model.
@@ -89,7 +87,7 @@ function upgradeData(data) {
 const SEED_HOUSING = upgradeData({});
 
 // Per-plan defaults: inputs each plan owns independently.
-const PLAN_INPUT_DEFAULTS = {
+export const PLAN_INPUT_DEFAULTS = {
 	age: 49,
 	// Deliberately distinct from `age`: equal to it, a freshly-seeded plan
 	// reads as "retire now" the moment it's created (UX review H3/M7) — the
@@ -871,32 +869,35 @@ export function PlannerProvider({ children }) {
 		return { ...e, moveAge: data.age + e.transitionYears };
 	}, [activePlan, propertyAssets, data.age]);
 
-	// ── Spending helpers ──
-	const avgReturns = useMemo(() => buildReturns("avg", data.nomReturn), [data.nomReturn]);
-	const bearReturns = useMemo(() => buildReturns("lost_decade", data.nomReturn), [data.nomReturn]);
-
-	// ── Premium historical backtest ("Time Machine") ──
-	// When marketMode is "historical_period", replay a real era's blended
-	// returns. We build a full-length nominal-return array (real window years,
-	// then either the era looped or a steady fallback) and feed it to project()
-	// and the spend-cut logic exactly like any other returns sequence.
+	// ── Market regime ──
+	// The returns this plan runs under: steady average, the real Lost Decade
+	// (2000–2009), or a Time Machine era. Market history is bundled, so this
+	// is always available synchronously — no loading state, no silent fallback.
 	const { data: marketHistory } = useMarketHistory();
-	const backtest = useMemo(() => {
-		if (data.marketMode !== "historical_period" || !marketHistory) return null;
-		const recs = sliceSeries(marketHistory.series, data.backtestStart, data.backtestEnd);
-		if (!recs.length) return null;
-		const windowR = blendedReturns(recs, data.backtestAlloc || {});
-		const full = padReturns(windowR, data.nomReturn, END_AGE - data.age + 1, data.backtestRepeat);
-		return { full, startYear: recs[0].year, endYear: recs[recs.length - 1].year };
-	}, [data, marketHistory]);
+	const horizon = END_AGE - data.age + 1;
+	const regime = useMemo(
+		() => regimeSequence(data, marketHistory.series, horizon),
+		[data, marketHistory, horizon],
+	);
 
-	// Returns sequence that downturn spend-cuts key off of, by mode.
-	const spendReturns =
-		data.marketMode === "lost_decade"
-			? bearReturns
-			: data.marketMode === "historical_period" && backtest
-				? backtest.full
-				: avgReturns;
+	// The Lost Decade stress test the steady regime is compared against: the
+	// exact sequence the "lost_decade" regime runs, so the banner's stress
+	// readout and selecting the Lost Decade can never disagree.
+	const lostDecade = useMemo(
+		() =>
+			eraReturns(
+				marketHistory.series,
+				...LOST_DECADE_YEARS,
+				data.backtestAlloc,
+				data.nomReturn,
+				horizon,
+				false,
+			),
+		[marketHistory, data.backtestAlloc, data.nomReturn, horizon],
+	);
+
+	// Returns sequence that downturn spend-cuts key off of.
+	const spendReturns = regime.returns;
 
 	const spendAt = useCallback(
 		(a, planId) =>
@@ -943,13 +944,12 @@ export function PlannerProvider({ children }) {
 
 	// ── Projections ──
 	const projections = useMemo(() => {
-		const avgR = buildReturns("avg", data.nomReturn);
-		const bearR = buildReturns("lost_decade", data.nomReturn);
-		const isPeriod = data.marketMode === "historical_period" && backtest;
-		// primary = the regime under test; alt = a steady-average baseline to
-		// compare against (for the dashed comparison line and survival readout).
-		const activeR = isPeriod ? backtest.full : data.marketMode === "lost_decade" ? bearR : avgR;
-		const altR = isPeriod ? avgR : data.marketMode === "lost_decade" ? avgR : bearR;
+		// primary = the regime under test. alt = what it's compared against (the
+		// dashed line and the banner's survival readout): real history (the Lost
+		// Decade or a Time Machine era) is compared to the steady average; the
+		// steady average is stress-tested against the real Lost Decade.
+		const activeR = regime.returns;
+		const altR = regime.replay ? data.nomReturn : lostDecade.full;
 		const common = {
 			startAge: data.age,
 			endAge: END_AGE,
@@ -989,16 +989,12 @@ export function PlannerProvider({ children }) {
 		return {
 			primary,
 			alt,
-			primaryLabel: isPeriod
-				? `${backtest.startYear}–${backtest.endYear} replay`
-				: data.marketMode === "lost_decade"
-					? "Lost Decade"
-					: "Historical Avg",
-			altLabel: isPeriod ? "Steady average" : data.marketMode === "lost_decade" ? "Historical Avg" : "Lost Decade",
+			primaryLabel: regime.label,
+			altLabel: regime.replay ? "Steady average" : LOST_DECADE_LABEL,
 			startPort: trans ? (atPost?.balance ?? startPort) : startPort,
 			hasTransition: !!trans,
 		};
-	}, [data, backtest, portfolio, propertyAssets, effectiveExpenses, effectiveIncomes, activePlan, baselinePlan]);
+	}, [data, regime, lostDecade, portfolio, propertyAssets, effectiveExpenses, effectiveIncomes, activePlan, baselinePlan]);
 
 	const runsOut = projections.primary.find((d) => d.balance <= 0 && d.age >= data.retireAge);
 	const altRunsOut = projections.alt.find((d) => d.balance <= 0 && d.age >= data.retireAge);
@@ -1032,21 +1028,20 @@ export function PlannerProvider({ children }) {
 			}),
 		[projections, realDollars, data.age, data.inflation],
 	);
-	// Per-year returns bars for the dashboard. Reflects the active regime: the
-	// chosen historical era under "Time Machine", otherwise the lost-decade
-	// sequence (shown faded in steady "historical" mode as a stress preview).
+	// Per-year returns bars for the dashboard. Reflects the active regime when
+	// it replays real history; in the steady regime, the Lost Decade sequence
+	// (shown faded as a stress preview — the same series the banner's stress
+	// readout runs on). returnsLabel names whichever series is plotted.
 	const fullReturnsTimeline = useMemo(() => {
-		const isPeriod = data.marketMode === "historical_period" && backtest;
+		const seq = regime.replay ? regime.returns : lostDecade.full;
 		const pts = [];
 		for (let a = data.age; a <= END_AGE; a += 1) {
 			const yi = a - data.age;
-			const ret = isPeriod
-				? backtest.full[yi] ?? data.nomReturn
-				: returnForYear("lost_decade", yi, data.nomReturn);
-			pts.push({ age: a, ret });
+			pts.push({ age: a, ret: seq[yi] ?? data.nomReturn });
 		}
 		return pts;
-	}, [data.age, data.nomReturn, data.marketMode, backtest]);
+	}, [data.age, data.nomReturn, regime, lostDecade]);
+	const returnsLabel = regime.replay ? regime.label : LOST_DECADE_LABEL;
 
 	// ready = migration has completed and v3 root keys are populated
 	const ready = schemaVersion === 3 && Array.isArray(plans) && Array.isArray(assets);
@@ -1142,6 +1137,7 @@ export function PlannerProvider({ children }) {
 		effWR,
 		fullChartData,
 		fullReturnsTimeline,
+		returnsLabel,
 	};
 
 	return <PlannerContext.Provider value={value}>{children}</PlannerContext.Provider>;

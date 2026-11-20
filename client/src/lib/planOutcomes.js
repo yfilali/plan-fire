@@ -9,7 +9,9 @@
 //  No React, no hooks, no module-level Math.random — deterministic given inputs.
 // ─────────────────────────────────────────────────────────────────────────
 
-import { project, buildReturns } from "../engine.js";
+import { project } from "../engine.js";
+import { regimeSequence } from "./backtest.js";
+import { MARKET_HISTORY } from "../../../shared/marketHistory.js";
 import { computePlanHealth } from "./planHealth.js";
 import { runMonteCarlo } from "./montecarlo.js";
 
@@ -42,15 +44,14 @@ function planEconomics(plan, properties) {
 	return { soldNet, rentalNet, newHomeCost, transitionYears, relocates };
 }
 
-// Build the projection regime under test for a plan.
-//   lost_decade → the bear sequence, otherwise the steady nominal average.
-// NOTE: "historical_period" replay is NOT reproduced in the comparison — it
-// requires a fitted backtest window that lives in PlannerProvider. Here it
-// falls back to the steady average ("avg"), same as any non-bear mode.
-function regimeReturns(plan) {
-	return plan.marketMode === "lost_decade"
-		? buildReturns("lost_decade", plan.nomReturn)
-		: buildReturns("avg", plan.nomReturn);
+// The returns a plan runs under — the same resolver the dashboard uses
+// (steady average, real Lost Decade, or a Time Machine era). Fields a stored
+// plan lacks (e.g. plans migrated from v1 never got a backtest window) are
+// filled from ctx.planDefaults, exactly as the dashboard fills them.
+function regimeReturns(plan, ctx) {
+	const p = { ...plan };
+	for (const [k, v] of Object.entries(ctx.planDefaults || {})) if (p[k] === undefined) p[k] = v;
+	return regimeSequence(p, MARKET_HISTORY.series, ctx.endAge - p.age + 1).returns;
 }
 
 // Resolve the shared projection args + transition for a plan, replicating
@@ -106,7 +107,7 @@ export function computePlanOutcome(plan, ctx) {
 	const { shared, transition, moveAge, startPortInput } = buildProjectionInputs(plan, ctx, econ);
 	const isEmpty = planIsEmptyFor(plan, ctx);
 
-	const primary = project({ ...shared, nomReturn: regimeReturns(plan) });
+	const primary = project({ ...shared, nomReturn: regimeReturns(plan, ctx) });
 
 	// Balance at/after the transition event (the meaningful "starting" balance
 	// once any relocation has settled). project() rows are end-of-year, so the

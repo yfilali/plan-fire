@@ -1,47 +1,20 @@
-import { useState, useEffect } from "react";
+import { MARKET_HISTORY } from "../../../shared/marketHistory.js";
 
 // ─────────────────────────────────────────────────────────────────────────
-//  Client loader for the server's historical market dataset.
-//  Fetched once, cached at module scope, shared across every hook consumer.
+//  Historical market dataset for the client.
+//  The reference data (shared/marketHistory.js, ~10 KB) is bundled into the
+//  client rather than fetched, so every projection that depends on it — the
+//  Lost Decade stress test, era replays, plan comparison — is available
+//  synchronously on first render, offline, and can never silently fall back
+//  to the steady average because a request failed. The server still serves
+//  the same module at /api/market-history.
 // ─────────────────────────────────────────────────────────────────────────
 
-let cache = null; // resolved payload { meta, classes, eras, series }
-let inflight = null; // de-dupe concurrent fetches
+const STATE = Object.freeze({ data: MARKET_HISTORY, loaded: true, error: null });
 
-function load() {
-	if (cache) return Promise.resolve(cache);
-	if (inflight) return inflight;
-	inflight = fetch("/api/market-history")
-		.then((r) => {
-			if (!r.ok) throw new Error(`market-history ${r.status}`);
-			return r.json();
-		})
-		.then((data) => {
-			cache = data;
-			inflight = null;
-			return data;
-		})
-		.catch((err) => {
-			inflight = null;
-			throw err;
-		});
-	return inflight;
-}
-
-// React hook: { data, loaded, error }. `data` is null until the fetch lands.
+// React hook kept for its call sites: { data, loaded, error }.
 export function useMarketHistory() {
-	const [state, setState] = useState(() => ({ data: cache, loaded: !!cache, error: null }));
-	useEffect(() => {
-		if (cache) return;
-		let alive = true;
-		load()
-			.then((data) => alive && setState({ data, loaded: true, error: null }))
-			.catch((error) => alive && setState({ data: null, loaded: true, error }));
-		return () => {
-			alive = false;
-		};
-	}, []);
-	return state;
+	return STATE;
 }
 
 // Map the user's asset *types* (from assetMeta) onto backtest asset *classes*,
@@ -75,5 +48,5 @@ export function allocFromAssets(assets, planId) {
 	return totals;
 }
 
-// A reasonable diversified starting allocation when we have nothing else.
-export const DEFAULT_ALLOC = { stocks: 0.6, tbonds: 0.25, realEstate: 0.05, gold: 0.05, tbills: 0.05, corp: 0 };
+// Re-exported from the pure backtest module so non-React code can use it too.
+export { DEFAULT_ALLOC } from "./backtest.js";

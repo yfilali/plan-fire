@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTheme } from "../theme/ThemeProvider.jsx";
-import { usePlanner } from "../state/PlannerProvider.jsx";
+import { usePlanner, PLAN_INPUT_DEFAULTS } from "../state/PlannerProvider.jsx";
 import { fmt } from "../engine.js";
 import { SectionTitle, Card, CardHeader, StatCard, Button, ConfirmDialog, planDeleteMessage } from "../components/ui.jsx";
 import PlanCard from "../components/plans/PlanCard.jsx";
@@ -55,6 +55,7 @@ export default function PlanView() {
 			liquidValueForPlan,
 			baselinePlanId: baselinePlan.id,
 			endAge,
+			planDefaults: PLAN_INPUT_DEFAULTS,
 		}),
 		[expenses, incomes, propertyAssets, liquidValueForPlan, baselinePlan, endAge],
 	);

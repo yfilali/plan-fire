@@ -132,3 +132,60 @@ export function padReturns(windowReturns, fallback, length, repeat = false) {
 	}
 	return out;
 }
+
+// A reasonable diversified starting allocation when we have nothing else.
+export const DEFAULT_ALLOC = { stocks: 0.6, tbonds: 0.25, realEstate: 0.05, gold: 0.05, tbills: 0.05, corp: 0 };
+
+// The Lost Decade is real market history — 2000 through 2009 (dot-com bust
+// into the financial crisis) — never a synthetic sequence. This is the single
+// definition behind the dashboard stress test, the Markets page regime, plan
+// comparison, and the "The Lost Decade" era preset.
+export const LOST_DECADE_YEARS = [2000, 2009];
+export const LOST_DECADE_LABEL = "Lost Decade (2000–2009)";
+
+export const isLostDecadeWindow = (start, end) =>
+	start === LOST_DECADE_YEARS[0] && end === LOST_DECADE_YEARS[1];
+
+// Replay a real window as a full projection-length return sequence: the
+// window's blended returns (under `alloc`), then the window looped (`repeat`)
+// or the steady `fallback` rate out to `length` years. Null when the series
+// has no data for the window.
+export function eraReturns(series, startYear, endYear, alloc, fallback, length, repeat = false) {
+	const recs = sliceSeries(series || [], startYear, endYear);
+	if (!recs.length) return null;
+	const windowR = blendedReturns(recs, alloc || DEFAULT_ALLOC);
+	return {
+		full: padReturns(windowR, fallback, length, repeat),
+		startYear: recs[0].year,
+		endYear: recs[recs.length - 1].year,
+	};
+}
+
+// The return sequence a plan runs under, by market regime — the single
+// resolver behind the dashboard and plan comparison, so they always agree.
+//   historical        → the steady nominal average every year
+//   lost_decade       → real 2000–2009 on the plan's allocation, then steady
+//   historical_period → the Time Machine window (looped if backtestRepeat)
+// Returns { returns, label, replay }: `returns` is a number (steady) or a
+// per-year array; `replay` is true when it follows real history.
+export function regimeSequence(plan, series, length) {
+	const era =
+		plan.marketMode === "lost_decade"
+			? eraReturns(series, ...LOST_DECADE_YEARS, plan.backtestAlloc, plan.nomReturn, length, false)
+			: plan.marketMode === "historical_period"
+				? eraReturns(
+						series,
+						plan.backtestStart,
+						plan.backtestEnd,
+						plan.backtestAlloc,
+						plan.nomReturn,
+						length,
+						plan.backtestRepeat,
+					)
+				: null;
+	if (!era) return { returns: plan.nomReturn, label: "Historical Avg", replay: false };
+	const label = isLostDecadeWindow(era.startYear, era.endYear)
+		? LOST_DECADE_LABEL
+		: `${era.startYear}–${era.endYear} replay`;
+	return { returns: era.full, label, replay: true };
+}

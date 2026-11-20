@@ -1,6 +1,8 @@
 import { useTheme } from "../theme/ThemeProvider.jsx";
 import { usePlanner } from "../state/PlannerProvider.jsx";
-import { fmt, LOST_DECADE } from "../engine.js";
+import { fmt } from "../engine.js";
+import { DEFAULT_ALLOC, eraReturns, LOST_DECADE_YEARS } from "../lib/backtest.js";
+import { useMarketHistory } from "../lib/marketHistory.js";
 import { SectionTitle, Card, CardHeader, StatCard } from "../components/ui.jsx";
 import SliderRow from "../components/SliderRow.jsx";
 import TimeMachine from "../components/settings/TimeMachine.jsx";
@@ -19,7 +21,7 @@ const REGIMES = [
 		id: "lost_decade",
 		icon: "📉",
 		title: "Lost decade",
-		desc: "A flat, choppy stretch of poor returns before they normalize. A stress test for sequence risk.",
+		desc: "Replay the real 2000–2009 markets — dot-com bust into the financial crisis — on your Time Machine allocation. A stress test for sequence risk.",
 		colorKey: "danger",
 	},
 	{
@@ -121,6 +123,7 @@ export default function MarketView() {
 	const S = useTheme();
 	const {
 		marketMode, setMarketMode,
+		backtestAlloc,
 		nomReturn, setNomReturn,
 		inflation, setInflation,
 		realRet,
@@ -128,13 +131,20 @@ export default function MarketView() {
 	} = usePlanner();
 
 	const isPeriod = marketMode === "historical_period";
+	const isLost = marketMode === "lost_decade";
+	const { data: hist } = useMarketHistory();
 
-	// Year-by-year preview for the non-replay regimes: lost-decade plays its real
-	// sequence then tails off at the steady rate; historical is flat.
-	const previewBars =
-		marketMode === "lost_decade"
-			? [...LOST_DECADE.map((r) => ({ r })), { r: nomReturn, tail: true }]
-			: Array(11).fill({ r: nomReturn });
+	// Year-by-year preview for the non-replay regimes: the Lost Decade plays the
+	// real 2000–2009 sequence on the plan's allocation, then tails off at the
+	// steady rate (faded); historical is flat.
+	const previewBars = isLost
+		? [
+				...eraReturns(hist.series, ...LOST_DECADE_YEARS, backtestAlloc || DEFAULT_ALLOC, nomReturn, 10).full.map(
+					(r) => ({ r }),
+				),
+				{ r: nomReturn, tail: true },
+			]
+		: Array(11).fill({ r: nomReturn });
 
 	return (
 		<div className="fade-in" style={{ display: "grid", gap: 16 }}>
@@ -169,11 +179,11 @@ export default function MarketView() {
 			) : (
 				<Card>
 					<CardHeader
-						icon={marketMode === "lost_decade" ? "📉" : "📈"}
-						title={marketMode === "lost_decade" ? "Lost-decade return sequence" : "Steady return sequence"}
+						icon={isLost ? "📉" : "📈"}
+						title={isLost ? "Lost Decade return sequence (2000–2009)" : "Steady return sequence"}
 						subtitle={
-							marketMode === "lost_decade"
-								? "A poor first decade — negative and flat years — before returns settle at your long-run average (faded)."
+							isLost
+								? "Real 2000–2009 returns on your Time Machine allocation, then your long-run average (faded)."
 								: "Your long-run average return, applied evenly to every year of the projection."
 						}
 					/>

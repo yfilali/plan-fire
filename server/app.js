@@ -7,7 +7,7 @@
 
 import express from 'express';
 import { toNodeHandler } from 'better-auth/node';
-import { MARKET_HISTORY } from './data/marketHistory.js';
+import { MARKET_HISTORY } from '../shared/marketHistory.js';
 import {
   getUserState,
   putUserState,

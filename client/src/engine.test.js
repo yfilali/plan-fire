@@ -4,12 +4,14 @@ import {
 	monthlySpendAtAge,
 	monthlyIncomeAtAge,
 	buildVestingSchedule,
-	buildReturns,
-	returnForYear,
 	deflate,
 	shouldApplyCut,
-	LOST_DECADE,
 } from "./engine";
+import { eraReturns, DEFAULT_ALLOC, LOST_DECADE_YEARS } from "./lib/backtest.js";
+import { MARKET_HISTORY } from "../../shared/marketHistory.js";
+
+// Real 2000–2009 blended returns under DEFAULT_ALLOC, straight from the dataset.
+const REAL_2000S = eraReturns(MARKET_HISTORY.series, ...LOST_DECADE_YEARS, DEFAULT_ALLOC, 0, 10).full;
 
 describe("monthlySpendAtAge", () => {
 	// Base expenses: $800/mo groceries (CPI-linked), $2400/mo mortgage (fixed)
@@ -181,7 +183,7 @@ describe("project — inflation-aware with nominal returns", () => {
 		expect(later.income).toBeCloseTo(53757, -1);
 	});
 
-	it("handles lost decade returns array with per-expense inflation", () => {
+	it("handles a year-by-year returns array with per-expense inflation", () => {
 		const result = project({
 			startAge: 49,
 			endAge: 58,
@@ -191,12 +193,11 @@ describe("project — inflation-aware with nominal returns", () => {
 			portfolio: 3000000,
 			expenses: baseExpenses,
 			planId: "stay",
-			nomReturn: buildReturns("lost_decade", 0.07),
+			nomReturn: [...REAL_2000S, 0.07],
 			inflation: 0.03,
 			rentalNet: 0,
 		});
 		expect(result.length).toBe(10);
-		// Lost decade should result in lower portfolio than historical avg
 		const last = result[result.length - 1];
 		expect(last.balance).toBeGreaterThan(0);
 	});
@@ -468,33 +469,44 @@ describe("project — recurring pre-retirement income", () => {
 	});
 });
 
-describe("returnForYear", () => {
-	it("returns the first lost decade value at year 0", () => {
-		expect(returnForYear("lost_decade", 0, 0.07)).toBe(-0.15);
+describe("shouldApplyCut", () => {
+	it("cuts every year in 'all' mode, even without a returns array", () => {
+		expect(shouldApplyCut(0, 0.07, "all")).toBe(true);
+		expect(shouldApplyCut(30, REAL_2000S, "all")).toBe(true);
 	});
 
-	it("returns the last lost decade value at year 9", () => {
-		expect(returnForYear("lost_decade", 9, 0.07)).toBe(0.09);
+	it("never cuts on a steady (scalar) return in down_recovery mode", () => {
+		expect(shouldApplyCut(0, 0.07, "down_recovery")).toBe(false);
 	});
 
-	it("falls back to nominal average at year 10 and beyond", () => {
-		expect(returnForYear("lost_decade", 10, 0.07)).toBe(0.07);
-		expect(returnForYear("lost_decade", 25, 0.07)).toBe(0.07);
+	it("cuts in negative years and until the prior peak is regained", () => {
+		const seq = [-0.1, 0.05, 0.1, 0.04, -0.02, 0.03];
+		// index at start of year: 1, .9, .945, 1.0395 (new peak), 1.081, 1.059
+		expect(seq.map((_, i) => shouldApplyCut(i, seq, "down_recovery"))).toEqual([
+			true, // negative year
+			true, // starts at .9 < 1 — recovering
+			true, // starts at .945 < 1 — still recovering
+			false, // starts at 1.0395 — recovered
+			true, // negative year
+			true, // starts below the 1.081 peak
+		]);
 	});
 
-	it("returns nominal average for historical mode at any year", () => {
-		expect(returnForYear("historical", 0, 0.07)).toBe(0.07);
-		expect(returnForYear("historical", 5, 0.07)).toBe(0.07);
-		expect(returnForYear("historical", 40, 0.07)).toBe(0.07);
+	it("stops cutting once the real Lost Decade has recovered", () => {
+		const seq = [...REAL_2000S, 0.07];
+		expect(shouldApplyCut(3, seq, "down_recovery")).toBe(true); // 2003 starts in the hole
+		expect(shouldApplyCut(4, seq, "down_recovery")).toBe(false); // recovered after 2003
+		expect(shouldApplyCut(8, seq, "down_recovery")).toBe(true); // 2008
+		expect(shouldApplyCut(9, seq, "down_recovery")).toBe(true); // 2009 starts below 2007 peak
 	});
 
-	it("matches buildReturns lost_decade output for each year index", () => {
-		const avg = 0.07;
-		const returns = buildReturns("lost_decade", avg);
-		for (let i = 0; i <= 10; i++) {
-			expect(returnForYear("lost_decade", i, avg)).toBe(returns[i]);
-		}
-		expect(returns.length).toBe(LOST_DECADE.length + 1);
+	it("keeps tracking recovery past the end of the returns array", () => {
+		// Ends still below peak; project() reuses the last value (+10%) after.
+		const seq = [-0.3, 0.1];
+		// index at start of year: 1, .7, .77, .847, .9317, 1.0249 (recovered)
+		expect([0, 1, 2, 3, 4, 5, 6].map((i) => shouldApplyCut(i, seq, "down_recovery"))).toEqual([
+			true, true, true, true, true, false, false,
+		]);
 	});
 });
 
@@ -568,9 +580,9 @@ describe("downturn spending cuts", () => {
 		expect(yr0.annualSpend).toBe(42000);
 	});
 
-	it("cuts discretionary 30% and luxury 70% during negative return years", () => {
-		// Year 0: -15% (trigger cuts), Year 1: -10% (trigger cuts), Year 2+: positive
-		const returns = [-0.15, -0.1, 0.05, 0.06, 0.07, 0.08, 0.08];
+	it("cuts discretionary 30% and luxury 70% through the downturn and recovery", () => {
+		// Growth index at the start of each year: 1, .85, .765, 1.033 (recovered)
+		const returns = [-0.15, -0.1, 0.35, 0.06, 0.07, 0.08, 0.08];
 		const result = project({
 			startAge: 49,
 			endAge: 55,
@@ -590,12 +602,13 @@ describe("downturn spending cuts", () => {
 		// Luxury: 2000 * (1 - 0.7) = 600
 		// Total: 1950/mo = 23400/yr
 		expect(yr0.annualSpend).toBe(23400);
-		// Year 2 should have full spending again (+ some inflation accumulated)
+		// Year 2 is a positive year but starts below the prior peak — still cut:
+		// 1950 * 1.03^2 ≈ 2068.76/mo ≈ 24825/yr
 		const yr2 = result.find((d) => d.age === 51);
-		// Base spend with ~2 years of 3% inflation accumulated:
-		// 1000*1.03^2 + 500*1.03^2 + 2000*1.03^2 = 3500*1.03^2 ≈ 3713.15/mo ≈ 44558/yr
-		expect(yr2.annualSpend).toBeGreaterThan(42500);
-		expect(yr2.annualSpend).toBeLessThan(46000);
+		expect(yr2.annualSpend).toBeCloseTo(24825, -1);
+		// Year 3 starts recovered — full spending: 3500 * 1.03^3 ≈ 3824.5/mo ≈ 45894/yr
+		const yr3 = result.find((d) => d.age === 52);
+		expect(yr3.annualSpend).toBeCloseTo(45894, -1);
 	});
 
 	it("does not cut essential-only expenses even in downturn", () => {

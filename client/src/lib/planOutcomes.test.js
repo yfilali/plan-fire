@@ -168,6 +168,32 @@ describe("computePlanOutcome", () => {
 	});
 });
 
+describe("computePlanOutcome market regimes", () => {
+	const tight = makeCtx({ [BASELINE_ID]: 1200000 });
+	const endBalance = (plan, ctx = tight) => computePlanOutcome(plan, ctx).endingBalanceNominal;
+
+	it("projects the Lost Decade on real 2000–2009 history, not the steady average", () => {
+		const steady = endBalance({ ...keepPlan, marketMode: "historical" });
+		const lost = endBalance({ ...keepPlan, marketMode: "lost_decade" });
+		expect(lost).not.toBe(steady);
+	});
+
+	it("matches a 2000–2009 Time Machine replay exactly", () => {
+		const lost = endBalance({ ...keepPlan, marketMode: "lost_decade" });
+		const replay = endBalance({ ...keepPlan, marketMode: "historical_period", backtestStart: 2000, backtestEnd: 2009 });
+		expect(replay).toBe(lost);
+	});
+
+	it("fills a plan's missing backtest window from ctx.planDefaults, like the dashboard", () => {
+		// A v1-migrated plan: historical_period with no window/allocation stored.
+		const legacy = { ...keepPlan, marketMode: "historical_period" };
+		const ctx = { ...tight, planDefaults: { backtestStart: 1973, backtestEnd: 1982, backtestRepeat: false } };
+		const explicit = endBalance({ ...keepPlan, marketMode: "historical_period", backtestStart: 1973, backtestEnd: 1982 });
+		expect(endBalance(legacy, ctx)).toBe(explicit);
+		expect(endBalance(legacy, ctx)).not.toBe(endBalance({ ...keepPlan, marketMode: "historical" }));
+	});
+});
+
 describe("computePlanMonteCarlo", () => {
 	it("returns a success rate in [0,1] and ordered percentiles", () => {
 		const mc = computePlanMonteCarlo(keepPlan, CTX, { trials: 120, seed: 0x1234abcd });
