@@ -9,7 +9,14 @@ import {
 	blendedReturns,
 	blendedStats,
 	padReturns,
+	eraReturns,
+	regimeSequence,
+	isLostDecadeWindow,
+	LOST_DECADE_LABEL,
+	LOST_DECADE_YEARS,
+	DEFAULT_ALLOC,
 } from "./backtest";
+import { MARKET_HISTORY } from "../../../shared/marketHistory.js";
 
 // Tiny synthetic series so expected values are hand-checkable.
 const series = [
@@ -106,5 +113,77 @@ describe("padReturns", () => {
 	});
 	it("truncates when the window exceeds the horizon", () => {
 		expect(padReturns([0.1, 0.2, 0.3], 0, 2)).toEqual([0.1, 0.2]);
+	});
+});
+
+describe("eraReturns", () => {
+	it("replays the window's blended returns, then the fallback", () => {
+		const r = eraReturns(series, 2000, 2001, { stocks: 1 }, 0.07, 4);
+		expect(r).toEqual({ full: [0.1, -0.2, 0.07, 0.07], startYear: 2000, endYear: 2001 });
+	});
+	it("returns null when the series has no data for the window", () => {
+		expect(eraReturns(series, 1950, 1960, { stocks: 1 }, 0.07, 4)).toBeNull();
+	});
+	it("uses the default allocation when none is set", () => {
+		const r = eraReturns(series, 2000, 2000, undefined, 0.07, 1);
+		expect(r.full[0]).toBeCloseTo(blendedReturns([series[0]], DEFAULT_ALLOC)[0], 12);
+	});
+});
+
+describe("Lost Decade", () => {
+	it("is the same window as the server's 'The Lost Decade' era preset", () => {
+		const era = MARKET_HISTORY.eras.find((e) => e.id === "lostdecade");
+		expect(era.years).toEqual(LOST_DECADE_YEARS);
+		expect(isLostDecadeWindow(...era.years)).toBe(true);
+	});
+
+	it("replays real 2000–2009 history, not a synthetic sequence", () => {
+		const r = eraReturns(MARKET_HISTORY.series, ...LOST_DECADE_YEARS, { stocks: 1 }, 0.07, 11);
+		// S&P 500 total returns: 2000 −9.03%, 2008 −36.55%, then the fallback.
+		expect(r.full[0]).toBeCloseTo(-0.0903, 6);
+		expect(r.full[8]).toBeCloseTo(-0.3655, 6);
+		expect(r.full[10]).toBe(0.07);
+	});
+
+});
+
+describe("regimeSequence", () => {
+	const base = { nomReturn: 0.07, backtestAlloc: { stocks: 1 }, backtestStart: 1973, backtestEnd: 1982, backtestRepeat: false };
+	const S = MARKET_HISTORY.series;
+
+	it("runs the steady average in the historical regime", () => {
+		expect(regimeSequence({ ...base, marketMode: "historical" }, S, 30)).toEqual({
+			returns: 0.07,
+			label: "Historical Avg",
+			replay: false,
+		});
+	});
+
+	it("runs real 2000–2009 for the Lost Decade, ignoring the Time Machine window", () => {
+		const r = regimeSequence({ ...base, marketMode: "lost_decade" }, S, 30);
+		const expected = eraReturns(S, ...LOST_DECADE_YEARS, { stocks: 1 }, 0.07, 30).full;
+		expect(r).toEqual({ returns: expected, label: LOST_DECADE_LABEL, replay: true });
+	});
+
+	it("never loops the Lost Decade, even with backtestRepeat on", () => {
+		const r = regimeSequence({ ...base, marketMode: "lost_decade", backtestRepeat: true }, S, 30);
+		expect(r.returns.slice(10)).toEqual(Array(20).fill(0.07));
+	});
+
+	it("replays the Time Machine window for historical_period", () => {
+		const r = regimeSequence({ ...base, marketMode: "historical_period" }, S, 30);
+		expect(r.label).toBe("1973–1982 replay");
+		expect(r.returns).toEqual(eraReturns(S, 1973, 1982, { stocks: 1 }, 0.07, 30).full);
+	});
+
+	it("labels a 2000–2009 Time Machine window as the Lost Decade, with identical returns", () => {
+		const period = regimeSequence({ ...base, marketMode: "historical_period", backtestStart: 2000, backtestEnd: 2009 }, S, 30);
+		const lost = regimeSequence({ ...base, marketMode: "lost_decade" }, S, 30);
+		expect(period).toEqual(lost);
+	});
+
+	it("falls back to steady when the window has no data", () => {
+		const r = regimeSequence({ ...base, marketMode: "historical_period", backtestStart: 1800, backtestEnd: 1810 }, S, 30);
+		expect(r.replay).toBe(false);
 	});
 });

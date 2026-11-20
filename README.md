@@ -70,7 +70,7 @@ See [DEPLOY.md](DEPLOY.md) for the full Vercel + Neon setup guide.
 - **User-defined housing plans** — create any number of plans (not just stay/sell/rent); each decides whether every property is kept, sold, or rented, with an optional new-home purchase and transition delay
 - **Flexible properties** — model zero, one, or many properties with arbitrary values, mortgages, and rental economics
 - Expense tracker with custom categories; tag each expense to whichever of *your* plans it applies to, plus age ranges, inflation overrides, and spend tiers
-- Market simulation (historical avg vs "lost decade" stress test)
+- Market simulation (historical avg vs a "lost decade" stress test that replays real 2000–2009 returns)
 - **🎲 Monte Carlo success probability** — thousands of randomized return paths report the share in which your portfolio outlives you, with a terminal-wealth band (10th/50th/90th percentile).
 - **🏁 FIRE milestones** — the ages your plan crosses Coast-FIRE, financial independence, $500k/$1M/$2M net worth, and (worst case) depletion — derived live from the projection.
 - **✦ AI Co-pilot** — a chat assistant grounded in a minimal numeric snapshot of *your* plan. It answers with your real figures and can propose one-tap changes (e.g. "Retire at 57") applied straight to your plan. Powered by Claude; degrades to a deterministic offline reply when no API key is set.
@@ -131,6 +131,11 @@ npm run dev
 ```
 
 Client at **http://localhost:5173**, API calls proxied to **localhost:3000**.
+If port 3000 is taken, run the server with `PORT=3100 npm start` and the client
+with `API_URL=http://localhost:3100 npm run dev`.
+
+Without a `DATABASE_URL` the server still starts: sign-in won't work, but
+"Try it — no account needed" (guest mode, stored in the browser) does.
 
 ## Deploying
 
@@ -183,7 +188,7 @@ See [DEPLOY.md](DEPLOY.md) for how to wire these up on Vercel.
 
 ## Historical Market Dataset
 
-The Time Machine is backed by `server/data/marketHistory.js` — annual **nominal**
+The Time Machine is backed by `shared/marketHistory.js` — annual **nominal**
 total returns by asset class, **1928–2025**, served read-only at
 `/api/market-history`. It ships with the server as code (not in the mutable
 `/data` store), so a user "reset" never touches it and it survives every rebuild.
@@ -199,7 +204,7 @@ and 3-month T-bills (cash), plus annual CPI for real-return math.
 - Robert Shiller / S&P CoreLogic Case-Shiller — residential real estate.
 - U.S. Bureau of Labor Statistics — CPI-U inflation.
 
-To refresh, replace the `RAW` rows in `server/data/marketHistory.js` with the
+To refresh, replace the `RAW` rows in `shared/marketHistory.js` with the
 latest published years.
 
 ## Stack

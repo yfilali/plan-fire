@@ -75,6 +75,7 @@ export default function DashboardView() {
 		dispSpend70,
 		fullChartData,
 		fullReturnsTimeline,
+		returnsLabel,
 		planIsEmpty,
 	} = p;
 
@@ -394,7 +395,7 @@ export default function DashboardView() {
 								<YAxis hide width={52} />
 								<ReferenceLine y={0} stroke={S.border} />
 								<Tooltip content={<ChartTip formatter={(v) => `${(v * 100).toFixed(1)}%`} />} cursor={{ fill: S.textMuted + "10" }} />
-								<Bar dataKey="ret" name={projections.primaryLabel} radius={[2, 2, 0, 0]} fillOpacity={marketMode === "historical" ? 0.35 : 0.9}>
+								<Bar dataKey="ret" name={returnsLabel} radius={[2, 2, 0, 0]} fillOpacity={marketMode === "historical" ? 0.35 : 0.9}>
 									{returnsTimeline.map((d) => (
 										<Cell key={d.age} fill={d.ret < 0 ? S.danger : S.accent} />
 									))}

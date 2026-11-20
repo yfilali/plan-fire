@@ -21,7 +21,9 @@ export default function RegimeSelector() {
 		return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
 	}, [open]);
 
-	const eras = hist?.eras || [];
+	// The Lost Decade is a regime of its own (listed above the eras), so its
+	// era preset isn't repeated here.
+	const eras = (hist?.eras || []).filter((e) => e.id !== "lostdecade");
 	const isPeriod = marketMode === "historical_period";
 	const labelColor = marketMode === "lost_decade" ? S.danger : isPeriod ? S.blue : S.accent;
 	const activeEraId = isPeriod ? eras.find((e) => e.years[0] === backtestStart && e.years[1] === backtestEnd)?.id : null;
@@ -87,6 +89,9 @@ export default function RegimeSelector() {
 					{sectionLabel("Market regime")}
 					<Row on={marketMode === "historical"} color={S.accent} onClick={() => pickRegime("historical")}>
 						<span>📈</span> Historical average
+					</Row>
+					<Row on={marketMode === "lost_decade"} color={S.danger} onClick={() => pickRegime("lost_decade")}>
+						<span>🐻</span> Lost Decade (2000–2009)
 					</Row>
 
 					<div style={{ height: 1, background: S.border, margin: "6px 4px" }} />

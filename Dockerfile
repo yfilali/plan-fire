@@ -7,6 +7,8 @@ WORKDIR /app/client
 COPY client/package.json client/package-lock.json* ./
 RUN npm install
 COPY client/ .
+# Reference data shared by client and server (historical market returns).
+COPY shared/ /app/shared/
 RUN npm run build
 
 # Stage 2: Production server
@@ -18,6 +20,7 @@ COPY package.json package-lock.json* ./
 RUN npm install --omit=dev
 
 COPY server/ ./server/
+COPY shared/ ./shared/
 COPY --from=client-build /app/client/dist ./client/dist
 
 ENV NODE_ENV=production

@@ -1,42 +1,41 @@
 // ── Projection Engine v2: Phase-Aware ────────────────────────────────
 
-export const LOST_DECADE = [
-	-0.15, -0.1, 0.05, -0.05, 0.02, 0.03, 0.04, 0.06, 0.08, 0.09,
-];
+// Per-returns-array downturn/recovery flags, extended lazily and cached so
+// project() and Monte Carlo (one call per expense per year) stay linear.
+const recoveryCache = new WeakMap();
 
-// Pre-computed: year indices that are in downturn/recovery period for LOST_DECADE
-// Downturn years (return < 0): 0, 1, 3
-// Cumulative returns: -15%, -25%, -20%, -25%, -23%, -20%, -16%, -10%, -2%, +7%
-// Recovery ends at year 9 when cumulative crosses above zero
-const LOST_DECADE_RECOVERY_CUTOFF = 9; // cuts apply through year 8 inclusive
+function recoveryFlags(returnsArr, upto) {
+	let st = recoveryCache.get(returnsArr);
+	if (!st) {
+		st = { flags: [], index: 1, peak: 1 };
+		recoveryCache.set(returnsArr, st);
+	}
+	while (st.flags.length <= upto) {
+		// project() reuses the last value for years past the array's end.
+		const r = returnsArr[Math.min(st.flags.length, returnsArr.length - 1)];
+		st.flags.push(r < 0 || st.index < st.peak - 1e-12);
+		st.index *= 1 + r;
+		if (st.index > st.peak) st.peak = st.index;
+	}
+	return st.flags;
+}
 
 /**
  * Check if we should apply spending cuts for a given year.
  * cutMode:
- *   'down_recovery' — cuts during downturn + until portfolio recovers (cumulative return >= 0)
+ *   'down_recovery' — cut in a year with a negative return, and in every year
+ *                     that starts while the portfolio's cumulative growth is
+ *                     still below its prior peak (i.e. until it has recovered)
  *   'all'           — cuts applied uniformly to ALL years
  *
  * NOTE: This is the single source of truth for when cuts apply. Both project() and
  * monthlySpendAtAge() must use it so dashboard stats, charts, and projections agree.
  */
 export function shouldApplyCut(yearIdx, returnsArr, cutMode) {
-	if (!returnsArr || !returnsArr.length) return false;
-
-	const yi = Math.max(0, Math.min(yearIdx, returnsArr.length - 1));
-
-	// "all" mode: cuts every year
 	if (cutMode === "all") return true;
-
-	// For LOST_DECADE-style arrays, use pre-computed recovery cutoff
-	const isLostDecade =
-		returnsArr[0] === -0.15 &&
-		returnsArr[1] === -0.1 &&
-		returnsArr.length >= 10;
-	if (isLostDecade) return yi <= LOST_DECADE_RECOVERY_CUTOFF;
-
-	// Generic fallback for ad-hoc arrays: cut only in years where the return
-	// is negative. "all" mode already handled above (returns true for everything).
-	return returnsArr[yi] < 0;
+	if (!Array.isArray(returnsArr) || !returnsArr.length) return false;
+	const yi = Math.max(0, yearIdx);
+	return recoveryFlags(returnsArr, yi)[yi];
 }
 
 /**
@@ -369,18 +368,6 @@ export function project({
 		}
 	}
 	return data;
-}
-
-export function buildReturns(mode, nomAvg) {
-	if (mode === "lost_decade") return [...LOST_DECADE, nomAvg];
-	return nomAvg;
-}
-
-// Return for a single 0-based year index; matches how project() indexes
-// buildReturns output (years past the array reuse the last/average value).
-export function returnForYear(mode, yearIdx, nomAvg) {
-	if (mode === "lost_decade" && yearIdx < LOST_DECADE.length) return LOST_DECADE[yearIdx];
-	return nomAvg;
 }
 
 // Convert a nominal amount N years out into today's dollars.

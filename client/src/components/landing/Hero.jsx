@@ -11,11 +11,18 @@ import {
 } from "recharts";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { Button } from "../ui.jsx";
+import { MARKET_HISTORY } from "../../../../shared/marketHistory.js";
+import { eraReturns, DEFAULT_ALLOC, LOST_DECADE_YEARS } from "../../lib/backtest.js";
+
+// Real 2000–2009 blended returns, replayed from the year the demo household retires.
+const LOST_DECADE_RETURNS = eraReturns(MARKET_HISTORY.series, ...LOST_DECADE_YEARS, DEFAULT_ALLOC, 0, 10).full;
 
 // Landing hero. Below the copy sits a replica of the app's real dashboard
 // "Portfolio projection" card: two stacked panels — balance under two market
 // regimes (Historical avg vs Lost decade) on top, then income vs spending
-// below — with Retire / Medicare / SS milestone lines. Representative demo data.
+// below — with Retire / Medicare / SS milestone lines. Representative demo
+// household; the "Lost decade" line replays real 2000–2009 returns starting
+// the year this household retires (classic sequence-of-returns risk).
 
 const RETIRE = 60;
 const MEDICARE = 65;
@@ -32,7 +39,11 @@ const PROJECTION = (() => {
 		const income = salary + ss;
 		const net = income - spending;
 		const histReturn = age < RETIRE ? 1.09 : 1.05;
-		const lostReturn = age < RETIRE ? 1.055 : 1.0;
+		const decadeYear = age - RETIRE;
+		const lostReturn =
+			decadeYear >= 0 && decadeYear < LOST_DECADE_RETURNS.length
+				? 1 + LOST_DECADE_RETURNS[decadeYear]
+				: histReturn;
 		hist = hist * histReturn + net;
 		lost = lost * lostReturn + net;
 		rows.push({

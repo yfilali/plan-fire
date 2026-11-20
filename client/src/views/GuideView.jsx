@@ -789,7 +789,7 @@ export default function GuideView() {
 						shotCaption="Health banner, key numbers, spending controls, and the full projection with milestones and odds."
 						intro="Your command center. Everything here reflects the active plan and recomputes the moment you change an input anywhere in the app."
 						steps={[
-							{ title: "Read the health banner", body: "Top of the page: a plain-language verdict (Healthy / At risk), whether the money lasts, and how the plan survives a Lost-Decade stress test." },
+							{ title: "Read the health banner", body: "Top of the page: a plain-language verdict (Healthy / At risk), whether the money lasts, and how the plan survives a Lost Decade stress test (a replay of real 2000–2009 markets on your Time Machine allocation)." },
 							{ title: "Scan the stat cards", body: "Portfolio, spending at key ages (Medicare, Social Security), your withdrawal rate vs the 4% guideline, and the projected balance at 90." },
 							{ title: "Dial the controls", body: "Zoom the age range, flip between Nominal $ and Today's $, and set the Downturn spending cuts (see Flex spend controls above)." },
 							{ title: "Study the results", body: "The portfolio projection under two market regimes, income vs spending, FIRE milestones, and the Monte-Carlo success probability." },
@@ -859,7 +859,7 @@ export default function GuideView() {
 						shotCaption="Three market regimes to choose from, plus the long-run return and inflation that drive every plan."
 						intro="Decide how markets behave across your projection — from a simple average to a full historical replay."
 						steps={[
-							{ title: "Choose a regime", body: "Historical average (a steady return), Lost decade (a sequence-risk stress test), or the Time Machine (replay a real era — see the spotlight above)." },
+							{ title: "Choose a regime", body: "Historical average (a steady return), Lost decade (a replay of real 2000–2009 markets — a sequence-risk stress test), or the Time Machine (replay a real era — see the spotlight above)." },
 							{ title: "Set return & inflation", body: "Dial the long-run nominal return and the inflation that erodes it; the page shows the resulting real return live." },
 							{ title: "See the impact", body: "Every plan and projection in the app uses these assumptions, so changes here ripple straight to the Dashboard." },
 						]}

@@ -132,7 +132,7 @@ A hands-on tour of every screen, with the real interface and step-by-step instru
 
 Your command center. Everything here reflects the active plan and recomputes the moment you change an input anywhere in the app.
 
-1. **Read the health banner** — a plain-language verdict (Healthy / At risk), whether the money lasts, and how the plan survives a Lost-Decade stress test.
+1. **Read the health banner** — a plain-language verdict (Healthy / At risk), whether the money lasts, and how the plan survives a Lost Decade stress test (a replay of real 2000–2009 markets on your Time Machine allocation).
 2. **Scan the stat cards** — portfolio, spending at key ages (Medicare, Social Security), your withdrawal rate vs the 4% guideline, and the projected balance at 90.
 3. **Dial the controls** — zoom the age range, flip between Nominal $ and Today's $, and set the Downturn spending cuts.
 4. **Study the results** — the portfolio projection under two market regimes, income vs spending, FIRE milestones, and the Monte-Carlo success probability.
@@ -170,7 +170,7 @@ One unified pool of what you own. Liquid accounts grow with the market; real est
 
 Decide how markets behave across your projection — from a simple average to a full historical replay.
 
-1. **Choose a regime** — Historical average (a steady return), Lost decade (a sequence-risk stress test), or the Time Machine (replay a real era).
+1. **Choose a regime** — Historical average (a steady return), Lost decade (a replay of real 2000–2009 markets — a sequence-risk stress test), or the Time Machine (replay a real era).
 2. **Set return & inflation** — dial the long-run nominal return and the inflation that erodes it; the page shows the resulting real return live.
 3. **See the impact** — every plan and projection uses these assumptions, so changes here ripple straight to the Dashboard.
 
